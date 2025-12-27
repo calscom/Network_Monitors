@@ -6,7 +6,7 @@ export interface IStorage {
   getDevices(): Promise<Device[]>;
   createDevice(device: InsertDevice): Promise<Device>;
   deleteDevice(id: number): Promise<void>;
-  updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, prevCounter: number): Promise<Device>;
+  updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, lastCounter: bigint): Promise<Device>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -23,16 +23,16 @@ export class DatabaseStorage implements IStorage {
     await db.delete(devices).where(eq(devices.id, id));
   }
 
-  async updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, prevCounter: number): Promise<Device> {
+  async updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, lastCounter: bigint): Promise<Device> {
     const [device] = await db
       .update(devices)
       .set({ 
         status, 
         utilization,
         bandwidthMBps,
-        prevCounter,
+        lastCounter,
         lastCheck: new Date(),
-        lastSeen: status === 'green' || status === 'blue' ? new Date() : undefined 
+        lastSeen: status === 'green' ? new Date() : undefined 
       })
       .where(eq(devices.id, id))
       .returning();

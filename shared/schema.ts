@@ -9,11 +9,12 @@ export const devices = pgTable("devices", {
   community: text("community").default("public").notNull(),
   type: text("type").notNull(), // 'unifi', 'mikrotik', 'generic'
   status: text("status").default("unknown").notNull(), // 'green', 'red', 'blue'
-  utilization: integer("utilization").default(0).notNull(), // percent 0-100
-  bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // actual value in MBps
-  prevCounter: bigint("prev_counter", { mode: "number" }).default(0).notNull(),
+  utilization: integer("utilization").default(0).notNull(), // 0-100 percentage
+  bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision
+  lastCounter: bigint("last_counter", { mode: "bigint" }).default(0n).notNull(),
   lastCheck: timestamp("last_check"),
   lastSeen: timestamp("last_seen"),
+  site: text("site").notNull(), // The 12 site names
 });
 
 export const insertDeviceSchema = createInsertSchema(devices).omit({
@@ -21,9 +22,9 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   status: true,
   utilization: true,
   bandwidthMBps: true,
-  prevCounter: true,
-  lastSeen: true,
-  lastCheck: true
+  lastCounter: true,
+  lastCheck: true,
+  lastSeen: true
 });
 
 export type Device = typeof devices.$inferSelect;
