@@ -1,38 +1,41 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { devices, type Device, type InsertDevice } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getDevices(): Promise<Device[]>;
+  createDevice(device: InsertDevice): Promise<Device>;
+  deleteDevice(id: number): Promise<void>;
+  updateDeviceStatus(id: number, status: string, utilization: number): Promise<Device>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getDevices(): Promise<Device[]> {
+    return await db.select().from(devices);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async createDevice(insertDevice: InsertDevice): Promise<Device> {
+    const [device] = await db.insert(devices).values(insertDevice).returning();
+    return device;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async deleteDevice(id: number): Promise<void> {
+    await db.delete(devices).where(eq(devices.id, id));
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateDeviceStatus(id: number, status: string, utilization: number): Promise<Device> {
+    const [device] = await db
+      .update(devices)
+      .set({ 
+        status, 
+        utilization,
+        lastCheck: new Date(),
+        lastSeen: status === 'green' ? new Date() : undefined 
+      })
+      .where(eq(devices.id, id))
+      .returning();
+    return device;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

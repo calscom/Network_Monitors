@@ -1,0 +1,135 @@
+import { useDevices } from "@/hooks/use-devices";
+import { DeviceCard } from "@/components/DeviceCard";
+import { AddDeviceDialog } from "@/components/AddDeviceDialog";
+import { LayoutDashboard, Activity, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
+
+export default function Dashboard() {
+  const { data: devices, isLoading, error } = useDevices();
+
+  // Stats calculation
+  const stats = {
+    total: devices?.length || 0,
+    online: devices?.filter(d => d.status === 'green').length || 0,
+    critical: devices?.filter(d => d.status === 'red' || d.status === 'blue').length || 0,
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-8 lg:p-12">
+      <div className="max-w-7xl mx-auto space-y-10">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-4xl font-display text-foreground flex items-center gap-3">
+              <LayoutDashboard className="w-8 h-8 text-primary" />
+              Network Monitor
+            </h1>
+            <p className="text-muted-foreground text-lg">Real-time SNMP status & utilization dashboard</p>
+          </div>
+          <AddDeviceDialog />
+        </div>
+
+        {/* Status Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass rounded-xl p-6 border-l-4 border-l-primary flex items-center justify-between"
+          >
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Devices</p>
+              <p className="text-3xl font-bold font-mono mt-1">{stats.total}</p>
+            </div>
+            <div className="p-3 bg-primary/10 rounded-full text-primary">
+              <Activity className="w-6 h-6" />
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="glass rounded-xl p-6 border-l-4 border-l-[hsl(var(--status-green))] flex items-center justify-between"
+          >
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Online & Stable</p>
+              <p className="text-3xl font-bold font-mono mt-1 text-[hsl(var(--status-green))]">{stats.online}</p>
+            </div>
+            <div className="w-3 h-3 rounded-full bg-[hsl(var(--status-green))] shadow-[0_0_12px_hsl(var(--status-green)/0.6)]" />
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="glass rounded-xl p-6 border-l-4 border-l-[hsl(var(--status-red))] flex items-center justify-between"
+          >
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Critical / Recovering</p>
+              <p className="text-3xl font-bold font-mono mt-1 text-[hsl(var(--status-red))]">{stats.critical}</p>
+            </div>
+            {stats.critical > 0 ? (
+              <div className="relative">
+                 <div className="absolute w-full h-full rounded-full bg-[hsl(var(--status-red))] animate-pulse-ring opacity-50" />
+                 <AlertCircle className="relative w-6 h-6 text-[hsl(var(--status-red))]" />
+              </div>
+            ) : (
+              <div className="w-3 h-3 rounded-full bg-secondary" />
+            )}
+          </motion.div>
+        </div>
+
+        {/* Main Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <h2 className="text-xl font-semibold text-foreground">Monitored Devices</h2>
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              Live Updates Active
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 rounded-xl bg-card/50 border border-white/5" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="p-12 text-center rounded-xl bg-destructive/10 border border-destructive/20 text-destructive">
+              <AlertCircle className="w-12 h-12 mx-auto mb-4" />
+              <h3 className="text-lg font-bold">Failed to load devices</h3>
+              <p className="opacity-80">Please check your connection and try again.</p>
+            </div>
+          ) : devices?.length === 0 ? (
+            <div className="text-center py-20 rounded-xl glass border-dashed border-2 border-white/10">
+              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LayoutDashboard className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No Devices Configured</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                Add your first network device to start monitoring bandwidth and availability.
+              </p>
+              <AddDeviceDialog />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {devices?.map((device, idx) => (
+                <motion.div
+                  key={device.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.05 }}
+                >
+                  <DeviceCard device={device} />
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
