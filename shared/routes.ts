@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { insertDeviceSchema, devices, sites, insertSiteSchema } from "./schema";
+import { insertDeviceSchema, devices } from "./schema";
 
 export const errorSchemas = {
   validation: z.object({ message: z.string(), field: z.string().optional() }),
@@ -8,20 +8,10 @@ export const errorSchemas = {
 };
 
 export const api = {
-  sites: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/sites',
-      responses: {
-        200: z.array(z.custom<typeof sites.$inferSelect>()),
-      },
-    },
-  },
   devices: {
     list: {
       method: 'GET' as const,
       path: '/api/devices',
-      input: z.object({ siteId: z.coerce.number().optional() }).optional(),
       responses: {
         200: z.array(z.custom<typeof devices.$inferSelect>()),
       },
