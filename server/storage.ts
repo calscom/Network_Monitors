@@ -1,16 +1,37 @@
 import { db } from "./db";
-import { devices, type Device, type InsertDevice } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { devices, sites, type Device, type InsertDevice, type Site, type InsertSite } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
-  getDevices(): Promise<Device[]>;
+  getSites(): Promise<Site[]>;
+  getSiteByName(name: string): Promise<Site | undefined>;
+  createSite(site: InsertSite): Promise<Site>;
+  
+  getDevices(siteId?: number): Promise<Device[]>;
   createDevice(device: InsertDevice): Promise<Device>;
   deleteDevice(id: number): Promise<void>;
-  updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, lastCounter: bigint): Promise<Device>;
+  updateDeviceMetrics(id: number, metrics: Partial<Device>): Promise<Device>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getDevices(): Promise<Device[]> {
+  async getSites(): Promise<Site[]> {
+    return await db.select().from(sites).orderBy(sites.name);
+  }
+
+  async getSiteByName(name: string): Promise<Site | undefined> {
+    const [site] = await db.select().from(sites).where(eq(sites.name, name));
+    return site;
+  }
+
+  async createSite(insertSite: InsertSite): Promise<Site> {
+    const [site] = await db.insert(sites).values(insertSite).returning();
+    return site;
+  }
+
+  async getDevices(siteId?: number): Promise<Device[]> {
+    if (siteId) {
+      return await db.select().from(devices).where(eq(devices.siteId, siteId));
+    }
     return await db.select().from(devices);
   }
 
@@ -23,16 +44,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(devices).where(eq(devices.id, id));
   }
 
-  async updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, lastCounter: bigint): Promise<Device> {
+  async updateDeviceMetrics(id: number, metrics: Partial<Device>): Promise<Device> {
     const [device] = await db
       .update(devices)
       .set({ 
-        status, 
-        utilization,
-        bandwidthMBps,
-        lastCounter,
+        ...metrics,
         lastCheck: new Date(),
-        lastSeen: status === 'green' ? new Date() : undefined 
+        ...(metrics.status === 'green' ? { lastSeen: new Date() } : {})
       })
       .where(eq(devices.id, id))
       .returning();

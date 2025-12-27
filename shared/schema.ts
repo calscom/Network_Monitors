@@ -1,31 +1,41 @@
-import { pgTable, text, serial, integer, timestamp, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const sites = pgTable("sites", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+
 export const devices = pgTable("devices", {
   id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id).notNull(),
   name: text("name").notNull(),
   ip: text("ip").notNull(),
   community: text("community").default("public").notNull(),
   type: text("type").notNull(), // 'unifi', 'mikrotik', 'generic'
   status: text("status").default("unknown").notNull(), // 'green', 'red', 'blue'
-  utilization: integer("utilization").default(0).notNull(), // 0-100 percentage
-  bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision
-  lastCounter: bigint("last_counter", { mode: "bigint" }).default(0n).notNull(),
-  lastCheck: timestamp("last_check"),
+  bandwidthMbps: doublePrecision("bandwidth_mbps").default(0).notNull(),
+  utilizationPercent: integer("utilization_percent").default(0).notNull(),
+  lastCounterValue: text("last_counter_value"), // Store as string to handle BigInt
+  lastCounterTime: timestamp("last_counter_time"),
   lastSeen: timestamp("last_seen"),
-  site: text("site").notNull(), // The 12 site names
+  lastCheck: timestamp("last_check"),
 });
 
+export const insertSiteSchema = createInsertSchema(sites).omit({ id: true });
 export const insertDeviceSchema = createInsertSchema(devices).omit({
   id: true,
   status: true,
-  utilization: true,
-  bandwidthMBps: true,
-  lastCounter: true,
-  lastCheck: true,
-  lastSeen: true
+  bandwidthMbps: true,
+  utilizationPercent: true,
+  lastCounterValue: true,
+  lastCounterTime: true,
+  lastSeen: true,
+  lastCheck: true
 });
 
+export type Site = typeof sites.$inferSelect;
+export type InsertSite = z.infer<typeof insertSiteSchema>;
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
