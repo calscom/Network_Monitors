@@ -3,6 +3,11 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+// Add JSON serialization for BigInt
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 const app = express();
 const httpServer = createServer(app);
 
