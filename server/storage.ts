@@ -1,12 +1,14 @@
 import { db } from "./db";
-import { devices, type Device, type InsertDevice } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { devices, logs, type Device, type InsertDevice, type Log, type InsertLog } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getDevices(): Promise<Device[]>;
   createDevice(device: InsertDevice): Promise<Device>;
   deleteDevice(id: number): Promise<void>;
-  updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, lastCounter: bigint): Promise<Device>;
+  updateDeviceMetrics(id: number, metrics: { status: string; utilization: number; bandwidthMBps: string; lastCounter: bigint }): Promise<Device>;
+  getLogs(site?: string): Promise<Log[]>;
+  createLog(log: InsertLog): Promise<Log>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -37,6 +39,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(devices.id, id))
       .returning();
     return device;
+  }
+
+  async getLogs(site?: string): Promise<Log[]> {
+    let query = db.select().from(logs);
+    if (site) {
+      // @ts-ignore
+      return await query.where(eq(logs.site, site)).orderBy(desc(logs.timestamp)).limit(50);
+    }
+    return await query.orderBy(desc(logs.timestamp)).limit(100);
+  }
+
+  async createLog(insertLog: InsertLog): Promise<Log> {
+    const [log] = await db.insert(logs).values(insertLog).returning();
+    return log;
   }
 }
 

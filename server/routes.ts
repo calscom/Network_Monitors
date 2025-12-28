@@ -23,6 +23,12 @@ export async function registerRoutes(
     res.json(devices);
   });
 
+  app.get("/api/logs", async (req, res) => {
+    const site = req.query.site as string;
+    const logs = await storage.getLogs(site);
+    res.json(logs);
+  });
+
   app.post(api.devices.create.path, async (req, res) => {
     try {
       const input = api.devices.create.input.parse(req.body);
@@ -102,6 +108,16 @@ export async function registerRoutes(
         }
 
         // We need to update storage to support these new fields
+        const oldDevice = devices.find(d => d.id === device.id);
+        if (oldDevice && oldDevice.status !== newStatus) {
+          await storage.createLog({
+            deviceId: device.id,
+            site: device.site,
+            type: 'status_change',
+            message: `Device ${device.name} changed status from ${oldDevice.status} to ${newStatus}`
+          });
+        }
+
         await storage.updateDeviceMetrics(device.id, {
           status: newStatus,
           utilization: newUtilization,

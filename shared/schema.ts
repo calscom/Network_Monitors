@@ -27,5 +27,15 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   lastSeen: true
 });
 
-export type Device = typeof devices.$inferSelect;
-export type InsertDevice = z.infer<typeof insertDeviceSchema>;
+export const logs = pgTable("logs", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id),
+  site: text("site").notNull(),
+  type: text("type").notNull(), // 'status_change', 'bandwidth_alert', 'system'
+  message: text("message").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertLogSchema = createInsertSchema(logs).omit({ id: true, timestamp: true });
+export type Log = typeof logs.$inferSelect;
+export type InsertLog = z.infer<typeof insertLogSchema>;
