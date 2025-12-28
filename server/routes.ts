@@ -53,13 +53,14 @@ export async function registerRoutes(
   // Background polling service
   setInterval(async () => {
     const devices = await storage.getDevices();
-    const now = Date.now();
     
     for (const device of devices) {
       const session = snmp.createSession(device.ip, device.community, {
         timeout: 2000,
         retries: 1
       });
+
+      console.log(`[snmp] Polling ${device.name} at ${device.ip}...`);
 
       session.get([OID_IF_IN_OCTETS], async (error, varbinds) => {
         let newStatus = 'red';
@@ -69,6 +70,7 @@ export async function registerRoutes(
 
         if (!error && !snmp.isVarbindError(varbinds[0])) {
           const currentCounter = BigInt(varbinds[0].value);
+          console.log(`[snmp] Response from ${device.name}: ${currentCounter}`);
           
           if (device.status === 'red') {
             newStatus = 'blue';
@@ -88,17 +90,18 @@ export async function registerRoutes(
             newUtilization = Math.min(100, Math.floor((mbpsValue / 100) * 100));
           } else {
              // First run or overflow
-             bandwidthMBps = "0.00";
+             bandwidthMBps = "0.01"; // Set to small non-zero for first run visibility
              newUtilization = 0;
           }
           lastCounter = currentCounter;
         } else {
+          console.error(`[snmp] Error polling ${device.name}: ${error?.message || 'Unknown error'}`);
           newStatus = 'red';
           bandwidthMBps = "0.00";
           newUtilization = 0;
         }
 
-        // Mocking for Demo
+        // Mocking for Demo ONLY if it's a localhost or specific range
         if (device.ip === '127.0.0.1' || device.ip === 'localhost' || device.ip.startsWith('10.0.0.')) {
            if (device.status === 'red') newStatus = 'blue';
            else newStatus = 'green';
@@ -107,14 +110,13 @@ export async function registerRoutes(
            newUtilization = Math.floor((Number(mockMbps) / 100) * 100);
         }
 
-        // We need to update storage to support these new fields
-        const oldDevice = devices.find(d => d.id === device.id);
-        if (oldDevice && oldDevice.status !== newStatus) {
+        if (device.status !== newStatus) {
+          console.log(`[snmp] Status change for ${device.name}: ${device.status} -> ${newStatus}`);
           await storage.createLog({
             deviceId: device.id,
             site: device.site,
             type: 'status_change',
-            message: `Device ${device.name} changed status from ${oldDevice.status} to ${newStatus}`
+            message: `Device ${device.name} changed status from ${device.status} to ${newStatus}`
           });
         }
 

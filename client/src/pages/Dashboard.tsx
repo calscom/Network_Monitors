@@ -28,8 +28,15 @@ export default function Dashboard() {
   const [editName, setEditName] = useState("");
 
   const { data: logs } = useQuery<Log[]>({
-    queryKey: ["/api/logs", { site: activeSite }],
+    queryKey: ["/api/logs", activeSite],
+    queryFn: async ({ queryKey }) => {
+      const site = queryKey[1] as string;
+      const res = await fetch(`/api/logs?site=${encodeURIComponent(site)}`);
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      return res.json();
+    },
     enabled: !!activeSite,
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
