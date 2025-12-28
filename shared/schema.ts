@@ -11,7 +11,7 @@ export const devices = pgTable("devices", {
   status: text("status").default("unknown").notNull(), // 'green', 'red', 'blue'
   utilization: integer("utilization").default(0).notNull(), // 0-100 percentage
   bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision
-  lastCounter: bigint("last_counter", { mode: "bigint" }).default(0n).notNull(),
+  lastCounter: bigint("last_counter", { mode: "bigint" }).default(BigInt(0)).notNull(),
   lastCheck: timestamp("last_check"),
   lastSeen: timestamp("last_seen"),
   site: text("site").notNull(), // The 12 site names

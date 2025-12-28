@@ -27,7 +27,10 @@ export class DatabaseStorage implements IStorage {
     const [device] = await db
       .update(devices)
       .set({ 
-        ...metrics,
+        status: metrics.status,
+        utilization: metrics.utilization,
+        bandwidthMBps: metrics.bandwidthMBps,
+        lastCounter: metrics.lastCounter,
         lastCheck: new Date(),
         lastSeen: metrics.status === 'green' ? new Date() : undefined 
       })

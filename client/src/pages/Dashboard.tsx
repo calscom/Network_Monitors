@@ -1,12 +1,14 @@
 import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
-import { LayoutDashboard, Activity, AlertCircle, MapPin } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-const SITES = [
+const DEFAULT_SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
   "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
   "11-Damboa", "12-Gubio"
@@ -14,7 +16,27 @@ const SITES = [
 
 export default function Dashboard() {
   const { data: devices, isLoading, error } = useDevices();
-  const [activeSite, setActiveSite] = useState("01 Cloud");
+  const [sites, setSites] = useState<string[]>(() => {
+    const saved = localStorage.getItem("monitor_sites");
+    return saved ? JSON.parse(saved) : DEFAULT_SITES;
+  });
+  const [activeSite, setActiveSite] = useState(sites[0]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("monitor_sites", JSON.stringify(sites));
+  }, [sites]);
+
+  const handleRenameSite = () => {
+    if (!editName.trim()) return;
+    const newSites = sites.map(s => s === activeSite ? editName.trim() : s);
+    setSites(newSites);
+    setActiveSite(editName.trim());
+    setIsEditing(false);
+    // Dispatch custom event to notify other components (like AddDeviceDialog)
+    window.dispatchEvent(new CustomEvent('sitesUpdated'));
+  };
 
   // Stats calculation
   const stats = {
@@ -98,7 +120,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
               <MapPin className="w-5 h-5 text-primary shrink-0" />
               <TabsList className="bg-secondary/50 border border-white/5 h-auto p-1 flex-nowrap">
-                {SITES.map(site => (
+                {sites.map(site => (
                   <TabsTrigger 
                     key={site} 
                     value={site}
@@ -112,12 +134,40 @@ export default function Dashboard() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  {activeSite} Devices
-                  <span className="text-sm font-normal text-muted-foreground ml-2">
-                    ({filteredDevices.length} devices)
-                  </span>
-                </h2>
+                <div className="flex items-center gap-4">
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="h-8 w-48"
+                        placeholder="New site name..."
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && handleRenameSite()}
+                      />
+                      <Button size="sm" onClick={handleRenameSite}>Save</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                      {activeSite} Devices
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6" 
+                        onClick={() => {
+                          setEditName(activeSite);
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        ({filteredDevices.length} devices)
+                      </span>
+                    </h2>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   Live Updates Active

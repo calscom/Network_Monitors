@@ -72,7 +72,7 @@ export async function registerRoutes(
 
           // Calculate bandwidth (MBps)
           // Delta is bytes over 5 seconds (interval)
-          if (lastCounter > 0n && currentCounter >= lastCounter) {
+          if (lastCounter > BigInt(0) && currentCounter >= lastCounter) {
             const deltaBytes = Number(currentCounter - lastCounter);
             const bytesPerSec = deltaBytes / 5;
             const mbpsValue = (bytesPerSec / (1024 * 1024));
