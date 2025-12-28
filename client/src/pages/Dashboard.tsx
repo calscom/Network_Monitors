@@ -1,7 +1,7 @@
 import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { Log } from "@shared/schema";
 import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 const DEFAULT_SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
@@ -61,6 +62,8 @@ export default function Dashboard() {
   };
 
   const filteredDevices = devices?.filter(d => d.site === activeSite) || [];
+  const upDevices = devices?.filter(d => d.status === 'green') || [];
+  const downDevices = devices?.filter(d => d.status === 'red' || d.status === 'blue') || [];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 lg:p-12">
@@ -127,6 +130,41 @@ export default function Dashboard() {
               <div className="w-3 h-3 rounded-full bg-secondary" />
             )}
           </motion.div>
+        </div>
+
+        {/* Global Status List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glass rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-2 border-b border-white/5 pb-4 text-[hsl(var(--status-green))]">
+              <ArrowUpCircle className="w-5 h-5" />
+              <h2 className="text-lg font-semibold">Online Devices</h2>
+            </div>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              {upDevices.map(device => (
+                <div key={device.id} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                  <span className="font-medium text-sm">{device.name}</span>
+                  <Badge variant="outline" className="text-[10px] uppercase">{device.site}</Badge>
+                </div>
+              ))}
+              {upDevices.length === 0 && <p className="text-muted-foreground text-sm italic py-4 text-center">No devices online</p>}
+            </div>
+          </div>
+
+          <div className="glass rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-2 border-b border-white/5 pb-4 text-[hsl(var(--status-red))]">
+              <ArrowDownCircle className="w-5 h-5" />
+              <h2 className="text-lg font-semibold">Critical Devices</h2>
+            </div>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              {downDevices.map(device => (
+                <div key={device.id} className="flex items-center justify-between p-2 rounded bg-destructive/10 border border-destructive/20">
+                  <span className="font-medium text-sm">{device.name}</span>
+                  <Badge variant="destructive" className="text-[10px] uppercase">{device.site}</Badge>
+                </div>
+              ))}
+              {downDevices.length === 0 && <p className="text-muted-foreground text-sm italic py-4 text-center">No devices critical</p>}
+            </div>
+          </div>
         </div>
 
         {/* Site Tabs Navigation */}
