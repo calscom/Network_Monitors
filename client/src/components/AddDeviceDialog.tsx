@@ -140,6 +140,33 @@ export function AddDeviceDialog() {
 
             <FormField
               control={form.control}
+              name="site"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Site</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-secondary/50 border-white/10 focus:border-primary/50">
+                        <SelectValue placeholder="Select site" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {[
+                        "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
+                        "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
+                        "11-Damboa", "12-Gubio"
+                      ].map(site => (
+                        <SelectItem key={site} value={site}>{site}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="community"
               render={({ field }) => (
                 <FormItem>

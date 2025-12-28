@@ -1,11 +1,20 @@
 import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
-import { LayoutDashboard, Activity, AlertCircle } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+const SITES = [
+  "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
+  "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
+  "11-Damboa", "12-Gubio"
+];
 
 export default function Dashboard() {
   const { data: devices, isLoading, error } = useDevices();
+  const [activeSite, setActiveSite] = useState("01 Cloud");
 
   // Stats calculation
   const stats = {
@@ -13,6 +22,8 @@ export default function Dashboard() {
     online: devices?.filter(d => d.status === 'green').length || 0,
     critical: devices?.filter(d => d.status === 'red' || d.status === 'blue').length || 0,
   };
+
+  const filteredDevices = devices?.filter(d => d.site === activeSite) || [];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 lg:p-12">
@@ -81,53 +92,77 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Main Grid */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
-            <h2 className="text-xl font-semibold text-foreground">Monitored Devices</h2>
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Live Updates Active
+        {/* Site Tabs Navigation */}
+        <div className="space-y-6">
+          <Tabs value={activeSite} onValueChange={setActiveSite} className="w-full">
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+              <MapPin className="w-5 h-5 text-primary shrink-0" />
+              <TabsList className="bg-secondary/50 border border-white/5 h-auto p-1 flex-nowrap">
+                {SITES.map(site => (
+                  <TabsTrigger 
+                    key={site} 
+                    value={site}
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-4 py-2 text-sm transition-all whitespace-nowrap"
+                  >
+                    {site}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
             </div>
-          </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-48 rounded-xl bg-card/50 border border-white/5" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="p-12 text-center rounded-xl bg-destructive/10 border border-destructive/20 text-destructive">
-              <AlertCircle className="w-12 h-12 mx-auto mb-4" />
-              <h3 className="text-lg font-bold">Failed to load devices</h3>
-              <p className="opacity-80">Please check your connection and try again.</p>
-            </div>
-          ) : devices?.length === 0 ? (
-            <div className="text-center py-20 rounded-xl glass border-dashed border-2 border-white/10">
-              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <LayoutDashboard className="w-8 h-8 text-muted-foreground" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                  {activeSite} Devices
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({filteredDevices.length} devices)
+                  </span>
+                </h2>
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  Live Updates Active
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No Devices Configured</h3>
-              <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                Add your first network device to start monitoring bandwidth and availability.
-              </p>
-              <AddDeviceDialog />
+
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-48 rounded-xl bg-card/50 border border-white/5" />
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="p-12 text-center rounded-xl bg-destructive/10 border border-destructive/20 text-destructive">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold">Failed to load devices</h3>
+                  <p className="opacity-80">Please check your connection and try again.</p>
+                </div>
+              ) : filteredDevices.length === 0 ? (
+                <div className="text-center py-20 rounded-xl glass border-dashed border-2 border-white/10">
+                  <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MapPin className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No Devices in {activeSite}</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                    Add a network device to this site to start monitoring.
+                  </p>
+                  <AddDeviceDialog />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredDevices.map((device, idx) => (
+                    <motion.div
+                      key={device.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <DeviceCard device={device} />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {devices?.map((device, idx) => (
-                <motion.div
-                  key={device.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.05 }}
-                >
-                  <DeviceCard device={device} />
-                </motion.div>
-              ))}
-            </div>
-          )}
+          </Tabs>
         </div>
       </div>
     </div>
