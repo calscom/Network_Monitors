@@ -23,16 +23,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(devices).where(eq(devices.id, id));
   }
 
-  async updateDeviceMetrics(id: number, status: string, utilization: number, bandwidthMBps: string, lastCounter: bigint): Promise<Device> {
+  async updateDeviceMetrics(id: number, metrics: { status: string; utilization: number; bandwidthMBps: string; lastCounter: bigint }): Promise<Device> {
     const [device] = await db
       .update(devices)
       .set({ 
-        status, 
-        utilization,
-        bandwidthMBps,
-        lastCounter,
+        ...metrics,
         lastCheck: new Date(),
-        lastSeen: status === 'green' ? new Date() : undefined 
+        lastSeen: metrics.status === 'green' ? new Date() : undefined 
       })
       .where(eq(devices.id, id))
       .returning();

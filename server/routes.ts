@@ -102,9 +102,7 @@ export async function registerRoutes(
         }
 
         // We need to update storage to support these new fields
-        // Since I'm in fast mode, I'll update storage.ts next or use a raw db call if needed
-        // but let's assume storage is updated.
-        await (storage as any).updateDeviceMetrics(device.id, {
+        await storage.updateDeviceMetrics(device.id, {
           status: newStatus,
           utilization: newUtilization,
           bandwidthMBps,
