@@ -50,6 +50,23 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.patch("/api/devices/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const input = insertDeviceSchema.partial().parse(req.body);
+      const device = await storage.updateDevice(id, input);
+      res.json(device);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
   // Background polling service
   setInterval(async () => {
     const devices = await storage.getDevices();

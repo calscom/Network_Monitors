@@ -17,6 +17,7 @@ import {
 import { useDeleteDevice } from "@/hooks/use-devices";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { EditDeviceDialog } from "./EditDeviceDialog";
 
 interface DeviceCardProps {
   device: Device;
@@ -79,35 +80,39 @@ export function DeviceCard({ device }: DeviceCardProps) {
             <span>Checked {lastChecked}</span>
           </div>
           
-          {/* Delete Action - Only visible on hover/focus within group for cleaner look */}
-          <AlertDialog open={open} onOpenChange={setOpen}>
-            <AlertDialogTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-1 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="glass border-white/10">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Device?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will remove <strong>{device.name}</strong> ({device.ip}) from monitoring. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5 hover:text-foreground">Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleDelete}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+          <div className="flex items-center gap-1">
+            <EditDeviceDialog device={device} />
+            
+            {/* Delete Action - Only visible on hover/focus within group for cleaner look */}
+            <AlertDialog open={open} onOpenChange={setOpen}>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="glass border-white/10">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Device?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove <strong>{device.name}</strong> ({device.ip}) from monitoring. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5 hover:text-foreground">Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDelete}
+                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
     </div>

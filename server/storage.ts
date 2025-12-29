@@ -7,6 +7,7 @@ export interface IStorage {
   createDevice(device: InsertDevice): Promise<Device>;
   deleteDevice(id: number): Promise<void>;
   updateDeviceMetrics(id: number, metrics: { status: string; utilization: number; bandwidthMBps: string; lastCounter: bigint }): Promise<Device>;
+  updateDevice(id: number, device: Partial<InsertDevice>): Promise<Device>;
   getLogs(site?: string): Promise<Log[]>;
   createLog(log: InsertLog): Promise<Log>;
 }
@@ -36,6 +37,15 @@ export class DatabaseStorage implements IStorage {
         lastCheck: new Date(),
         lastSeen: metrics.status === 'green' ? new Date() : undefined 
       })
+      .where(eq(devices.id, id))
+      .returning();
+    return device;
+  }
+
+  async updateDevice(id: number, update: Partial<InsertDevice>): Promise<Device> {
+    const [device] = await db
+      .update(devices)
+      .set(update)
       .where(eq(devices.id, id))
       .returning();
     return device;
