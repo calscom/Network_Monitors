@@ -80,7 +80,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
             <span>Checked {lastChecked}</span>
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 group/actions">
             <EditDeviceDialog device={device} />
             
             {/* Delete Action - Only visible on hover/focus within group for cleaner look */}
@@ -89,7 +89,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/actions:opacity-100 group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>

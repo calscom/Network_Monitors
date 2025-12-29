@@ -93,7 +93,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 -mr-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
           data-testid={`button-edit-device-${device.id}`}
         >
           <Edit2 className="w-3.5 h-3.5" />
