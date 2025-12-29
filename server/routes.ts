@@ -137,9 +137,12 @@ export async function registerRoutes(
            } else {
              newStatus = 'green';
            }
-           const mockMbps = (Math.random() * 80).toFixed(2);
-           bandwidthMBps = mockMbps;
-           newUtilization = Math.floor((Number(mockMbps) / 100) * 100);
+           // Use real utilization if available (not 0), otherwise mock it
+           if (newUtilization === 0) {
+             const mockMbps = (Math.random() * 80).toFixed(2);
+             bandwidthMBps = mockMbps;
+             newUtilization = Math.floor((Number(mockMbps) / 100) * 100);
+           }
         }
 
         if (device.status !== newStatus) {
