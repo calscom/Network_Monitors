@@ -45,9 +45,16 @@ export class DatabaseStorage implements IStorage {
   async updateDevice(id: number, update: Partial<InsertDevice>): Promise<Device> {
     const [device] = await db
       .update(devices)
-      .set(update)
+      .set({
+        ...update,
+        lastCheck: new Date()
+      })
       .where(eq(devices.id, id))
       .returning();
+    
+    if (!device) {
+      throw new Error("Device not found");
+    }
     return device;
   }
 

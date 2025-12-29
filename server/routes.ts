@@ -53,17 +53,22 @@ export async function registerRoutes(
   app.patch("/api/devices/:id", async (req, res) => {
     try {
       const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      
       const input = insertDeviceSchema.partial().parse(req.body);
       const device = await storage.updateDevice(id, input);
       res.json(device);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Error updating device:", err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({
           message: err.errors[0].message,
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      res.status(500).json({ message: err.message || "Internal server error" });
     }
   });
 
