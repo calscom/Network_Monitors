@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import snmp from "net-snmp";
+import { insertDeviceSchema } from "@shared/schema";
 
 const OID_IF_IN_OCTETS = "1.3.6.1.2.1.2.2.1.10.1"; 
 
