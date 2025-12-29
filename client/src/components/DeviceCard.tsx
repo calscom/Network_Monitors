@@ -72,7 +72,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
 
       {/* Metrics */}
       <div className="space-y-4">
-        <UtilizationGauge value={device.utilization} />
+        <UtilizationGauge value={device.utilization} bandwidth={device.bandwidthMBps} />
         
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-white/5">
           <div className="flex items-center gap-1.5">

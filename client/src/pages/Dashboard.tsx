@@ -1,9 +1,9 @@
 import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Log } from "@shared/schema";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
@@ -27,6 +30,8 @@ export default function Dashboard() {
   const [activeSite, setActiveSite] = useState(sites[0]);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { data: logs } = useQuery<Log[]>({
     queryKey: ["/api/logs", activeSite],
@@ -54,6 +59,55 @@ export default function Dashboard() {
     window.dispatchEvent(new CustomEvent('sitesUpdated'));
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target?.result;
+      let newSitesList: string[] = [];
+
+      try {
+        if (file.name.endsWith('.csv')) {
+          const results = Papa.parse(content as string, { header: false });
+          newSitesList = results.data.flat().filter(s => typeof s === 'string' && s.trim()) as string[];
+        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+          const workbook = XLSX.read(content, { type: 'binary' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          newSitesList = data.flat().filter(s => typeof s === 'string' && s.trim());
+        }
+
+        if (newSitesList.length > 0) {
+          // Remove duplicates and maintain existing site assignments if possible
+          const uniqueSites = Array.from(new Set([...newSitesList]));
+          setSites(uniqueSites);
+          if (!uniqueSites.includes(activeSite)) {
+            setActiveSite(uniqueSites[0]);
+          }
+          toast({
+            title: "Success",
+            description: `Imported ${uniqueSites.length} sites successfully.`,
+          });
+        }
+      } catch (err) {
+        toast({
+          title: "Import Error",
+          description: "Failed to parse file. Please ensure it's a valid CSV or Excel file.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    if (file.name.endsWith('.csv')) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsBinaryString(file);
+    }
+  };
+
   // Stats calculation
   const stats = {
     total: devices?.length || 0,
@@ -70,16 +124,33 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-10">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="text-3xl md:text-4xl font-display text-foreground flex items-center gap-3">
-              <LayoutDashboard className="w-8 h-8 text-primary" />
-              Network Monitor
-            </h1>
-            <p className="text-muted-foreground text-lg">Real-time SNMP status & utilization dashboard</p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1">
+              <h1 className="text-3xl md:text-4xl font-display text-foreground flex items-center gap-3">
+                <LayoutDashboard className="w-8 h-8 text-primary" />
+                Network Monitor
+              </h1>
+              <p className="text-muted-foreground text-lg">Real-time SNMP status & utilization dashboard</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                accept=".csv,.xlsx,.xls" 
+                className="hidden" 
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                className="glass border-white/10"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import Sites
+              </Button>
+              <AddDeviceDialog />
+            </div>
           </div>
-          <AddDeviceDialog />
-        </div>
 
         {/* Status Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
