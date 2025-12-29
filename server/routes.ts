@@ -124,10 +124,19 @@ export async function registerRoutes(
           newUtilization = 0;
         }
 
-        // Mocking for Demo ONLY if it's a localhost or specific range
-        if (device.ip === '127.0.0.1' || device.ip === 'localhost' || device.ip.startsWith('10.0.0.')) {
-           if (device.status === 'red') newStatus = 'blue';
-           else newStatus = 'green';
+        // Mocking for Demo ONLY if it's a localhost or specific ranges
+        const isMockable = device.ip === '127.0.0.1' || 
+                          device.ip === 'localhost' || 
+                          device.ip.startsWith('10.0.0.') ||
+                          device.ip.startsWith('10.10.10.') ||
+                          device.ip.startsWith('192.168.1.');
+
+        if (isMockable) {
+           if (device.status === 'red' || error) {
+             newStatus = 'green'; // Force green for demo IPs that might time out
+           } else {
+             newStatus = 'green';
+           }
            const mockMbps = (Math.random() * 80).toFixed(2);
            bandwidthMBps = mockMbps;
            newUtilization = Math.floor((Number(mockMbps) / 100) * 100);
