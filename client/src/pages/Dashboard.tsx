@@ -179,7 +179,24 @@ export default function Dashboard() {
                     value={site}
                     className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-4 py-2 text-sm transition-all whitespace-nowrap"
                   >
-                    {site}
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${
+                        devices?.filter(d => d.site === site).length > 0
+                          ? devices.filter(d => d.site === site).every(d => d.status === 'green')
+                            ? 'bg-emerald-500 shadow-[0_0_8px_theme(colors.emerald.500/0.4)]'
+                            : 'bg-rose-500 shadow-[0_0_8px_theme(colors.rose.500/0.4)] animate-pulse'
+                          : 'bg-muted-foreground/30'
+                      }`} />
+                      <span className={
+                        devices?.filter(d => d.site === site).length > 0
+                          ? devices.filter(d => d.site === site).every(d => d.status === 'green')
+                            ? 'text-emerald-500 font-bold'
+                            : 'text-rose-500 font-bold'
+                          : ''
+                      }>
+                        {site}
+                      </span>
+                    </div>
                   </TabsTrigger>
                 ))}
               </TabsList>
