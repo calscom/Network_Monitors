@@ -105,12 +105,14 @@ export async function registerRoutes(
           // Delta is bytes over 5 seconds (interval)
           if (lastCounter > BigInt(0) && currentCounter >= lastCounter) {
             const deltaBytes = Number(currentCounter - lastCounter);
-            const bytesPerSec = deltaBytes / 5;
-            const mbpsValue = (bytesPerSec / (1024 * 1024));
-            bandwidthMBps = mbpsValue.toFixed(2);
+            // Convert to Megabits per second (Mbps) for better precision
+            // bits = bytes * 8, bits per sec = (bytes * 8) / 5
+            const mbpsValue = (deltaBytes * 8) / (5 * 1000 * 1000);
+            // Convert to Megabytes per second (MBps) for the display
+            bandwidthMBps = (mbpsValue / 8).toFixed(2);
             
-            // Simulation of utilization based on a hypothetical 100MBps link
-            newUtilization = Math.min(100, Math.floor((mbpsValue / 100) * 100));
+            // Simulation of utilization based on a hypothetical 1Gbps (1000Mbps) link
+            newUtilization = Math.min(100, Math.floor((mbpsValue / 1000) * 100));
           } else {
              // First run or overflow
              bandwidthMBps = "0.01"; // Set to small non-zero for first run visibility
