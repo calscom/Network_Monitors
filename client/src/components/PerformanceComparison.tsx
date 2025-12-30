@@ -15,6 +15,17 @@ interface HistoryResponse {
   averages: { avgUtilization: number; avgBandwidth: number };
 }
 
+const TIME_RANGES = [
+  { value: "0.0167", label: "1 min", displayLabel: "1 minute" },
+  { value: "0.0833", label: "5 min", displayLabel: "5 minutes" },
+  { value: "1", label: "1 hour", displayLabel: "1 hour" },
+  { value: "6", label: "6 hours", displayLabel: "6 hours" },
+  { value: "24", label: "1 day", displayLabel: "24 hours" },
+  { value: "168", label: "7 days", displayLabel: "7 days" },
+  { value: "720", label: "1 month", displayLabel: "30 days" },
+  { value: "8760", label: "1 year", displayLabel: "1 year" },
+];
+
 export function PerformanceComparison({ device }: PerformanceComparisonProps) {
   const [timeRange, setTimeRange] = useState("24");
   
@@ -25,8 +36,12 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
       if (!res.ok) throw new Error("Failed to fetch history");
       return res.json();
     },
-    refetchInterval: 30000,
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time updates
   });
+
+  const getTimeRangeLabel = (value: string) => {
+    return TIME_RANGES.find(t => t.value === value)?.displayLabel || value;
+  };
 
   const currentBandwidth = parseFloat(device.bandwidthMBps);
   const currentUtilization = device.utilization;
@@ -79,14 +94,13 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
           <span className="text-sm font-semibold">Performance Comparison</span>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-24 h-7 text-xs" data-testid="select-time-range">
+          <SelectTrigger className="w-[90px] h-7 text-xs" data-testid="select-time-range">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">1 hour</SelectItem>
-            <SelectItem value="6">6 hours</SelectItem>
-            <SelectItem value="24">24 hours</SelectItem>
-            <SelectItem value="168">7 days</SelectItem>
+            {TIME_RANGES.map(range => (
+              <SelectItem key={range.value} value={range.value}>{range.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -104,7 +118,7 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
             <div className="flex items-center justify-between gap-1">
               <div>
                 <div className="text-lg font-mono font-bold">{currentBandwidth.toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground">MBps now</div>
+                <div className="text-[10px] text-muted-foreground">Mbps now</div>
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-1 justify-end">
@@ -148,7 +162,7 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
           <Badge variant="outline" className="text-[9px]">
             {data.history.length} samples
           </Badge>
-          <span>over last {timeRange}h</span>
+          <span>over last {getTimeRangeLabel(timeRange)}</span>
         </div>
       )}
     </motion.div>
