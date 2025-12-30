@@ -152,9 +152,16 @@ export function AddDeviceDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="unifi">Unifi</SelectItem>
-                        <SelectItem value="mikrotik">Mikrotik</SelectItem>
-                        <SelectItem value="generic">Generic</SelectItem>
+                        <SelectItem value="unifi">Ubiquiti UniFi</SelectItem>
+                        <SelectItem value="mikrotik">MikroTik RouterOS</SelectItem>
+                        <SelectItem value="fortigate">Fortigate</SelectItem>
+                        <SelectItem value="dlink">D-Link</SelectItem>
+                        <SelectItem value="cisco">Cisco</SelectItem>
+                        <SelectItem value="iot">IoT Device</SelectItem>
+                        <SelectItem value="sunnyboy">SunnyBoy</SelectItem>
+                        <SelectItem value="victron">Victron</SelectItem>
+                        <SelectItem value="ipphone">IP Phone</SelectItem>
+                        <SelectItem value="generic">Generic SNMP</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

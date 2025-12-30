@@ -7,7 +7,7 @@ export const devices = pgTable("devices", {
   name: text("name").notNull(),
   ip: text("ip").notNull(),
   community: text("community").default("public").notNull(),
-  type: text("type").notNull(), // 'unifi', 'mikrotik', 'generic'
+  type: text("type").notNull(), // 'unifi', 'mikrotik', 'fortigate', 'dlink', 'cisco', 'iot', 'sunnyboy', 'victron', 'ipphone', 'generic'
   status: text("status").default("unknown").notNull(), // 'green', 'red', 'blue'
   utilization: integer("utilization").default(0).notNull(), // 0-100 percentage
   bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision
