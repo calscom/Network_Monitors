@@ -73,6 +73,25 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/devices/:id/history", async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      const hours = Number(req.query.hours) || 24;
+      
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      
+      const history = await storage.getHistoricalMetrics(deviceId, hours);
+      const averages = await storage.getHistoricalAverages(deviceId, hours);
+      
+      res.json({ history, averages });
+    } catch (err: any) {
+      console.error("Error fetching history:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   app.get("/api/devices/template", async (req, res) => {
     const devices = await storage.getDevices();
     const headers = ["name", "ip", "community", "type", "site"];
@@ -189,6 +208,16 @@ export async function registerRoutes(
           bandwidthMBps,
           lastCounter
         });
+
+        // Save metrics snapshot for historical tracking (every poll cycle)
+        if (newStatus === 'green' || isMockable) {
+          await storage.saveMetricsSnapshot({
+            deviceId: device.id,
+            site: device.site,
+            utilization: newUtilization,
+            bandwidthMBps
+          });
+        }
         
         session.close();
       });

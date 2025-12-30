@@ -37,7 +37,21 @@ export const logs = pgTable("logs", {
 });
 
 export const insertLogSchema = createInsertSchema(logs).omit({ id: true, timestamp: true });
+
+export const metricsHistory = pgTable("metrics_history", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  site: text("site").notNull(),
+  utilization: integer("utilization").default(0).notNull(),
+  bandwidthMBps: text("bandwidth_mbps").default("0").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertMetricsHistorySchema = createInsertSchema(metricsHistory).omit({ id: true, timestamp: true });
+
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Log = typeof logs.$inferSelect;
 export type InsertLog = z.infer<typeof insertLogSchema>;
+export type MetricsHistory = typeof metricsHistory.$inferSelect;
+export type InsertMetricsHistory = z.infer<typeof insertMetricsHistorySchema>;

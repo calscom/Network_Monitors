@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { devices, logs, type Device, type InsertDevice, type Log, type InsertLog } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { devices, logs, metricsHistory, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory } from "@shared/schema";
+import { eq, desc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
   getDevices(): Promise<Device[]>;
@@ -10,6 +10,9 @@ export interface IStorage {
   updateDevice(id: number, device: Partial<InsertDevice>): Promise<Device>;
   getLogs(site?: string): Promise<Log[]>;
   createLog(log: InsertLog): Promise<Log>;
+  saveMetricsSnapshot(snapshot: InsertMetricsHistory): Promise<MetricsHistory>;
+  getHistoricalMetrics(deviceId: number, hoursBack?: number): Promise<MetricsHistory[]>;
+  getHistoricalAverages(deviceId: number, hoursBack?: number): Promise<{ avgUtilization: number; avgBandwidth: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -70,6 +73,43 @@ export class DatabaseStorage implements IStorage {
   async createLog(insertLog: InsertLog): Promise<Log> {
     const [log] = await db.insert(logs).values(insertLog).returning();
     return log;
+  }
+
+  async saveMetricsSnapshot(snapshot: InsertMetricsHistory): Promise<MetricsHistory> {
+    const [record] = await db.insert(metricsHistory).values(snapshot).returning();
+    return record;
+  }
+
+  async getHistoricalMetrics(deviceId: number, hoursBack: number = 24): Promise<MetricsHistory[]> {
+    const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+    return await db
+      .select()
+      .from(metricsHistory)
+      .where(and(
+        eq(metricsHistory.deviceId, deviceId),
+        gte(metricsHistory.timestamp, since)
+      ))
+      .orderBy(desc(metricsHistory.timestamp))
+      .limit(500);
+  }
+
+  async getHistoricalAverages(deviceId: number, hoursBack: number = 24): Promise<{ avgUtilization: number; avgBandwidth: number }> {
+    const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+    const result = await db
+      .select({
+        avgUtilization: sql<number>`COALESCE(AVG(${metricsHistory.utilization}), 0)`,
+        avgBandwidth: sql<number>`COALESCE(AVG(CAST(${metricsHistory.bandwidthMBps} AS DECIMAL)), 0)`
+      })
+      .from(metricsHistory)
+      .where(and(
+        eq(metricsHistory.deviceId, deviceId),
+        gte(metricsHistory.timestamp, since)
+      ));
+    
+    return {
+      avgUtilization: Math.round(result[0]?.avgUtilization || 0),
+      avgBandwidth: parseFloat((result[0]?.avgBandwidth || 0).toFixed(2))
+    };
   }
 }
 

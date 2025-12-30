@@ -1,7 +1,8 @@
 import { Device } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
-import { Router, Server, Trash2, Clock, Network } from "lucide-react";
+import { PerformanceComparison } from "./PerformanceComparison";
+import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ interface DeviceCardProps {
 export function DeviceCard({ device }: DeviceCardProps) {
   const deleteMutation = useDeleteDevice();
   const [open, setOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const getIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -81,6 +83,17 @@ export function DeviceCard({ device }: DeviceCardProps) {
           </div>
           
           <div className="flex items-center gap-1 group/actions">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs gap-1"
+              onClick={() => setShowHistory(!showHistory)}
+              data-testid={`button-toggle-history-${device.id}`}
+            >
+              {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              History
+            </Button>
+            
             <EditDeviceDialog device={device} />
             
             {/* Delete Action - Only visible on hover/focus within group for cleaner look */}
@@ -114,6 +127,8 @@ export function DeviceCard({ device }: DeviceCardProps) {
             </AlertDialog>
           </div>
         </div>
+
+        {showHistory && <PerformanceComparison device={device} />}
       </div>
     </div>
   );
