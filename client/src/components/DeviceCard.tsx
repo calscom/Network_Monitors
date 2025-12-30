@@ -22,9 +22,10 @@ import { EditDeviceDialog } from "./EditDeviceDialog";
 
 interface DeviceCardProps {
   device: Device;
+  canManage?: boolean;
 }
 
-export function DeviceCard({ device }: DeviceCardProps) {
+export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   const deleteMutation = useDeleteDevice();
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -112,37 +113,40 @@ export function DeviceCard({ device }: DeviceCardProps) {
               History
             </Button>
             
-            <EditDeviceDialog device={device} />
-            
-            {/* Delete Action - Only visible on hover/focus within group for cleaner look */}
-            <AlertDialog open={open} onOpenChange={setOpen}>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/actions:opacity-100 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="glass border-white/10">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Device?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove <strong>{device.name}</strong> ({device.ip}) from monitoring. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5 hover:text-foreground">Cancel</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleDelete}
-                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {canManage && (
+              <>
+                <EditDeviceDialog device={device} />
+                
+                <AlertDialog open={open} onOpenChange={setOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/actions:opacity-100 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="glass border-white/10">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Device?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove <strong>{device.name}</strong> ({device.ip}) from monitoring. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5 hover:text-foreground">Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete}
+                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </div>
         </div>
 

@@ -61,3 +61,6 @@ export type Log = typeof logs.$inferSelect;
 export type InsertLog = z.infer<typeof insertLogSchema>;
 export type MetricsHistory = typeof metricsHistory.$inferSelect;
 export type InsertMetricsHistory = z.infer<typeof insertMetricsHistorySchema>;
+
+// Export auth models
+export * from "./models/auth";

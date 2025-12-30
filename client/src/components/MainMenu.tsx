@@ -74,6 +74,7 @@ interface MainMenuProps {
   devices?: Device[];
   viewMode: "list" | "map";
   onViewModeChange: (mode: "list" | "map") => void;
+  canManage?: boolean;
 }
 
 export function MainMenu({ 
@@ -81,7 +82,8 @@ export function MainMenu({
   onSitesChange, 
   devices = [], 
   viewMode, 
-  onViewModeChange 
+  onViewModeChange,
+  canManage = false
 }: MainMenuProps) {
   const [siteManagerOpen, setSiteManagerOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<string | null>(null);
@@ -467,36 +469,38 @@ export function MainMenu({
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger data-testid="menu-sites">
-              <Building2 className="w-4 h-4 mr-2" />
-              Sites
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48">
-              <DropdownMenuItem 
-                onClick={() => setSiteManagerOpen(true)}
-                data-testid="menu-manage-sites"
-              >
-                <Settings2 className="w-4 h-4 mr-2" />
-                Manage Sites
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => siteFileInputRef.current?.click()}
-                data-testid="menu-import-sites"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Import Sites
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={downloadSiteTemplate}
-                data-testid="menu-download-site-template"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Download Template
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          {canManage && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger data-testid="menu-sites">
+                <Building2 className="w-4 h-4 mr-2" />
+                Sites
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-48">
+                <DropdownMenuItem 
+                  onClick={() => setSiteManagerOpen(true)}
+                  data-testid="menu-manage-sites"
+                >
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  Manage Sites
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => siteFileInputRef.current?.click()}
+                  data-testid="menu-import-sites"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import Sites
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={downloadSiteTemplate}
+                  data-testid="menu-download-site-template"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Download Template
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
           
           <DropdownMenuSub>
             <DropdownMenuSubTrigger data-testid="menu-devices">
@@ -511,58 +515,66 @@ export function MainMenu({
                 <Download className="w-4 h-4 mr-2" />
                 Download Devices
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => deviceFileInputRef.current?.click()}
-                data-testid="menu-upload-devices"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Devices
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={downloadDeviceTemplate}
-                data-testid="menu-download-device-template"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Download Template
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger data-testid="menu-settings">
-              <Timer className="w-4 h-4 mr-2" />
-              Polling Interval
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-40">
-              <DropdownMenuRadioGroup 
-                value={pollingSettings?.interval?.toString() || "5000"}
-                onValueChange={(value) => pollingMutation.mutate(parseInt(value))}
-              >
-                {pollingSettings?.options?.map((option) => (
-                  <DropdownMenuRadioItem 
-                    key={option.value} 
-                    value={option.value.toString()}
-                    data-testid={`polling-${option.value}`}
-                    disabled={pollingMutation.isPending}
+              {canManage && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => deviceFileInputRef.current?.click()}
+                    data-testid="menu-upload-devices"
                   >
-                    {option.label}
-                  </DropdownMenuRadioItem>
-                )) || (
-                  <>
-                    <DropdownMenuRadioItem value="5000">5 sec</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="10000">10 sec</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="30000">30 sec</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="60000">60 sec</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="120000">2 min</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="300000">5 min</DropdownMenuRadioItem>
-                  </>
-                )}
-              </DropdownMenuRadioGroup>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Devices
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={downloadDeviceTemplate}
+                    data-testid="menu-download-device-template"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Download Template
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          
+          {canManage && (
+            <>
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger data-testid="menu-settings">
+                  <Timer className="w-4 h-4 mr-2" />
+                  Polling Interval
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-40">
+                  <DropdownMenuRadioGroup 
+                    value={pollingSettings?.interval?.toString() || "5000"}
+                    onValueChange={(value) => pollingMutation.mutate(parseInt(value))}
+                  >
+                    {pollingSettings?.options?.map((option) => (
+                      <DropdownMenuRadioItem 
+                        key={option.value} 
+                        value={option.value.toString()}
+                        data-testid={`polling-${option.value}`}
+                        disabled={pollingMutation.isPending}
+                      >
+                        {option.label}
+                      </DropdownMenuRadioItem>
+                    )) || (
+                      <>
+                        <DropdownMenuRadioItem value="5000">5 sec</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="10000">10 sec</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="30000">30 sec</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="60000">60 sec</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="120000">2 min</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="300000">5 min</DropdownMenuRadioItem>
+                      </>
+                    )}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

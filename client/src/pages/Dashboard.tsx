@@ -3,6 +3,7 @@ import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
 import { MainMenu } from "@/components/MainMenu";
+import { UserMenu } from "@/components/UserMenu";
 import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -10,9 +11,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
-import { Log } from "@shared/schema";
+import { Log, type UserRole } from "@shared/schema";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 
 const DEFAULT_SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
@@ -21,7 +23,11 @@ const DEFAULT_SITES = [
 ];
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { data: devices, isLoading, error } = useDevices();
+  const userRole = (user?.role as UserRole) || 'viewer';
+  const canManageDevices = userRole === 'admin' || userRole === 'operator';
+  
   const [sites, setSites] = useState<string[]>(() => {
     const saved = localStorage.getItem("monitor_sites");
     return saved ? JSON.parse(saved) : DEFAULT_SITES;
@@ -115,8 +121,10 @@ export default function Dashboard() {
                   devices={devices}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
+                  canManage={canManageDevices}
                 />
-                <AddDeviceDialog />
+                {canManageDevices && <AddDeviceDialog />}
+                <UserMenu />
               </div>
             </div>
           </div>
@@ -318,9 +326,11 @@ export default function Dashboard() {
                     </div>
                     <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">No Devices in {activeSite}</h3>
                     <p className="text-muted-foreground max-w-md mx-auto mb-4 sm:mb-6 text-sm sm:text-base px-4">
-                      Add a network device to this site to start monitoring.
+                      {canManageDevices 
+                        ? "Add a network device to this site to start monitoring."
+                        : "No devices are configured for this site yet."}
                     </p>
-                    <AddDeviceDialog />
+                    {canManageDevices && <AddDeviceDialog />}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
@@ -331,7 +341,7 @@ export default function Dashboard() {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
                       >
-                        <DeviceCard device={device} />
+                        <DeviceCard device={device} canManage={canManageDevices} />
                       </motion.div>
                     ))}
                   </div>

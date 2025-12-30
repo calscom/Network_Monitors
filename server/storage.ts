@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory } from "@shared/schema";
+import { devices, logs, metricsHistory, users, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User } from "@shared/schema";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
@@ -22,6 +22,9 @@ export interface IStorage {
   saveMetricsSnapshot(snapshot: InsertMetricsHistory): Promise<MetricsHistory>;
   getHistoricalMetrics(deviceId: number, hoursBack?: number): Promise<MetricsHistory[]>;
   getHistoricalAverages(deviceId: number, hoursBack?: number): Promise<{ avgUtilization: number; avgBandwidth: number }>;
+  // User management
+  getAllUsers(): Promise<User[]>;
+  updateUserRole(userId: string, role: string): Promise<User | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -139,6 +142,19 @@ export class DatabaseStorage implements IStorage {
       avgUtilization: Math.round(result[0]?.avgUtilization || 0),
       avgBandwidth: parseFloat((result[0]?.avgBandwidth || 0).toFixed(2))
     };
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<User | null> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user || null;
   }
 }
 
