@@ -6,7 +6,15 @@ export interface IStorage {
   getDevices(): Promise<Device[]>;
   createDevice(device: InsertDevice): Promise<Device>;
   deleteDevice(id: number): Promise<void>;
-  updateDeviceMetrics(id: number, metrics: { status: string; utilization: number; bandwidthMBps: string; lastCounter: bigint }): Promise<Device>;
+  updateDeviceMetrics(id: number, metrics: { 
+    status: string; 
+    utilization: number; 
+    bandwidthMBps: string; 
+    downloadMbps: string;
+    uploadMbps: string;
+    lastInCounter: bigint;
+    lastOutCounter: bigint;
+  }): Promise<Device>;
   updateDevice(id: number, device: Partial<InsertDevice>): Promise<Device>;
   updateDevicesSite(fromSite: string, toSite: string): Promise<number>;
   getLogs(site?: string): Promise<Log[]>;
@@ -30,14 +38,25 @@ export class DatabaseStorage implements IStorage {
     await db.delete(devices).where(eq(devices.id, id));
   }
 
-  async updateDeviceMetrics(id: number, metrics: { status: string; utilization: number; bandwidthMBps: string; lastCounter: bigint }): Promise<Device> {
+  async updateDeviceMetrics(id: number, metrics: { 
+    status: string; 
+    utilization: number; 
+    bandwidthMBps: string;
+    downloadMbps: string;
+    uploadMbps: string;
+    lastInCounter: bigint;
+    lastOutCounter: bigint;
+  }): Promise<Device> {
     const [device] = await db
       .update(devices)
       .set({ 
         status: metrics.status,
         utilization: metrics.utilization,
         bandwidthMBps: metrics.bandwidthMBps,
-        lastCounter: metrics.lastCounter,
+        downloadMbps: metrics.downloadMbps,
+        uploadMbps: metrics.uploadMbps,
+        lastInCounter: metrics.lastInCounter,
+        lastOutCounter: metrics.lastOutCounter,
         lastCheck: new Date(),
         lastSeen: metrics.status === 'green' ? new Date() : undefined 
       })

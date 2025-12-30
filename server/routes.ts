@@ -6,7 +6,8 @@ import { z } from "zod";
 import snmp from "net-snmp";
 import { insertDeviceSchema } from "@shared/schema";
 
-const OID_IF_IN_OCTETS = "1.3.6.1.2.1.2.2.1.10.1"; 
+const OID_IF_IN_OCTETS = "1.3.6.1.2.1.2.2.1.10.1";  // Download (inbound)
+const OID_IF_OUT_OCTETS = "1.3.6.1.2.1.2.2.1.16.1"; // Upload (outbound) 
 
 const SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Bama", "05-Ngala", 
@@ -151,15 +152,19 @@ export async function registerRoutes(
 
       console.log(`[snmp] Polling ${device.name} at ${device.ip}...`);
 
-      session.get([OID_IF_IN_OCTETS], async (error, varbinds) => {
+      session.get([OID_IF_IN_OCTETS, OID_IF_OUT_OCTETS], async (error, varbinds) => {
         let newStatus = 'red';
         let newUtilization = device.utilization;
         let bandwidthMBps = device.bandwidthMBps;
-        let lastCounter = device.lastCounter;
+        let downloadMbps = device.downloadMbps;
+        let uploadMbps = device.uploadMbps;
+        let lastInCounter = device.lastInCounter;
+        let lastOutCounter = device.lastOutCounter;
 
-        if (!error && !snmp.isVarbindError(varbinds[0])) {
-          const currentCounter = BigInt(varbinds[0].value);
-          console.log(`[snmp] Response from ${device.name}: ${currentCounter}`);
+        if (!error && varbinds.length >= 2 && !snmp.isVarbindError(varbinds[0]) && !snmp.isVarbindError(varbinds[1])) {
+          const currentInCounter = BigInt(varbinds[0].value);
+          const currentOutCounter = BigInt(varbinds[1].value);
+          console.log(`[snmp] Response from ${device.name}: IN=${currentInCounter}, OUT=${currentOutCounter}`);
           
           if (device.status === 'red') {
             newStatus = 'blue';
@@ -167,28 +172,39 @@ export async function registerRoutes(
             newStatus = 'green';
           }
 
-          // Calculate bandwidth (MBps)
-          // Delta is bytes over 5 seconds (interval)
-          if (lastCounter > BigInt(0) && currentCounter >= lastCounter) {
-            const deltaBytes = Number(currentCounter - lastCounter);
-            // Convert to Megabits per second (Mbps) for better precision
-            // bits = bytes * 8, bits per sec = (bytes * 8) / 5
+          // Calculate download speed (Mbps) from inbound octets
+          if (lastInCounter > BigInt(0) && currentInCounter >= lastInCounter) {
+            const deltaBytes = Number(currentInCounter - lastInCounter);
             const mbpsValue = (deltaBytes * 8) / (5 * 1000 * 1000);
-            // Convert to Megabytes per second (MBps) for the display
-            bandwidthMBps = (mbpsValue / 8).toFixed(2);
-            
-            // Simulation of utilization based on a hypothetical 1Gbps (1000Mbps) link
-            newUtilization = Math.min(100, Math.floor((mbpsValue / 1000) * 100));
+            downloadMbps = mbpsValue.toFixed(2);
           } else {
-             // First run or overflow
-             bandwidthMBps = "0.01"; // Set to small non-zero for first run visibility
-             newUtilization = 0;
+            downloadMbps = "0.00";
           }
-          lastCounter = currentCounter;
+
+          // Calculate upload speed (Mbps) from outbound octets
+          if (lastOutCounter > BigInt(0) && currentOutCounter >= lastOutCounter) {
+            const deltaBytes = Number(currentOutCounter - lastOutCounter);
+            const mbpsValue = (deltaBytes * 8) / (5 * 1000 * 1000);
+            uploadMbps = mbpsValue.toFixed(2);
+          } else {
+            uploadMbps = "0.00";
+          }
+
+          // Total bandwidth in MBps (combined download + upload, converted from Mbps)
+          const totalMbps = parseFloat(downloadMbps) + parseFloat(uploadMbps);
+          bandwidthMBps = (totalMbps / 8).toFixed(2);
+          
+          // Utilization based on total throughput vs 1Gbps link
+          newUtilization = Math.min(100, Math.floor((totalMbps / 1000) * 100));
+
+          lastInCounter = currentInCounter;
+          lastOutCounter = currentOutCounter;
         } else {
           console.error(`[snmp] Error polling ${device.name}: ${error?.message || 'Unknown error'}`);
           newStatus = 'red';
           bandwidthMBps = "0.00";
+          downloadMbps = "0.00";
+          uploadMbps = "0.00";
           newUtilization = 0;
         }
 
@@ -201,15 +217,17 @@ export async function registerRoutes(
 
         if (isMockable) {
            if (device.status === 'red' || error) {
-             newStatus = 'green'; // Force green for demo IPs that might time out
+             newStatus = 'green';
            } else {
              newStatus = 'green';
            }
-           // Use real utilization if available (not 0), otherwise mock it
-           if (newUtilization === 0) {
-             const mockMbps = (Math.random() * 80).toFixed(2);
-             bandwidthMBps = mockMbps;
-             newUtilization = Math.floor((Number(mockMbps) / 100) * 100);
+           // Use real data if available, otherwise mock it
+           if (parseFloat(downloadMbps) === 0 && parseFloat(uploadMbps) === 0) {
+             downloadMbps = (Math.random() * 60 + 10).toFixed(2);
+             uploadMbps = (Math.random() * 30 + 5).toFixed(2);
+             const totalMbps = parseFloat(downloadMbps) + parseFloat(uploadMbps);
+             bandwidthMBps = (totalMbps / 8).toFixed(2);
+             newUtilization = Math.floor((totalMbps / 1000) * 100);
            }
         }
 
@@ -227,7 +245,10 @@ export async function registerRoutes(
           status: newStatus,
           utilization: newUtilization,
           bandwidthMBps,
-          lastCounter
+          downloadMbps,
+          uploadMbps,
+          lastInCounter,
+          lastOutCounter
         });
 
         // Save metrics snapshot for historical tracking (every poll cycle)

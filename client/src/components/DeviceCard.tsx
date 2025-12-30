@@ -2,7 +2,7 @@ import { Device } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
 import { PerformanceComparison } from "./PerformanceComparison";
-import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp } from "lucide-react";
+import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -74,6 +74,24 @@ export function DeviceCard({ device }: DeviceCardProps) {
 
       {/* Metrics */}
       <div className="space-y-4">
+        {/* Download/Upload Speed Display */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 border border-white/5">
+            <ArrowDown className="w-4 h-4 text-[hsl(var(--status-green))]" />
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Download</p>
+              <p className="text-sm font-mono font-semibold">{device.downloadMbps} <span className="text-xs text-muted-foreground">Mbps</span></p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50 border border-white/5">
+            <ArrowUp className="w-4 h-4 text-[hsl(var(--status-blue))]" />
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Upload</p>
+              <p className="text-sm font-mono font-semibold">{device.uploadMbps} <span className="text-xs text-muted-foreground">Mbps</span></p>
+            </div>
+          </div>
+        </div>
+
         <UtilizationGauge value={device.utilization} bandwidth={device.bandwidthMBps} />
         
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-white/5">

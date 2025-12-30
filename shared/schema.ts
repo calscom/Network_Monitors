@@ -11,7 +11,10 @@ export const devices = pgTable("devices", {
   status: text("status").default("unknown").notNull(), // 'green', 'red', 'blue'
   utilization: integer("utilization").default(0).notNull(), // 0-100 percentage
   bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision
-  lastCounter: bigint("last_counter", { mode: "bigint" }).default(BigInt(0)).notNull(),
+  downloadMbps: text("download_mbps").default("0").notNull(), // Download speed in Mbps
+  uploadMbps: text("upload_mbps").default("0").notNull(), // Upload speed in Mbps
+  lastInCounter: bigint("last_in_counter", { mode: "bigint" }).default(BigInt(0)).notNull(),
+  lastOutCounter: bigint("last_out_counter", { mode: "bigint" }).default(BigInt(0)).notNull(),
   lastCheck: timestamp("last_check"),
   lastSeen: timestamp("last_seen"),
   site: text("site").notNull(), // The 12 site names
@@ -22,7 +25,10 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   status: true,
   utilization: true,
   bandwidthMBps: true,
-  lastCounter: true,
+  downloadMbps: true,
+  uploadMbps: true,
+  lastInCounter: true,
+  lastOutCounter: true,
   lastCheck: true,
   lastSeen: true
 });
