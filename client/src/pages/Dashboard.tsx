@@ -2,20 +2,17 @@ import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
-import { SiteManager } from "@/components/SiteManager";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload, Download, Network, List } from "lucide-react";
+import { MainMenu } from "@/components/MainMenu";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useState, useEffect } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { Log } from "@shared/schema";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
-import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
@@ -33,8 +30,6 @@ export default function Dashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   const { data: logs } = useQuery<Log[]>({
     queryKey: ["/api/logs", activeSite],
@@ -72,55 +67,6 @@ export default function Dashboard() {
     window.dispatchEvent(new CustomEvent('sitesUpdated'));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const content = evt.target?.result;
-      let newSitesList: string[] = [];
-
-      try {
-        if (file.name.endsWith('.csv')) {
-          const results = Papa.parse(content as string, { header: false });
-          newSitesList = results.data.flat().filter(s => typeof s === 'string' && s.trim()) as string[];
-        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(content, { type: 'binary' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-          newSitesList = data.flat().filter(s => typeof s === 'string' && s.trim());
-        }
-
-        if (newSitesList.length > 0) {
-          // Remove duplicates and maintain existing site assignments if possible
-          const uniqueSites = Array.from(new Set([...newSitesList]));
-          setSites(uniqueSites);
-          if (!uniqueSites.includes(activeSite)) {
-            setActiveSite(uniqueSites[0]);
-          }
-          toast({
-            title: "Success",
-            description: `Imported ${uniqueSites.length} sites successfully.`,
-          });
-        }
-      } catch (err) {
-        toast({
-          title: "Import Error",
-          description: "Failed to parse file. Please ensure it's a valid CSV or Excel file.",
-          variant: "destructive"
-        });
-      }
-    };
-
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsBinaryString(file);
-    }
-  };
-
   // Stats calculation
   const stats = {
     total: devices?.length || 0,
@@ -146,54 +92,13 @@ export default function Dashboard() {
               <p className="text-muted-foreground text-lg">Real-time SNMP status & utilization dashboard</p>
             </div>
             <div className="flex items-center gap-3">
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept=".csv,.xlsx,.xls" 
-                className="hidden" 
+              <MainMenu 
+                sites={sites} 
+                onSitesChange={handleSitesChange} 
+                devices={devices}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-white/5">
-                <Button 
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  data-testid="button-view-list"
-                >
-                  <List className="w-4 h-4 mr-2" />
-                  List
-                </Button>
-                <Button 
-                  variant={viewMode === "map" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("map")}
-                  data-testid="button-view-map"
-                >
-                  <Network className="w-4 h-4 mr-2" />
-                  Map
-                </Button>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  window.open("/api/devices/template", "_blank");
-                }}
-                className="glass border-white/10"
-                data-testid="button-download-template"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download Devices
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => fileInputRef.current?.click()}
-                className="glass border-white/10"
-                data-testid="button-import-sites"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Import Sites
-              </Button>
-              <SiteManager sites={sites} onSitesChange={handleSitesChange} devices={devices} />
               <AddDeviceDialog />
             </div>
           </div>
@@ -311,15 +216,15 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${
-                        devices?.filter(d => d.site === site).length > 0
-                          ? devices.filter(d => d.site === site).every(d => d.status === 'green')
+                        (devices?.filter(d => d.site === site).length ?? 0) > 0
+                          ? devices?.filter(d => d.site === site).every(d => d.status === 'green')
                             ? 'bg-emerald-500 shadow-[0_0_8px_theme(colors.emerald.500/0.4)]'
                             : 'bg-rose-500 shadow-[0_0_8px_theme(colors.rose.500/0.4)] animate-pulse'
                           : 'bg-muted-foreground/30'
                       }`} />
                       <span className={
-                        devices?.filter(d => d.site === site).length > 0
-                          ? devices.filter(d => d.site === site).every(d => d.status === 'green')
+                        (devices?.filter(d => d.site === site).length ?? 0) > 0
+                          ? devices?.filter(d => d.site === site).every(d => d.status === 'green')
                             ? 'text-emerald-500 font-bold'
                             : 'text-rose-500 font-bold'
                           : ''
