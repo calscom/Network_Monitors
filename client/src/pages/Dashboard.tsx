@@ -32,16 +32,32 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const { data: logs } = useQuery<Log[]>({
-    queryKey: ["/api/logs", activeSite],
-    queryFn: async ({ queryKey }) => {
-      const site = queryKey[1] as string;
-      const res = await fetch(`/api/logs?site=${encodeURIComponent(site)}`);
+    queryKey: ["/api/logs"],
+    queryFn: async () => {
+      const res = await fetch(`/api/logs`);
       if (!res.ok) throw new Error("Failed to fetch logs");
       return res.json();
     },
-    enabled: !!activeSite,
-    refetchInterval: 5000,
+    refetchInterval: 2000, // Poll every 2 seconds for real-time feel
   });
+
+  // Helper function to get log type styling
+  const getLogTypeStyles = (type: string) => {
+    switch (type) {
+      case 'device_added':
+        return { color: 'text-emerald-400', bg: 'border-l-emerald-500', icon: 'plus' };
+      case 'device_removed':
+        return { color: 'text-rose-400', bg: 'border-l-rose-500', icon: 'minus' };
+      case 'device_updated':
+        return { color: 'text-blue-400', bg: 'border-l-blue-500', icon: 'edit' };
+      case 'devices_reassigned':
+        return { color: 'text-amber-400', bg: 'border-l-amber-500', icon: 'move' };
+      case 'status_change':
+        return { color: 'text-purple-400', bg: 'border-l-purple-500', icon: 'status' };
+      default:
+        return { color: 'text-primary/80', bg: 'border-l-primary/30', icon: 'system' };
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("monitor_sites", JSON.stringify(sites));
@@ -324,26 +340,40 @@ export default function Dashboard() {
 
               {/* Activity Logs Sidebar */}
               <div className="space-y-3 sm:space-y-4 lg:mt-0 mt-6">
-                <div className="flex items-center gap-2 border-b border-white/5 pb-3 sm:pb-4">
-                  <History className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                  <h2 className="text-base sm:text-xl font-semibold text-foreground">Activity Log</h2>
+                <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-3 sm:pb-4">
+                  <div className="flex items-center gap-2">
+                    <History className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                    <h2 className="text-base sm:text-xl font-semibold text-foreground">Activity Log</h2>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] animate-pulse">Live</Badge>
                 </div>
                 <div className="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[400px] lg:max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
-                  {logs?.map((log) => (
-                    <div key={log.id} className="glass p-2 sm:p-3 rounded-lg text-xs sm:text-sm border-l-2 border-l-primary/30">
-                      <div className="flex justify-between items-start mb-1 gap-2">
-                        <span className="font-medium text-primary/80 uppercase text-[9px] sm:text-[10px] tracking-wider">
-                          {log.type.replace('_', ' ')}
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] text-muted-foreground font-mono shrink-0">
-                          {format(new Date(log.timestamp), "HH:mm:ss")}
-                        </span>
+                  {logs?.map((log) => {
+                    const styles = getLogTypeStyles(log.type);
+                    return (
+                      <div key={log.id} className={`glass p-2 sm:p-3 rounded-lg text-xs sm:text-sm border-l-2 ${styles.bg}`}>
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <span className={`font-medium uppercase text-[9px] sm:text-[10px] tracking-wider ${styles.color}`}>
+                            {log.type.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] text-muted-foreground font-mono shrink-0">
+                            {format(new Date(log.timestamp), "HH:mm:ss")}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground leading-snug text-xs sm:text-sm">
+                          {log.message}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <Badge variant="secondary" className="text-[8px] sm:text-[9px] px-1.5 py-0">
+                            {log.site}
+                          </Badge>
+                          <span className="text-[8px] sm:text-[9px] text-muted-foreground/50">
+                            {format(new Date(log.timestamp), "MMM d")}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-muted-foreground leading-snug text-xs sm:text-sm">
-                        {log.message}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {(!logs || logs.length === 0) && (
                     <div className="text-center py-8 sm:py-12 text-muted-foreground opacity-50 italic text-sm">
                       No recent activity

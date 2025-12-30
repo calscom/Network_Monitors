@@ -35,6 +35,15 @@ export async function registerRoutes(
     try {
       const input = api.devices.create.input.parse(req.body);
       const device = await storage.createDevice(input);
+      
+      // Log device creation
+      await storage.createLog({
+        deviceId: device.id,
+        site: device.site,
+        type: 'device_added',
+        message: `Device "${device.name}" (${device.ip}) added to ${device.site}`
+      });
+      
       res.status(201).json(device);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -48,7 +57,22 @@ export async function registerRoutes(
   });
 
   app.delete(api.devices.delete.path, async (req, res) => {
-    await storage.deleteDevice(Number(req.params.id));
+    const deviceId = Number(req.params.id);
+    const devices = await storage.getDevices();
+    const device = devices.find(d => d.id === deviceId);
+    
+    await storage.deleteDevice(deviceId);
+    
+    // Log device deletion
+    if (device) {
+      await storage.createLog({
+        deviceId: null,
+        site: device.site,
+        type: 'device_removed',
+        message: `Device "${device.name}" (${device.ip}) removed from ${device.site}`
+      });
+    }
+    
     res.status(204).send();
   });
 
@@ -61,6 +85,15 @@ export async function registerRoutes(
       
       const input = insertDeviceSchema.partial().parse(req.body);
       const device = await storage.updateDevice(id, input);
+      
+      // Log device edit
+      await storage.createLog({
+        deviceId: device.id,
+        site: device.site,
+        type: 'device_updated',
+        message: `Device "${device.name}" settings updated`
+      });
+      
       res.json(device);
     } catch (err: any) {
       console.error("Error updating device:", err);
@@ -88,6 +121,15 @@ export async function registerRoutes(
       if (count === 0) {
         return res.status(404).json({ message: "No devices found in the source site" });
       }
+      
+      // Log site reassignment
+      await storage.createLog({
+        deviceId: null,
+        site: toSite,
+        type: 'devices_reassigned',
+        message: `${count} device(s) moved from "${fromSite}" to "${toSite}"`
+      });
+      
       res.json({ updated: count });
     } catch (err: any) {
       console.error("Error reassigning devices:", err);
