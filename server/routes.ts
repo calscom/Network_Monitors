@@ -36,12 +36,12 @@ export async function registerRoutes(
       const input = api.devices.create.input.parse(req.body);
       const device = await storage.createDevice(input);
       
-      // Log device creation
+      // Log device creation with details
       await storage.createLog({
         deviceId: device.id,
         site: device.site,
         type: 'device_added',
-        message: `Device "${device.name}" (${device.ip}) added to ${device.site}`
+        message: `New ${device.type} device "${device.name}" added at IP ${device.ip}`
       });
       
       res.status(201).json(device);
@@ -63,13 +63,13 @@ export async function registerRoutes(
     
     await storage.deleteDevice(deviceId);
     
-    // Log device deletion
+    // Log device deletion with details
     if (device) {
       await storage.createLog({
         deviceId: null,
         site: device.site,
         type: 'device_removed',
-        message: `Device "${device.name}" (${device.ip}) removed from ${device.site}`
+        message: `${device.type} device "${device.name}" (IP: ${device.ip}) was deleted`
       });
     }
     
@@ -83,15 +83,41 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid device ID" });
       }
       
+      // Get original device for comparison
+      const allDevices = await storage.getDevices();
+      const originalDevice = allDevices.find(d => d.id === id);
+      
       const input = insertDeviceSchema.partial().parse(req.body);
       const device = await storage.updateDevice(id, input);
       
-      // Log device edit
+      // Build specific change description
+      const changes: string[] = [];
+      if (originalDevice) {
+        if (input.name && input.name !== originalDevice.name) {
+          changes.push(`name: "${originalDevice.name}" → "${input.name}"`);
+        }
+        if (input.ip && input.ip !== originalDevice.ip) {
+          changes.push(`IP: ${originalDevice.ip} → ${input.ip}`);
+        }
+        if (input.type && input.type !== originalDevice.type) {
+          changes.push(`type: ${originalDevice.type} → ${input.type}`);
+        }
+        if (input.site && input.site !== originalDevice.site) {
+          changes.push(`site: "${originalDevice.site}" → "${input.site}"`);
+        }
+        if (input.community && input.community !== originalDevice.community) {
+          changes.push(`SNMP community updated`);
+        }
+      }
+      
+      const changeDetail = changes.length > 0 ? changes.join(", ") : "settings modified";
+      
+      // Log device edit with specific changes
       await storage.createLog({
         deviceId: device.id,
         site: device.site,
         type: 'device_updated',
-        message: `Device "${device.name}" settings updated`
+        message: `Device "${device.name}" updated: ${changeDetail}`
       });
       
       res.json(device);
@@ -275,11 +301,22 @@ export async function registerRoutes(
 
         if (device.status !== newStatus) {
           console.log(`[snmp] Status change for ${device.name}: ${device.status} -> ${newStatus}`);
+          
+          // Map status codes to readable labels
+          const statusLabels: Record<string, string> = {
+            'green': 'Online',
+            'red': 'Offline',
+            'blue': 'Recovering',
+            'unknown': 'Unknown'
+          };
+          const oldLabel = statusLabels[device.status] || device.status;
+          const newLabel = statusLabels[newStatus] || newStatus;
+          
           await storage.createLog({
             deviceId: device.id,
             site: device.site,
             type: 'status_change',
-            message: `Device ${device.name} changed status from ${device.status} to ${newStatus}`
+            message: `${device.name} status changed: ${oldLabel} → ${newLabel}`
           });
         }
 
