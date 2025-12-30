@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +10,8 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -55,11 +57,13 @@ import {
   X,
   Building2,
   Server,
-  Eye
+  Eye,
+  Timer,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Device } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -88,6 +92,46 @@ export function MainMenu({
   const siteFileInputRef = useRef<HTMLInputElement>(null);
   const deviceFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Polling settings
+  const { data: pollingSettings } = useQuery<{
+    interval: number;
+    options: { value: number; label: string }[];
+  }>({
+    queryKey: ["/api/settings/polling"],
+    refetchInterval: 30000,
+  });
+
+  const pollingMutation = useMutation({
+    mutationFn: async (interval: number) => {
+      const res = await fetch("/api/settings/polling", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update polling interval");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/polling"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logs"] });
+      const option = pollingSettings?.options.find(o => o.value === data.interval);
+      toast({
+        title: "Polling interval updated",
+        description: `Now polling every ${option?.label || (data.interval / 1000) + 's'}`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const reassignMutation = useMutation({
     mutationFn: async ({ fromSite, toSite }: { fromSite: string; toSite: string }) => {
@@ -482,6 +526,41 @@ export function MainMenu({
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Download Template
               </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger data-testid="menu-settings">
+              <Timer className="w-4 h-4 mr-2" />
+              Polling Interval
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-40">
+              <DropdownMenuRadioGroup 
+                value={pollingSettings?.interval?.toString() || "5000"}
+                onValueChange={(value) => pollingMutation.mutate(parseInt(value))}
+              >
+                {pollingSettings?.options?.map((option) => (
+                  <DropdownMenuRadioItem 
+                    key={option.value} 
+                    value={option.value.toString()}
+                    data-testid={`polling-${option.value}`}
+                    disabled={pollingMutation.isPending}
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                )) || (
+                  <>
+                    <DropdownMenuRadioItem value="5000">5 sec</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="10000">10 sec</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="30000">30 sec</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="60000">60 sec</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="120000">2 min</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="300000">5 min</DropdownMenuRadioItem>
+                  </>
+                )}
+              </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuContent>

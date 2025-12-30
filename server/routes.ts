@@ -7,7 +7,19 @@ import snmp from "net-snmp";
 import { insertDeviceSchema } from "@shared/schema";
 
 const OID_IF_IN_OCTETS = "1.3.6.1.2.1.2.2.1.10.1";  // Download (inbound)
-const OID_IF_OUT_OCTETS = "1.3.6.1.2.1.2.2.1.16.1"; // Upload (outbound) 
+const OID_IF_OUT_OCTETS = "1.3.6.1.2.1.2.2.1.16.1"; // Upload (outbound)
+
+// Global polling configuration
+let currentPollingInterval = 5000; // Default 5 seconds
+let pollingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+const POLLING_OPTIONS = [
+  { value: 5000, label: "5 sec" },
+  { value: 10000, label: "10 sec" },
+  { value: 30000, label: "30 sec" },
+  { value: 60000, label: "60 sec" },
+  { value: 120000, label: "2 min" },
+  { value: 300000, label: "5 min" },
+]; 
 
 const SITES = [
   "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Bama", "05-Ngala", 
@@ -182,6 +194,50 @@ export async function registerRoutes(
     }
   });
 
+  // Polling interval endpoints
+  app.get("/api/settings/polling", (req, res) => {
+    res.json({ 
+      interval: currentPollingInterval,
+      options: POLLING_OPTIONS
+    });
+  });
+
+  app.post("/api/settings/polling", async (req, res) => {
+    const { interval } = req.body;
+    const validOption = POLLING_OPTIONS.find(opt => opt.value === interval);
+    
+    if (!validOption) {
+      return res.status(400).json({ message: "Invalid polling interval" });
+    }
+    
+    const oldInterval = currentPollingInterval;
+    currentPollingInterval = interval;
+    
+    // Clear the existing timeout to prevent duplicate polling loops
+    if (pollingTimeoutId) {
+      clearTimeout(pollingTimeoutId);
+      pollingTimeoutId = null;
+    }
+    
+    // Log the change
+    await storage.createLog({
+      deviceId: null,
+      site: "System",
+      type: 'settings_changed',
+      message: `Polling interval changed: ${oldInterval/1000}s → ${interval/1000}s`
+    });
+    
+    // Reschedule polling with new interval
+    pollingTimeoutId = setTimeout(async () => {
+      const devices = await storage.getDevices();
+      const intervalSeconds = currentPollingInterval / 1000;
+      await Promise.all(devices.map(device => pollDevice(device, intervalSeconds)));
+      pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+    }, currentPollingInterval);
+    
+    res.json({ interval: currentPollingInterval });
+  });
+
   app.get("/api/devices/template", async (req, res) => {
     const devices = await storage.getDevices();
     const headers = ["name", "ip", "community", "type", "site"];
@@ -208,17 +264,15 @@ export async function registerRoutes(
     res.send(csvContent);
   });
 
-  // Background polling service
-  setInterval(async () => {
-    const devices = await storage.getDevices();
-    
-    for (const device of devices) {
+  // Helper function to poll a single device (returns a Promise)
+  const pollDevice = (device: any, intervalSeconds: number): Promise<void> => {
+    return new Promise((resolve) => {
       const session = snmp.createSession(device.ip, device.community, {
         timeout: 2000,
         retries: 1
       });
 
-      console.log(`[snmp] Polling ${device.name} at ${device.ip}...`);
+      console.log(`[snmp] Polling ${device.name} at ${device.ip} (interval: ${intervalSeconds}s)...`);
 
       session.get([OID_IF_IN_OCTETS, OID_IF_OUT_OCTETS], async (error, varbinds) => {
         let newStatus = 'red';
@@ -240,19 +294,19 @@ export async function registerRoutes(
             newStatus = 'green';
           }
 
-          // Calculate download speed (Mbps) from inbound octets
+          // Calculate download speed (Mbps) from inbound octets using actual interval
           if (lastInCounter > BigInt(0) && currentInCounter >= lastInCounter) {
             const deltaBytes = Number(currentInCounter - lastInCounter);
-            const mbpsValue = (deltaBytes * 8) / (5 * 1000 * 1000);
+            const mbpsValue = (deltaBytes * 8) / (intervalSeconds * 1000 * 1000);
             downloadMbps = mbpsValue.toFixed(2);
           } else {
             downloadMbps = "0.00";
           }
 
-          // Calculate upload speed (Mbps) from outbound octets
+          // Calculate upload speed (Mbps) from outbound octets using actual interval
           if (lastOutCounter > BigInt(0) && currentOutCounter >= lastOutCounter) {
             const deltaBytes = Number(currentOutCounter - lastOutCounter);
-            const mbpsValue = (deltaBytes * 8) / (5 * 1000 * 1000);
+            const mbpsValue = (deltaBytes * 8) / (intervalSeconds * 1000 * 1000);
             uploadMbps = mbpsValue.toFixed(2);
           } else {
             uploadMbps = "0.00";
@@ -341,9 +395,25 @@ export async function registerRoutes(
         }
         
         session.close();
+        resolve();
       });
-    }
-  }, 5000);
+    });
+  };
+
+  // Background polling service with dynamic interval
+  const pollDevices = async () => {
+    const devices = await storage.getDevices();
+    const intervalSeconds = currentPollingInterval / 1000;
+    
+    // Poll all devices in parallel and wait for all to complete
+    await Promise.all(devices.map(device => pollDevice(device, intervalSeconds)));
+    
+    // Schedule next poll with current interval (only after all devices complete)
+    pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+  };
+  
+  // Start polling
+  pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
 
   // Seed data with 12 sites
   const existing = await storage.getDevices();
