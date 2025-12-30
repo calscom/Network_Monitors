@@ -2,7 +2,7 @@ import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload, Network, List } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload, Download, Network, List } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -162,6 +162,17 @@ export default function Dashboard() {
                   Map
                 </Button>
               </div>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  window.open("/api/devices/template", "_blank");
+                }}
+                className="glass border-white/10"
+                data-testid="button-download-template"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Devices
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => fileInputRef.current?.click()}

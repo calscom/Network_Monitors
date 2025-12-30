@@ -73,6 +73,32 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/devices/template", async (req, res) => {
+    const devices = await storage.getDevices();
+    const headers = ["name", "ip", "community", "type", "site"];
+    
+    let csvContent = headers.join(",") + "\n";
+    
+    for (const device of devices) {
+      const row = [
+        `"${device.name}"`,
+        `"${device.ip}"`,
+        `"public"`,
+        `"${device.type}"`,
+        `"${device.site}"`
+      ];
+      csvContent += row.join(",") + "\n";
+    }
+    
+    if (devices.length === 0) {
+      csvContent += '"Example Device","192.168.1.1","public","mikrotik","01 Cloud"\n';
+    }
+    
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=devices_template.csv");
+    res.send(csvContent);
+  });
+
   // Background polling service
   setInterval(async () => {
     const devices = await storage.getDevices();

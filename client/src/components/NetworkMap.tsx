@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Device } from "@shared/schema";
-import { Cloud, Server, Router, Wifi } from "lucide-react";
+import { Circle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface NetworkMapProps {
   devices: Device[];
@@ -9,227 +10,272 @@ interface NetworkMapProps {
   onSiteClick?: (site: string) => void;
 }
 
-interface NodePosition {
+interface NodeData {
   x: number;
   y: number;
   site: string;
   devices: Device[];
   status: "green" | "red" | "mixed" | "empty";
+  onlineCount: number;
+  offlineCount: number;
 }
 
 export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+
   const nodes = useMemo(() => {
-    const result: NodePosition[] = [];
-    const centerX = 400;
-    const centerY = 300;
-    const radius = 220;
+    const result: NodeData[] = [];
+    const centerX = 50;
+    const centerY = 45;
+    
+    const siteCount = sites.length;
+    const innerRadius = siteCount <= 6 ? 30 : 25;
+    const outerRadius = 40;
+    const useDoubleRing = siteCount > 8;
 
     sites.forEach((site, index) => {
-      const angle = (index / sites.length) * 2 * Math.PI - Math.PI / 2;
+      let radius: number;
+      let adjustedIndex: number;
+      let totalInRing: number;
+
+      if (useDoubleRing) {
+        const innerCount = Math.ceil(siteCount / 2);
+        if (index < innerCount) {
+          radius = innerRadius;
+          adjustedIndex = index;
+          totalInRing = innerCount;
+        } else {
+          radius = outerRadius;
+          adjustedIndex = index - innerCount;
+          totalInRing = siteCount - innerCount;
+        }
+      } else {
+        radius = 35;
+        adjustedIndex = index;
+        totalInRing = siteCount;
+      }
+
+      const angle = (adjustedIndex / totalInRing) * 2 * Math.PI - Math.PI / 2;
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
       
       const siteDevices = devices.filter(d => d.site === site);
+      const onlineCount = siteDevices.filter(d => d.status === "green").length;
+      const offlineCount = siteDevices.filter(d => d.status === "red" || d.status === "blue").length;
+      
       let status: "green" | "red" | "mixed" | "empty" = "empty";
       
       if (siteDevices.length > 0) {
-        const allGreen = siteDevices.every(d => d.status === "green");
-        const allRed = siteDevices.every(d => d.status === "red");
-        if (allGreen) status = "green";
-        else if (allRed) status = "red";
+        if (offlineCount === 0) status = "green";
+        else if (onlineCount === 0) status = "red";
         else status = "mixed";
       }
 
-      result.push({ x, y, site, devices: siteDevices, status });
+      result.push({ x, y, site, devices: siteDevices, status, onlineCount, offlineCount });
     });
 
     return result;
   }, [devices, sites]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "green": return "hsl(var(--status-green))";
-      case "red": return "hsl(var(--status-red))";
-      case "mixed": return "hsl(var(--status-blue))";
-      default: return "hsl(var(--muted-foreground))";
-    }
-  };
-
-  const getDeviceIcon = (type: string) => {
-    switch (type) {
-      case "unifi": return Wifi;
-      case "mikrotik": return Router;
-      default: return Server;
-    }
+  const statusColors = {
+    green: { fill: "rgb(34, 197, 94)", bg: "rgba(34, 197, 94, 0.15)" },
+    red: { fill: "rgb(239, 68, 68)", bg: "rgba(239, 68, 68, 0.15)" },
+    mixed: { fill: "rgb(245, 158, 11)", bg: "rgba(245, 158, 11, 0.15)" },
+    empty: { fill: "rgb(107, 114, 128)", bg: "rgba(107, 114, 128, 0.1)" }
   };
 
   return (
-    <div className="glass rounded-xl p-6 overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-white/5 pb-4 mb-4">
-        <Cloud className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold">Network Topology</h2>
-      </div>
-
-      <div className="relative w-full" style={{ height: "600px" }}>
-        <svg 
-          viewBox="0 0 800 600" 
-          className="w-full h-full"
-          style={{ maxWidth: "100%", height: "auto" }}
-        >
-          <defs>
-            <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feFlood floodColor="hsl(142 76% 36%)" floodOpacity="0.6" />
-              <feComposite in2="blur" operator="in" />
-              <feMerge>
-                <feMergeNode />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <filter id="glow-red" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feFlood floodColor="hsl(0 84% 60%)" floodOpacity="0.6" />
-              <feComposite in2="blur" operator="in" />
-              <feMerge>
-                <feMergeNode />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <linearGradient id="connection-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
-            </linearGradient>
-          </defs>
-
-          {nodes.map((node, idx) => (
-            <motion.line
-              key={`line-${idx}`}
-              x1={400}
-              y1={300}
-              x2={node.x}
-              y2={node.y}
-              stroke={node.status === "empty" ? "hsl(var(--muted-foreground) / 0.2)" : getStatusColor(node.status)}
-              strokeWidth={node.status === "empty" ? 1 : 2}
-              strokeDasharray={node.status === "empty" ? "4 4" : "0"}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: node.status === "empty" ? 0.3 : 0.6 }}
-              transition={{ duration: 0.8, delay: idx * 0.05 }}
-            />
-          ))}
-
-          <motion.g
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, type: "spring" }}
+    <div className="glass rounded-xl p-6">
+      <div className="flex flex-col xl:flex-row gap-6">
+        <div className="flex-1 relative" style={{ minHeight: "450px" }}>
+          <svg 
+            viewBox="0 0 100 90" 
+            className="w-full h-full"
+            preserveAspectRatio="xMidYMid meet"
+            data-testid="network-map-svg"
           >
-            <circle
-              cx={400}
-              cy={300}
-              r={50}
-              fill="hsl(var(--primary) / 0.15)"
-              stroke="hsl(var(--primary))"
-              strokeWidth={3}
-            />
-            <foreignObject x={375} y={275} width={50} height={50}>
-              <div className="w-full h-full flex items-center justify-center text-primary">
-                <Cloud className="w-8 h-8" />
-              </div>
-            </foreignObject>
-            <text
-              x={400}
-              y={370}
-              textAnchor="middle"
-              className="fill-foreground text-sm font-semibold"
-            >
-              Core Hub
-            </text>
-          </motion.g>
+            {nodes.map((node, idx) => (
+              <motion.line
+                key={`line-${idx}`}
+                x1={50}
+                y1={45}
+                x2={node.x}
+                y2={node.y}
+                stroke={statusColors[node.status].fill}
+                strokeWidth={node.status === "empty" ? 0.1 : 0.2}
+                strokeOpacity={node.status === "empty" ? 0.3 : 0.5}
+                strokeDasharray={node.status === "empty" ? "0.5 0.5" : "0"}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.4, delay: idx * 0.02 }}
+              />
+            ))}
 
-          {nodes.map((node, idx) => {
-            const statusColor = getStatusColor(node.status);
-            const glowFilter = node.status === "green" ? "url(#glow-green)" : 
-                              node.status === "red" ? "url(#glow-red)" : "";
-            
-            return (
-              <motion.g
-                key={`node-${idx}`}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.3 + idx * 0.05, type: "spring" }}
-                style={{ cursor: "pointer" }}
-                onClick={() => onSiteClick?.(node.site)}
+            <motion.g
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.3, type: "spring" }}
+            >
+              <circle
+                cx={50}
+                cy={45}
+                r={6}
+                fill="hsl(217 91% 60% / 0.2)"
+                stroke="hsl(217 91% 60%)"
+                strokeWidth={0.4}
+              />
+              <text
+                x={50}
+                y={45.5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="hsl(217 91% 60%)"
+                style={{ fontSize: "2px", fontWeight: 600 }}
               >
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={35}
-                  fill={node.status === "empty" ? "hsl(var(--secondary))" : statusColor}
-                  fillOpacity={node.status === "empty" ? 1 : 0.15}
-                  stroke={statusColor}
-                  strokeWidth={2}
-                  filter={glowFilter}
-                  className="transition-all duration-300 hover:opacity-80"
+                HUB
+              </text>
+            </motion.g>
+
+            {nodes.map((node, idx) => {
+              const isHovered = hoveredNode === node.site;
+              const colors = statusColors[node.status];
+              
+              return (
+                <motion.g
+                  key={`node-${idx}`}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.25, delay: 0.15 + idx * 0.02 }}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onSiteClick?.(node.site)}
+                  onMouseEnter={() => setHoveredNode(node.site)}
+                  onMouseLeave={() => setHoveredNode(null)}
                   data-testid={`node-site-${idx}`}
-                />
-                
-                {node.status !== "empty" && (
-                  <motion.circle
+                >
+                  <circle
                     cx={node.x}
                     cy={node.y}
-                    r={35}
-                    fill="transparent"
-                    stroke={statusColor}
-                    strokeWidth={2}
-                    initial={{ r: 35, opacity: 0.8 }}
-                    animate={{ r: 45, opacity: 0 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                    r={isHovered ? 5 : 4}
+                    fill={colors.bg}
+                    stroke={colors.fill}
+                    strokeWidth={0.35}
+                    style={{ transition: "all 0.15s ease" }}
                   />
-                )}
+                  
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={1.2}
+                    fill={colors.fill}
+                  />
 
-                <foreignObject x={node.x - 12} y={node.y - 12} width={24} height={24}>
-                  <div className="w-full h-full flex items-center justify-center" style={{ color: statusColor }}>
-                    <Server className="w-5 h-5" />
+                  <text
+                    x={node.x}
+                    y={node.y + 6.5}
+                    textAnchor="middle"
+                    fill="currentColor"
+                    className="fill-foreground"
+                    style={{ fontSize: "1.8px", fontWeight: 500 }}
+                  >
+                    {node.site.length > 12 ? node.site.substring(0, 11) + ".." : node.site}
+                  </text>
+                </motion.g>
+              );
+            })}
+          </svg>
+
+          {hoveredNode && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute top-4 left-4 glass rounded-lg p-3 border border-white/10 max-w-xs z-10"
+              data-testid="tooltip-site-info"
+            >
+              {(() => {
+                const node = nodes.find(n => n.site === hoveredNode);
+                if (!node) return null;
+                const colors = statusColors[node.status];
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: colors.fill }}
+                      />
+                      <span className="font-semibold text-sm">{node.site}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>Total Devices: {node.devices.length}</p>
+                      <p style={{ color: statusColors.green.fill }}>Online: {node.onlineCount}</p>
+                      <p style={{ color: statusColors.red.fill }}>Offline: {node.offlineCount}</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/60 italic">Click to view devices</p>
                   </div>
-                </foreignObject>
+                );
+              })()}
+            </motion.div>
+          )}
+        </div>
 
-                <text
-                  x={node.x}
-                  y={node.y + 55}
-                  textAnchor="middle"
-                  className="fill-foreground text-xs font-medium"
-                >
-                  {node.site.length > 12 ? node.site.substring(0, 12) + "..." : node.site}
-                </text>
-                
-                <text
-                  x={node.x}
-                  y={node.y + 70}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-[10px]"
-                >
-                  {node.devices.length} device{node.devices.length !== 1 ? "s" : ""}
-                </text>
-              </motion.g>
-            );
-          })}
-        </svg>
+        <div className="xl:w-56 space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">Legend</h3>
+            <div className="grid grid-cols-2 xl:grid-cols-1 gap-2">
+              <div className="flex items-center gap-2 p-2 rounded-md" style={{ backgroundColor: statusColors.green.bg, border: `1px solid ${statusColors.green.fill}30` }} data-testid="legend-online">
+                <Circle className="w-3 h-3" style={{ fill: statusColors.green.fill, color: statusColors.green.fill }} />
+                <span className="text-xs">All Online</span>
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  {nodes.filter(n => n.status === "green").length}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-md" style={{ backgroundColor: statusColors.red.bg, border: `1px solid ${statusColors.red.fill}30` }} data-testid="legend-critical">
+                <Circle className="w-3 h-3" style={{ fill: statusColors.red.fill, color: statusColors.red.fill }} />
+                <span className="text-xs">Critical</span>
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  {nodes.filter(n => n.status === "red").length}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-md" style={{ backgroundColor: statusColors.mixed.bg, border: `1px solid ${statusColors.mixed.fill}30` }} data-testid="legend-mixed">
+                <Circle className="w-3 h-3" style={{ fill: statusColors.mixed.fill, color: statusColors.mixed.fill }} />
+                <span className="text-xs">Mixed</span>
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  {nodes.filter(n => n.status === "mixed").length}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/50 border border-white/5" data-testid="legend-empty">
+                <Circle className="w-3 h-3 fill-muted-foreground/30 text-muted-foreground/30" />
+                <span className="text-xs text-muted-foreground">No Devices</span>
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  {nodes.filter(n => n.status === "empty").length}
+                </Badge>
+              </div>
+            </div>
+          </div>
 
-        <div className="absolute bottom-4 left-4 flex flex-wrap items-center gap-4 text-xs" data-testid="legend-network-map">
-          <div className="flex items-center gap-2" data-testid="legend-online">
-            <div className="w-3 h-3 rounded-full bg-[hsl(var(--status-green))] shadow-[0_0_8px_hsl(var(--status-green)/0.5)]" />
-            <span className="text-muted-foreground">All Online</span>
-          </div>
-          <div className="flex items-center gap-2" data-testid="legend-critical">
-            <div className="w-3 h-3 rounded-full bg-[hsl(var(--status-red))] shadow-[0_0_8px_hsl(var(--status-red)/0.5)]" />
-            <span className="text-muted-foreground">Critical</span>
-          </div>
-          <div className="flex items-center gap-2" data-testid="legend-mixed">
-            <div className="w-3 h-3 rounded-full bg-[hsl(var(--status-blue))]" />
-            <span className="text-muted-foreground">Mixed Status</span>
-          </div>
-          <div className="flex items-center gap-2" data-testid="legend-empty">
-            <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
-            <span className="text-muted-foreground">No Devices</span>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">Summary</h3>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between p-2 rounded-md bg-secondary/30">
+                <span className="text-muted-foreground">Total Sites</span>
+                <span className="font-mono font-semibold">{sites.length}</span>
+              </div>
+              <div className="flex justify-between p-2 rounded-md bg-secondary/30">
+                <span className="text-muted-foreground">Total Devices</span>
+                <span className="font-mono font-semibold">{devices.length}</span>
+              </div>
+              <div className="flex justify-between p-2 rounded-md bg-secondary/30">
+                <span className="text-muted-foreground">Online</span>
+                <span className="font-mono font-semibold" style={{ color: statusColors.green.fill }}>
+                  {devices.filter(d => d.status === "green").length}
+                </span>
+              </div>
+              <div className="flex justify-between p-2 rounded-md bg-secondary/30">
+                <span className="text-muted-foreground">Offline</span>
+                <span className="font-mono font-semibold" style={{ color: statusColors.red.fill }}>
+                  {devices.filter(d => d.status === "red" || d.status === "blue").length}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
