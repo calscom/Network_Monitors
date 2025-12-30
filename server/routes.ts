@@ -190,9 +190,9 @@ export async function registerRoutes(
             uploadMbps = "0.00";
           }
 
-          // Total bandwidth in MBps (combined download + upload, converted from Mbps)
+          // Total bandwidth in Mbps (combined download + upload)
           const totalMbps = parseFloat(downloadMbps) + parseFloat(uploadMbps);
-          bandwidthMBps = (totalMbps / 8).toFixed(2);
+          bandwidthMBps = totalMbps.toFixed(2);
           
           // Utilization based on total throughput vs 1Gbps link
           newUtilization = Math.min(100, Math.floor((totalMbps / 1000) * 100));
@@ -226,7 +226,7 @@ export async function registerRoutes(
              downloadMbps = (Math.random() * 60 + 10).toFixed(2);
              uploadMbps = (Math.random() * 30 + 5).toFixed(2);
              const totalMbps = parseFloat(downloadMbps) + parseFloat(uploadMbps);
-             bandwidthMBps = (totalMbps / 8).toFixed(2);
+             bandwidthMBps = totalMbps.toFixed(2);
              newUtilization = Math.floor((totalMbps / 1000) * 100);
            }
         }

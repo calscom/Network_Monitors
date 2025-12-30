@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 
 interface UtilizationGaugeProps {
   value: number; // 0-100 (Load %)
-  bandwidth?: string; // MBps
+  bandwidth?: string; // Mbps
   label?: string;
 }
 
@@ -35,7 +35,7 @@ export function UtilizationGauge({ value, bandwidth, label = "Bandwidth" }: Util
             <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
               {bandwidth || "0.00"}
             </span>
-            <span className="text-xs font-medium text-muted-foreground">MBps</span>
+            <span className="text-xs font-medium text-muted-foreground">Mbps</span>
           </div>
         </div>
         <div className="text-right">
