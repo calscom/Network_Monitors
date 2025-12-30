@@ -37,5 +37,7 @@ export const logs = pgTable("logs", {
 });
 
 export const insertLogSchema = createInsertSchema(logs).omit({ id: true, timestamp: true });
+export type Device = typeof devices.$inferSelect;
+export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Log = typeof logs.$inferSelect;
 export type InsertLog = z.infer<typeof insertLogSchema>;

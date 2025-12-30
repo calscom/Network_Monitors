@@ -1,7 +1,8 @@
 import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload } from "lucide-react";
+import { NetworkMap } from "@/components/NetworkMap";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload, Network, List } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [activeSite, setActiveSite] = useState(sites[0]);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -140,6 +142,26 @@ export default function Dashboard() {
                 accept=".csv,.xlsx,.xls" 
                 className="hidden" 
               />
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-white/5">
+                <Button 
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  data-testid="button-view-list"
+                >
+                  <List className="w-4 h-4 mr-2" />
+                  List
+                </Button>
+                <Button 
+                  variant={viewMode === "map" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("map")}
+                  data-testid="button-view-map"
+                >
+                  <Network className="w-4 h-4 mr-2" />
+                  Map
+                </Button>
+              </div>
               <Button 
                 variant="outline" 
                 onClick={() => fileInputRef.current?.click()}
@@ -238,7 +260,20 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Network Map View */}
+        {viewMode === "map" && devices && (
+          <NetworkMap 
+            devices={devices} 
+            sites={sites} 
+            onSiteClick={(site) => {
+              setActiveSite(site);
+              setViewMode("list");
+            }}
+          />
+        )}
+
         {/* Site Tabs Navigation */}
+        {viewMode === "list" && (
         <div className="space-y-6">
           <Tabs value={activeSite} onValueChange={setActiveSite} className="w-full">
             <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
@@ -387,6 +422,7 @@ export default function Dashboard() {
             </div>
           </Tabs>
         </div>
+        )}
       </div>
     </div>
   );
