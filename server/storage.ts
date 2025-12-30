@@ -8,6 +8,7 @@ export interface IStorage {
   deleteDevice(id: number): Promise<void>;
   updateDeviceMetrics(id: number, metrics: { status: string; utilization: number; bandwidthMBps: string; lastCounter: bigint }): Promise<Device>;
   updateDevice(id: number, device: Partial<InsertDevice>): Promise<Device>;
+  updateDevicesSite(fromSite: string, toSite: string): Promise<number>;
   getLogs(site?: string): Promise<Log[]>;
   createLog(log: InsertLog): Promise<Log>;
   saveMetricsSnapshot(snapshot: InsertMetricsHistory): Promise<MetricsHistory>;
@@ -59,6 +60,15 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Device not found");
     }
     return device;
+  }
+
+  async updateDevicesSite(fromSite: string, toSite: string): Promise<number> {
+    const result = await db
+      .update(devices)
+      .set({ site: toSite })
+      .where(eq(devices.site, fromSite))
+      .returning();
+    return result.length;
   }
 
   async getLogs(site?: string): Promise<Log[]> {

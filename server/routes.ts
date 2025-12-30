@@ -73,6 +73,27 @@ export async function registerRoutes(
     }
   });
 
+  // Batch update devices from one site to another
+  app.post("/api/devices/reassign-site", async (req, res) => {
+    try {
+      const { fromSite, toSite } = req.body;
+      if (!fromSite || !toSite) {
+        return res.status(400).json({ message: "Both fromSite and toSite are required" });
+      }
+      if (fromSite === toSite) {
+        return res.status(400).json({ message: "Source and target sites must be different" });
+      }
+      const count = await storage.updateDevicesSite(fromSite, toSite);
+      if (count === 0) {
+        return res.status(404).json({ message: "No devices found in the source site" });
+      }
+      res.json({ updated: count });
+    } catch (err: any) {
+      console.error("Error reassigning devices:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   app.get("/api/devices/:id/history", async (req, res) => {
     try {
       const deviceId = Number(req.params.id);

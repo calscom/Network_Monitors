@@ -2,6 +2,7 @@ import { useDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
+import { SiteManager } from "@/components/SiteManager";
 import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, History, ArrowUpCircle, ArrowDownCircle, Upload, Download, Network, List } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -58,6 +59,16 @@ export default function Dashboard() {
     setActiveSite(editName.trim());
     setIsEditing(false);
     // Dispatch custom event to notify other components (like AddDeviceDialog)
+    window.dispatchEvent(new CustomEvent('sitesUpdated'));
+  };
+
+  const handleSitesChange = (newSites: string[]) => {
+    setSites(newSites);
+    // If active site was deleted, switch to first available
+    if (!newSites.includes(activeSite) && newSites.length > 0) {
+      setActiveSite(newSites[0]);
+    }
+    // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('sitesUpdated'));
   };
 
@@ -177,10 +188,12 @@ export default function Dashboard() {
                 variant="outline" 
                 onClick={() => fileInputRef.current?.click()}
                 className="glass border-white/10"
+                data-testid="button-import-sites"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Import Sites
               </Button>
+              <SiteManager sites={sites} onSitesChange={handleSitesChange} devices={devices} />
               <AddDeviceDialog />
             </div>
           </div>
