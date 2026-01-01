@@ -1,0 +1,31 @@
+root@Calsq-Server:~# journalctl -u networkmonitor -n 30 --no-pager
+Jan 01 21:51:48 Calsq-Server node[1137036]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 01 21:51:48 Calsq-Server node[1137036]:     at async /opt/networkmonitor/dist/index.cjs:76:32514
+Jan 01 21:51:48 Calsq-Server node[1137036]:     at async xm.createLog (/opt/networkmonitor/dist/index.cjs:76:103370)
+Jan 01 21:51:48 Calsq-Server node[1137036]:     at async Req.responseCb (/opt/networkmonitor/dist/index.cjs:79:1576) {
+Jan 01 21:51:48 Calsq-Server node[1137036]:   length: 103,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   severity: 'ERROR',
+Jan 01 21:51:48 Calsq-Server node[1137036]:   code: '42P01',
+Jan 01 21:51:48 Calsq-Server node[1137036]:   detail: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   hint: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   position: '13',
+Jan 01 21:51:48 Calsq-Server node[1137036]:   internalPosition: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   internalQuery: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   where: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   schema: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   table: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   column: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   dataType: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   constraint: undefined,
+Jan 01 21:51:48 Calsq-Server node[1137036]:   file: 'parse_relation.c',
+Jan 01 21:51:48 Calsq-Server node[1137036]:   line: '1381',
+Jan 01 21:51:48 Calsq-Server node[1137036]:   routine: 'parserOpenTable'
+Jan 01 21:51:48 Calsq-Server node[1137036]: }
+Jan 01 21:51:48 Calsq-Server node[1137036]: Node.js v20.19.6
+Jan 01 21:51:48 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 01 21:51:48 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 01 21:51:58 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 52.
+Jan 01 21:51:58 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 01 21:51:58 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 01 21:51:59 Calsq-Server node[1137519]: [auth] Self-hosted mode: authentication disabled, all users have admin access
+Jan 01 21:51:59 Calsq-Server node[1137519]: 9:51:59 PM [express] serving on port 5000
