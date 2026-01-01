@@ -63,3 +63,101 @@ Preferred communication style: Simple, everyday language.
 
 ### Development Tools
 - **Replit Plugins**: vite-plugin-runtime-error-modal, vite-plugin-cartographer, vite-plugin-dev-banner (development only)
+
+## Authentication & Authorization
+
+### User Roles
+- **Admin**: Full access including user management, device management, site configuration, and settings
+- **Operator**: Can manage devices, sites, and settings, but cannot manage other users
+- **Viewer**: Read-only access to view the monitoring dashboard and download device lists
+
+### Auth Flow
+- Uses Replit Auth (OpenID Connect) supporting Google, GitHub, X, Apple, and email/password
+- New users default to 'viewer' role
+- Admins can promote users via User Management page
+
+## Deployment Guide (Vultr/AWS EC2)
+
+### Prerequisites
+- Ubuntu 22.04 LTS server
+- Node.js 20.x
+- PostgreSQL 14+
+
+### Quick Setup
+```bash
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# Install tsx globally (required for build)
+npm install -g tsx
+
+# Clone and install
+git clone <repo-url> /opt/networkmonitor
+cd /opt/networkmonitor
+npm install
+
+# Set environment variables
+export DATABASE_URL=postgresql://user:pass@localhost:5432/networkmonitor
+export SESSION_SECRET=your_random_32_char_string
+export NODE_ENV=production
+
+# Build and run
+npm run build
+npm run db:push
+node dist/index.js
+```
+
+### Database Setup (Manual SQL)
+If db:push fails, create tables manually:
+```sql
+CREATE TABLE devices (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  community TEXT DEFAULT 'public' NOT NULL,
+  type TEXT NOT NULL,
+  status TEXT DEFAULT 'unknown' NOT NULL,
+  utilization INTEGER DEFAULT 0 NOT NULL,
+  bandwidth_mbps TEXT DEFAULT '0' NOT NULL,
+  download_mbps TEXT DEFAULT '0' NOT NULL,
+  upload_mbps TEXT DEFAULT '0' NOT NULL,
+  last_in_counter BIGINT DEFAULT 0 NOT NULL,
+  last_out_counter BIGINT DEFAULT 0 NOT NULL,
+  last_check TIMESTAMP,
+  last_seen TIMESTAMP,
+  site TEXT NOT NULL
+);
+
+CREATE TABLE logs (
+  id SERIAL PRIMARY KEY,
+  device_id INTEGER REFERENCES devices(id),
+  site TEXT NOT NULL,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  timestamp TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE users (
+  id VARCHAR(255) PRIMARY KEY,
+  email VARCHAR(255),
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  profile_image_url TEXT,
+  role VARCHAR(20) DEFAULT 'viewer',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE sessions (
+  sid VARCHAR(255) PRIMARY KEY,
+  sess JSON NOT NULL,
+  expire TIMESTAMP NOT NULL
+);
+CREATE INDEX idx_sessions_expire ON sessions(expire);
+```
+
+### Network Requirements
+- Outbound UDP port 161 for SNMP polling
+- Inbound TCP port 5000 (or 80/443 with reverse proxy)
+- Deploy inside VPC for access to internal network devices

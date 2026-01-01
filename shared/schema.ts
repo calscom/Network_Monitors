@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, timestamp, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 export const devices = pgTable("devices", {
   id: serial("id").primaryKey(),
@@ -13,8 +14,8 @@ export const devices = pgTable("devices", {
   bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision
   downloadMbps: text("download_mbps").default("0").notNull(), // Download speed in Mbps
   uploadMbps: text("upload_mbps").default("0").notNull(), // Upload speed in Mbps
-  lastInCounter: bigint("last_in_counter", { mode: "bigint" }).default(BigInt(0)).notNull(),
-  lastOutCounter: bigint("last_out_counter", { mode: "bigint" }).default(BigInt(0)).notNull(),
+  lastInCounter: bigint("last_in_counter", { mode: "bigint" }).default(sql`0`).notNull(),
+  lastOutCounter: bigint("last_out_counter", { mode: "bigint" }).default(sql`0`).notNull(),
   lastCheck: timestamp("last_check"),
   lastSeen: timestamp("last_seen"),
   site: text("site").notNull(), // The 12 site names
