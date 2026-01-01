@@ -38,6 +38,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDevice(id: number): Promise<void> {
+    // Delete related records first (foreign key constraints)
+    await db.delete(metricsHistory).where(eq(metricsHistory.deviceId, id));
+    await db.delete(logs).where(eq(logs.deviceId, id));
+    // Now delete the device
     await db.delete(devices).where(eq(devices.id, id));
   }
 
