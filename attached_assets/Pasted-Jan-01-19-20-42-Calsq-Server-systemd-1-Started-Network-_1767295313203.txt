@@ -1,0 +1,30 @@
+Jan 01 19:20:42 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 01 19:20:42 Calsq-Server node[1079708]: internal/modules/cjs/loader.js:818
+Jan 01 19:20:42 Calsq-Server node[1079708]:   throw err;
+Jan 01 19:20:42 Calsq-Server node[1079708]:   ^
+Jan 01 19:20:42 Calsq-Server node[1079708]: Error: Cannot find module '/opt/networkmonitor/dist/index.js'
+Jan 01 19:20:42 Calsq-Server node[1079708]:     at Function.Module._resolveFilename (internal/modules/cjs/loader.js:815:15)
+Jan 01 19:20:42 Calsq-Server node[1079708]:     at Function.Module._load (internal/modules/cjs/loader.js:667:27)
+Jan 01 19:20:42 Calsq-Server node[1079708]:     at Function.executeUserEntryPoint [as runMain] (internal/modules/run_main.js:60:12)
+Jan 01 19:20:42 Calsq-Server node[1079708]:     at internal/main/run_main_module.js:17:47 {
+Jan 01 19:20:42 Calsq-Server node[1079708]:   code: 'MODULE_NOT_FOUND',
+Jan 01 19:20:42 Calsq-Server node[1079708]:   requireStack: []
+Jan 01 19:20:42 Calsq-Server node[1079708]: }
+Jan 01 19:20:42 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 01 19:20:42 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 01 19:20:53 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 980.
+Jan 01 19:20:53 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 01 19:20:53 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 01 19:20:53 Calsq-Server node[1079717]: internal/modules/cjs/loader.js:818
+Jan 01 19:20:53 Calsq-Server node[1079717]:   throw err;
+Jan 01 19:20:53 Calsq-Server node[1079717]:   ^
+Jan 01 19:20:53 Calsq-Server node[1079717]: Error: Cannot find module '/opt/networkmonitor/dist/index.js'
+Jan 01 19:20:53 Calsq-Server node[1079717]:     at Function.Module._resolveFilename (internal/modules/cjs/loader.js:815:15)
+Jan 01 19:20:53 Calsq-Server node[1079717]:     at Function.Module._load (internal/modules/cjs/loader.js:667:27)
+Jan 01 19:20:53 Calsq-Server node[1079717]:     at Function.executeUserEntryPoint [as runMain] (internal/modules/run_main.js:60:12)
+Jan 01 19:20:53 Calsq-Server node[1079717]:     at internal/main/run_main_module.js:17:47 {
+Jan 01 19:20:53 Calsq-Server node[1079717]:   code: 'MODULE_NOT_FOUND',
+Jan 01 19:20:53 Calsq-Server node[1079717]:   requireStack: []
+Jan 01 19:20:53 Calsq-Server node[1079717]: }
+Jan 01 19:20:53 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 01 19:20:53 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
