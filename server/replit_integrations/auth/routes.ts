@@ -35,4 +35,15 @@ export function registerAuthRoutes(app: Express): void {
       }
     });
   });
+
+  // Self-hosted mode: /api/login just redirects to dashboard
+  if (!isReplitEnvironment) {
+    app.get("/api/login", (req, res) => {
+      res.redirect("/");
+    });
+    
+    app.get("/api/logout", (req, res) => {
+      res.redirect("/");
+    });
+  }
 }
