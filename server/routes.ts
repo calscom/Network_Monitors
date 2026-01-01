@@ -7,9 +7,30 @@ import snmp from "net-snmp";
 import { insertDeviceSchema, type UserRole } from "@shared/schema";
 import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage } from "./replit_integrations/auth";
 
+// Check if running on Replit (has REPL_ID environment variable)
+const isReplitEnvironment = !!process.env.REPL_ID;
+
+// Middleware that bypasses auth when not on Replit
+const conditionalAuth: RequestHandler = (req, res, next) => {
+  if (!isReplitEnvironment) {
+    // Self-hosted: bypass authentication, treat as admin
+    (req as any).user = { claims: { sub: 'self-hosted-admin' } };
+    (req as any).dbUser = { id: 'self-hosted-admin', role: 'admin' };
+    (req as any).isAuthenticated = () => true;
+    return next();
+  }
+  return isAuthenticated(req, res, next);
+};
+
 // Role-based access control middleware
 const requireRole = (...allowedRoles: UserRole[]): RequestHandler => {
   return async (req, res, next) => {
+    // Self-hosted: always allow (treated as admin)
+    if (!isReplitEnvironment) {
+      (req as any).dbUser = { id: 'self-hosted-admin', role: 'admin' };
+      return next();
+    }
+    
     const user = req.user as any;
     if (!user?.claims?.sub) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -56,17 +77,21 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Set up authentication BEFORE other routes
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  // Set up authentication BEFORE other routes (only on Replit)
+  if (isReplitEnvironment) {
+    await setupAuth(app);
+    registerAuthRoutes(app);
+  } else {
+    console.log("[auth] Self-hosted mode: authentication disabled, all users have admin access");
+  }
 
   // User management endpoints (admin only)
-  app.get("/api/users", isAuthenticated, requireRole('admin'), async (req, res) => {
+  app.get("/api/users", conditionalAuth, requireRole('admin'), async (req, res) => {
     const allUsers = await storage.getAllUsers();
     res.json(allUsers);
   });
 
-  app.patch("/api/users/:id/role", isAuthenticated, requireRole('admin'), async (req, res) => {
+  app.patch("/api/users/:id/role", conditionalAuth, requireRole('admin'), async (req, res) => {
     const userId = req.params.id;
     const { role } = req.body;
     
@@ -90,19 +115,19 @@ export async function registerRoutes(
   });
 
   // Read-only routes - any authenticated user can access
-  app.get(api.devices.list.path, isAuthenticated, async (req, res) => {
+  app.get(api.devices.list.path, conditionalAuth, async (req, res) => {
     const devices = await storage.getDevices();
     res.json(devices);
   });
 
-  app.get("/api/logs", isAuthenticated, async (req, res) => {
+  app.get("/api/logs", conditionalAuth, async (req, res) => {
     const site = req.query.site as string;
     const logs = await storage.getLogs(site);
     res.json(logs);
   });
 
   // Write operations - operators and admins only
-  app.post(api.devices.create.path, isAuthenticated, requireRole('operator', 'admin'), async (req, res) => {
+  app.post(api.devices.create.path, conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
     try {
       const input = api.devices.create.input.parse(req.body);
       const device = await storage.createDevice(input);
@@ -127,7 +152,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.devices.delete.path, isAuthenticated, requireRole('operator', 'admin'), async (req, res) => {
+  app.delete(api.devices.delete.path, conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
     const deviceId = Number(req.params.id);
     const devices = await storage.getDevices();
     const device = devices.find(d => d.id === deviceId);
@@ -147,7 +172,7 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  app.patch("/api/devices/:id", isAuthenticated, requireRole('operator', 'admin'), async (req, res) => {
+  app.patch("/api/devices/:id", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) {
@@ -234,7 +259,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/devices/:id/history", isAuthenticated, async (req, res) => {
+  app.get("/api/devices/:id/history", conditionalAuth, async (req, res) => {
     try {
       const deviceId = Number(req.params.id);
       const hours = Number(req.query.hours) || 24;
@@ -254,14 +279,14 @@ export async function registerRoutes(
   });
 
   // Polling interval endpoints
-  app.get("/api/settings/polling", isAuthenticated, (req, res) => {
+  app.get("/api/settings/polling", conditionalAuth, (req, res) => {
     res.json({ 
       interval: currentPollingInterval,
       options: POLLING_OPTIONS
     });
   });
 
-  app.post("/api/settings/polling", isAuthenticated, requireRole('operator', 'admin'), async (req, res) => {
+  app.post("/api/settings/polling", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
     const { interval } = req.body;
     const validOption = POLLING_OPTIONS.find(opt => opt.value === interval);
     
@@ -297,7 +322,7 @@ export async function registerRoutes(
     res.json({ interval: currentPollingInterval });
   });
 
-  app.get("/api/devices/template", isAuthenticated, async (req, res) => {
+  app.get("/api/devices/template", conditionalAuth, async (req, res) => {
     const devices = await storage.getDevices();
     const headers = ["name", "ip", "community", "type", "site"];
     

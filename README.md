@@ -196,6 +196,19 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_expire ON sessions(expire);
 ```
 
+## Authentication
+
+### On Replit
+The app uses Replit Auth (OpenID Connect) which supports Google, GitHub, Apple, and email login. New users are automatically assigned the 'viewer' role.
+
+### Self-Hosted (Vultr/AWS/etc.)
+**Authentication is automatically disabled** for self-hosted deployments. When the app detects it's not running on Replit (no `REPL_ID` environment variable), all users are granted admin access without login.
+
+This is ideal for internal network monitoring tools. If you need authentication for self-hosted deployments, you can:
+1. Set up a reverse proxy with basic auth (Nginx)
+2. Use a VPN to restrict network access
+3. Implement custom authentication (modify `server/routes.ts`)
+
 ## User Roles
 
 | Role | Permissions |
@@ -204,9 +217,9 @@ CREATE INDEX idx_sessions_expire ON sessions(expire);
 | **Operator** | Manage devices, sites, and settings (no user management) |
 | **Viewer** | Read-only: view dashboard and download device lists |
 
-### Setting First Admin
+### Setting First Admin (Replit only)
 
-After first login, run this SQL to make yourself admin:
+After first login on Replit, run this SQL to make yourself admin:
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'your-email@example.com';
 ```

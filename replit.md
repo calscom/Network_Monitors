@@ -72,9 +72,13 @@ Preferred communication style: Simple, everyday language.
 - **Viewer**: Read-only access to view the monitoring dashboard and download device lists
 
 ### Auth Flow
-- Uses Replit Auth (OpenID Connect) supporting Google, GitHub, X, Apple, and email/password
-- New users default to 'viewer' role
-- Admins can promote users via User Management page
+- **On Replit**: Uses Replit Auth (OpenID Connect) supporting Google, GitHub, X, Apple, and email/password. New users default to 'viewer' role. Admins can promote users via User Management page.
+- **Self-Hosted**: Authentication is automatically disabled when `REPL_ID` environment variable is not present. All users are treated as admins with full access. This is ideal for internal network monitoring tools.
+
+### Conditional Auth Implementation
+- `isReplitEnvironment` check in `server/routes.ts` detects Replit platform via `REPL_ID` env var
+- `conditionalAuth` middleware bypasses authentication on self-hosted deployments
+- `requireRole` middleware grants admin access to all users when self-hosted
 
 ## Deployment Guide (Vultr/AWS EC2)
 
