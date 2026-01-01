@@ -77,13 +77,15 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Set up authentication BEFORE other routes (only on Replit)
+  // Set up authentication BEFORE other routes
   if (isReplitEnvironment) {
     await setupAuth(app);
-    registerAuthRoutes(app);
   } else {
     console.log("[auth] Self-hosted mode: authentication disabled, all users have admin access");
   }
+  
+  // Always register auth routes (handles both Replit and self-hosted modes)
+  registerAuthRoutes(app);
 
   // User management endpoints (admin only)
   app.get("/api/users", conditionalAuth, requireRole('admin'), async (req, res) => {
