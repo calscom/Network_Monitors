@@ -4,19 +4,13 @@ import { isAuthenticated } from "./replitAuth";
 
 // Check if running on Replit (has REPL_ID env var)
 const isReplitEnvironment = !!process.env.REPL_ID;
-console.log(`[auth] Environment check: REPL_ID=${process.env.REPL_ID ? 'present' : 'absent'}, isReplitEnvironment=${isReplitEnvironment}`);
 
 // Register auth-specific routes
 export function registerAuthRoutes(app: Express): void {
-  console.log(`[auth] Registering auth routes, isReplitEnvironment=${isReplitEnvironment}`);
-  
   // Get current authenticated user
   app.get("/api/auth/user", async (req: any, res, next) => {
-    console.log(`[auth] /api/auth/user called, isReplitEnvironment=${isReplitEnvironment}`);
-    
     // Self-hosted mode: return admin user without authentication
     if (!isReplitEnvironment) {
-      console.log("[auth] Self-hosted mode: returning admin user");
       return res.json({
         id: "self-hosted-admin",
         email: "admin@localhost",
