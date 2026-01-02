@@ -1,0 +1,28 @@
+Jan 02 22:09:50 Calsq-Server node[95189]: error: column "active_users" does not exist
+Jan 02 22:09:50 Calsq-Server node[95189]:     at /opt/networkmonitor/dist/index.cjs:64:13326
+Jan 02 22:09:50 Calsq-Server node[95189]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 02 22:09:50 Calsq-Server node[95189]:     at async /opt/networkmonitor/dist/index.cjs:76:32491
+Jan 02 22:09:50 Calsq-Server node[95189]:     at async Kf.getDevices (/opt/networkmonitor/dist/index.cjs:76:102778)
+Jan 02 22:09:50 Calsq-Server node[95189]:     at async M8 (/opt/networkmonitor/dist/index.cjs:89:2538)
+Jan 02 22:09:50 Calsq-Server node[95189]:     at async /opt/networkmonitor/dist/index.cjs:89:3791 {
+Jan 02 22:09:50 Calsq-Server node[95189]:   length: 113,
+Jan 02 22:09:50 Calsq-Server node[95189]:   severity: 'ERROR',
+Jan 02 22:09:50 Calsq-Server node[95189]:   code: '42703',
+Jan 02 22:09:50 Calsq-Server node[95189]:   detail: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   hint: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   position: '272',
+Jan 02 22:09:50 Calsq-Server node[95189]:   internalPosition: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   internalQuery: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   where: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   schema: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   table: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   column: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   dataType: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   constraint: undefined,
+Jan 02 22:09:50 Calsq-Server node[95189]:   file: 'parse_relation.c',
+Jan 02 22:09:50 Calsq-Server node[95189]:   line: '3647',
+Jan 02 22:09:50 Calsq-Server node[95189]:   routine: 'errorMissingColumn'
+Jan 02 22:09:50 Calsq-Server node[95189]: }
+Jan 02 22:09:50 Calsq-Server node[95189]: Node.js v20.19.6
+Jan 02 22:09:50 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 02 22:09:50 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
