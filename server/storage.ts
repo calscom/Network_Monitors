@@ -148,9 +148,11 @@ export class DatabaseStorage implements IStorage {
         gte(metricsHistory.timestamp, since)
       ));
     
+    const avgUtil = Number(result[0]?.avgUtilization) || 0;
+    const avgBw = Number(result[0]?.avgBandwidth) || 0;
     return {
-      avgUtilization: Math.round(result[0]?.avgUtilization || 0),
-      avgBandwidth: parseFloat((result[0]?.avgBandwidth || 0).toFixed(2))
+      avgUtilization: Math.round(avgUtil),
+      avgBandwidth: parseFloat(avgBw.toFixed(2))
     };
   }
 

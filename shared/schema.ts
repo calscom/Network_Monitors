@@ -21,6 +21,8 @@ export const devices = pgTable("devices", {
   site: text("site").notNull(), // The 12 site names
   totalChecks: integer("total_checks").default(0).notNull(), // Total SNMP poll attempts
   successfulChecks: integer("successful_checks").default(0).notNull(), // Successful poll responses
+  interfaceIndex: integer("interface_index").default(1).notNull(), // SNMP interface index to monitor
+  interfaceName: text("interface_name"), // Human-readable interface name
 });
 
 export const insertDeviceSchema = createInsertSchema(devices).omit({
@@ -35,7 +37,8 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   lastCheck: true,
   lastSeen: true,
   totalChecks: true,
-  successfulChecks: true
+  successfulChecks: true,
+  interfaceName: true
 });
 
 export const logs = pgTable("logs", {

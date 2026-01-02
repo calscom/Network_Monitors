@@ -59,8 +59,16 @@ const requireRole = (...allowedRoles: UserRole[]): RequestHandler => {
   };
 };
 
-const OID_IF_IN_OCTETS = "1.3.6.1.2.1.2.2.1.10.1";  // Download (inbound)
-const OID_IF_OUT_OCTETS = "1.3.6.1.2.1.2.2.1.16.1"; // Upload (outbound)
+// Base OIDs without interface index suffix (interface index is appended dynamically)
+const OID_IF_IN_OCTETS_BASE = "1.3.6.1.2.1.2.2.1.10";  // Download (inbound)
+const OID_IF_OUT_OCTETS_BASE = "1.3.6.1.2.1.2.2.1.16"; // Upload (outbound)
+// OIDs for interface discovery
+const OID_IF_DESCR = "1.3.6.1.2.1.2.2.1.2";     // Interface description
+const OID_IF_TYPE = "1.3.6.1.2.1.2.2.1.3";      // Interface type
+const OID_IF_SPEED = "1.3.6.1.2.1.2.2.1.5";     // Interface speed
+const OID_IF_ADMIN_STATUS = "1.3.6.1.2.1.2.2.1.7"; // Admin status
+const OID_IF_OPER_STATUS = "1.3.6.1.2.1.2.2.1.8";  // Operational status
+const OID_IF_ALIAS = "1.3.6.1.2.1.31.1.1.1.18";    // Interface alias (IF-MIB)
 
 // Global polling configuration
 let currentPollingInterval = 5000; // Default 5 seconds
@@ -285,6 +293,81 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("Error fetching history:", err);
       res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // SNMP Interface Discovery endpoint
+  app.get("/api/devices/:id/interfaces", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+
+      const devices = await storage.getDevices();
+      const device = devices.find(d => d.id === deviceId);
+      if (!device) {
+        return res.status(404).json({ message: "Device not found" });
+      }
+
+      const interfaces: Array<{
+        index: number;
+        name: string;
+        type: number;
+        speed: number;
+        adminStatus: number;
+        operStatus: number;
+      }> = [];
+
+      const session = snmp.createSession(device.ip, device.community, {
+        timeout: 5000,
+        retries: 1
+      });
+
+      // Walk the interface description OID to discover all interfaces
+      session.subtree(OID_IF_DESCR, 20, (varbinds) => {
+        for (const varbind of varbinds) {
+          if (!snmp.isVarbindError(varbind)) {
+            const oid = varbind.oid.toString();
+            const index = parseInt(oid.split('.').pop() || '0');
+            const name = varbind.value?.toString() || `Interface ${index}`;
+            
+            interfaces.push({
+              index,
+              name,
+              type: 0,
+              speed: 0,
+              adminStatus: 0,
+              operStatus: 0
+            });
+          }
+        }
+      }, (error) => {
+        session.close();
+        
+        if (error && interfaces.length === 0) {
+          console.error(`[snmp] Interface discovery failed for ${device.name}: ${error.message}`);
+          return res.status(500).json({ 
+            message: `SNMP discovery failed: ${error.message}`,
+            interfaces: [] 
+          });
+        }
+
+        // Sort by interface index
+        interfaces.sort((a, b) => a.index - b.index);
+        
+        console.log(`[snmp] Discovered ${interfaces.length} interfaces on ${device.name}`);
+        res.json({ 
+          deviceId: device.id,
+          deviceName: device.name,
+          currentInterface: device.interfaceIndex || 1,
+          interfaces 
+        });
+      });
+
+    } catch (err: any) {
+      console.error("Error discovering interfaces:", err);
+      res.status(500).json({ message: err.message || "Interface discovery failed" });
     }
   });
 
@@ -595,7 +678,12 @@ export async function registerRoutes(
         retries: 1
       });
 
-      console.log(`[snmp] Polling ${device.name} at ${device.ip} (interval: ${intervalSeconds}s)...`);
+      // Use device's configured interface index (default to 1)
+      const ifIndex = device.interfaceIndex || 1;
+      const OID_IF_IN_OCTETS = `${OID_IF_IN_OCTETS_BASE}.${ifIndex}`;
+      const OID_IF_OUT_OCTETS = `${OID_IF_OUT_OCTETS_BASE}.${ifIndex}`;
+
+      console.log(`[snmp] Polling ${device.name} at ${device.ip} interface ${ifIndex} (interval: ${intervalSeconds}s)...`);
 
       session.get([OID_IF_IN_OCTETS, OID_IF_OUT_OCTETS], async (error, varbinds) => {
         let newStatus = 'red';
