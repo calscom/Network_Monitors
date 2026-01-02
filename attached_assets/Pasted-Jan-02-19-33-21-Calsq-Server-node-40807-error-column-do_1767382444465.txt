@@ -1,0 +1,32 @@
+Jan 02 19:33:21 Calsq-Server node[40807]: error: column "download_mbps" of relation "metrics_history" does not exist
+Jan 02 19:33:21 Calsq-Server node[40807]:     at /opt/networkmonitor/dist/index.cjs:64:13326
+Jan 02 19:33:21 Calsq-Server node[40807]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 02 19:33:21 Calsq-Server node[40807]:     at async /opt/networkmonitor/dist/index.cjs:76:32498
+Jan 02 19:33:21 Calsq-Server node[40807]:     at async xm.saveMetricsSnapshot (/opt/networkmonitor/dist/index.cjs:76:103850)
+Jan 02 19:33:21 Calsq-Server node[40807]:     at async Req.responseCb (/opt/networkmonitor/dist/index.cjs:89:1624) {
+Jan 02 19:33:21 Calsq-Server node[40807]:   length: 141,
+Jan 02 19:33:21 Calsq-Server node[40807]:   severity: 'ERROR',
+Jan 02 19:33:21 Calsq-Server node[40807]:   code: '42703',
+Jan 02 19:33:21 Calsq-Server node[40807]:   detail: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   hint: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   position: '92',
+Jan 02 19:33:21 Calsq-Server node[40807]:   internalPosition: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   internalQuery: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   where: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   schema: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   table: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   column: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   dataType: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   constraint: undefined,
+Jan 02 19:33:21 Calsq-Server node[40807]:   file: 'parse_target.c',
+Jan 02 19:33:21 Calsq-Server node[40807]:   line: '1075',
+Jan 02 19:33:21 Calsq-Server node[40807]:   routine: 'checkInsertTargets'
+Jan 02 19:33:21 Calsq-Server node[40807]: }
+Jan 02 19:33:21 Calsq-Server node[40807]: Node.js v20.19.6
+Jan 02 19:33:21 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 02 19:33:21 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 02 19:33:32 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 7.
+Jan 02 19:33:32 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 02 19:33:32 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 02 19:33:32 Calsq-Server node[40905]: [auth] Self-hosted mode: authentication disabled, all users have admin access
+Jan 02 19:33:32 Calsq-Server node[40905]: 7:33:32 PM [express] serving on port 5000
