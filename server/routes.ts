@@ -6,8 +6,12 @@ import { z } from "zod";
 import snmp from "net-snmp";
 import { exec } from "child_process";
 import { promisify } from "util";
+import net from "net";
+import dns from "dns";
 import { insertDeviceSchema, type UserRole } from "@shared/schema";
 import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage } from "./replit_integrations/auth";
+
+const dnsPromises = dns.promises;
 
 const execAsync = promisify(exec);
 
@@ -330,7 +334,36 @@ export async function registerRoutes(
 
   // ============= UTILITY ROUTES (Ping & Traceroute) =============
   
-  // TCP connectivity check utility endpoint (alternative to ICMP ping which requires raw sockets)
+  // Helper: TCP-based ping for environments without raw socket access
+  const tcpPing = (host: string, port: number, timeout: number): Promise<{ success: boolean; time: number; error?: string }> => {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      const socket = new net.Socket();
+      
+      socket.setTimeout(timeout);
+      
+      socket.on('connect', () => {
+        const time = Date.now() - startTime;
+        socket.destroy();
+        resolve({ success: true, time });
+      });
+      
+      socket.on('timeout', () => {
+        socket.destroy();
+        resolve({ success: false, time: timeout, error: 'Connection timed out' });
+      });
+      
+      socket.on('error', (err: any) => {
+        const time = Date.now() - startTime;
+        socket.destroy();
+        resolve({ success: false, time, error: err.code || err.message });
+      });
+      
+      socket.connect(port, host);
+    });
+  };
+  
+  // Ping utility - tries ICMP first (works on EC2/Vultr), falls back to TCP (Replit)
   app.post("/api/utility/ping", conditionalAuth, async (req, res) => {
     const { target, count = 4 } = req.body;
     
@@ -338,126 +371,136 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Target IP or hostname required" });
     }
     
-    // Sanitize input
+    // Sanitize input to prevent command injection
     const sanitizedTarget = target.replace(/[^a-zA-Z0-9.-]/g, '');
+    if (!sanitizedTarget) {
+      return res.status(400).json({ message: "Invalid target" });
+    }
     const pingCount = Math.min(Math.max(1, parseInt(count) || 4), 10);
     
-    // Use TCP connectivity checks since raw sockets aren't available in containerized environments
-    const net = require('net');
-    const dns = require('dns').promises;
-    
-    const tcpPing = (host: string, port: number, timeout: number): Promise<{ success: boolean; time: number; error?: string }> => {
-      return new Promise((resolve) => {
-        const startTime = Date.now();
-        const socket = new net.Socket();
-        
-        socket.setTimeout(timeout);
-        
-        socket.on('connect', () => {
-          const time = Date.now() - startTime;
-          socket.destroy();
-          resolve({ success: true, time });
-        });
-        
-        socket.on('timeout', () => {
-          socket.destroy();
-          resolve({ success: false, time: timeout, error: 'Connection timed out' });
-        });
-        
-        socket.on('error', (err: any) => {
-          const time = Date.now() - startTime;
-          socket.destroy();
-          resolve({ success: false, time, error: err.code || err.message });
-        });
-        
-        socket.connect(port, host);
-      });
-    };
-    
+    // Try ICMP ping first (works on EC2/Vultr with proper permissions)
     try {
-      // First resolve hostname to IP
-      let resolvedIp = sanitizedTarget;
-      let dnsInfo = '';
+      const { stdout, stderr } = await execAsync(`ping -c ${pingCount} -W 2 ${sanitizedTarget}`, { timeout: 30000 });
+      return res.json({ 
+        success: true, 
+        output: stdout,
+        error: stderr || null,
+        method: 'icmp'
+      });
+    } catch (icmpError: any) {
+      // Check if it's a permission error (Replit) vs actual ping failure
+      const errorMsg = icmpError.stderr || icmpError.message || '';
+      const isPermissionError = errorMsg.includes('Operation not permitted') || 
+                                 errorMsg.includes('cap_net_raw') ||
+                                 errorMsg.includes('setuid');
       
-      try {
-        const addresses = await dns.resolve4(sanitizedTarget);
-        if (addresses.length > 0) {
-          resolvedIp = addresses[0];
-          dnsInfo = `Resolved ${sanitizedTarget} to ${resolvedIp}\n`;
-        }
-      } catch (dnsError: any) {
-        // If DNS resolution fails, try using the target directly (might be an IP)
-        if (!sanitizedTarget.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-          return res.json({
-            success: false,
+      // If ICMP worked but host is unreachable, return that result
+      if (!isPermissionError && icmpError.stdout) {
+        return res.json({ 
+          success: false, 
+          output: icmpError.stdout,
+          error: icmpError.stderr || 'Host unreachable',
+          method: 'icmp'
+        });
+      }
+      
+      // Fall back to TCP ping for Replit environment
+      if (isPermissionError) {
+        try {
+          // Resolve hostname to IP
+          let resolvedIp = sanitizedTarget;
+          let dnsInfo = '';
+          
+          try {
+            const addresses = await dnsPromises.resolve4(sanitizedTarget);
+            if (addresses.length > 0) {
+              resolvedIp = addresses[0];
+              dnsInfo = `Resolved ${sanitizedTarget} to ${resolvedIp}\n`;
+            }
+          } catch (dnsError: any) {
+            if (!sanitizedTarget.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+              return res.json({
+                success: false,
+                output: '',
+                error: `Could not resolve hostname: ${sanitizedTarget}`,
+                method: 'tcp'
+              });
+            }
+          }
+          
+          // Try common ports
+          const portsToTry = [80, 443, 22, 161];
+          let successfulPort = 0;
+          
+          for (const port of portsToTry) {
+            const result = await tcpPing(resolvedIp, port, 2000);
+            if (result.success) {
+              successfulPort = port;
+              break;
+            }
+          }
+          
+          const port = successfulPort || 80;
+          const results: string[] = [];
+          results.push(dnsInfo);
+          results.push(`TCP PING ${resolvedIp}:${port} (${pingCount} attempts)`);
+          results.push(`[Using TCP connectivity check - ICMP not available]`);
+          results.push(`---`);
+          
+          let successCount = 0;
+          let totalTime = 0;
+          let minTime = Infinity;
+          let maxTime = 0;
+          
+          for (let i = 0; i < pingCount; i++) {
+            const result = await tcpPing(resolvedIp, port, 3000);
+            
+            if (result.success) {
+              successCount++;
+              totalTime += result.time;
+              minTime = Math.min(minTime, result.time);
+              maxTime = Math.max(maxTime, result.time);
+              results.push(`tcp_seq=${i + 1} port=${port} time=${result.time} ms`);
+            } else {
+              results.push(`tcp_seq=${i + 1} port=${port} ${result.error || 'Connection failed'}`);
+            }
+            
+            if (i < pingCount - 1) {
+              await new Promise(r => setTimeout(r, 200));
+            }
+          }
+          
+          results.push(`---`);
+          const lossPercent = ((pingCount - successCount) / pingCount * 100).toFixed(1);
+          results.push(`${pingCount} packets transmitted, ${successCount} received, ${lossPercent}% packet loss`);
+          
+          if (successCount > 0) {
+            const avgTime = (totalTime / successCount).toFixed(2);
+            results.push(`rtt min/avg/max = ${minTime}/${avgTime}/${maxTime} ms`);
+          }
+          
+          return res.json({ 
+            success: successCount > 0, 
+            output: results.join('\n'),
+            error: successCount === 0 ? 'All connection attempts failed' : null,
+            method: 'tcp'
+          });
+        } catch (tcpError: any) {
+          return res.json({ 
+            success: false, 
             output: '',
-            error: `Could not resolve hostname: ${sanitizedTarget}`
+            error: tcpError.message || 'TCP ping failed',
+            method: 'tcp'
           });
         }
       }
       
-      // Try common ports: 80 (HTTP), 443 (HTTPS), 22 (SSH), 161 (SNMP)
-      const portsToTry = [80, 443, 22, 161];
-      let successfulPort = 0;
-      
-      // Find first open port
-      for (const port of portsToTry) {
-        const result = await tcpPing(resolvedIp, port, 2000);
-        if (result.success) {
-          successfulPort = port;
-          break;
-        }
-      }
-      
-      const port = successfulPort || 80;
-      const results: string[] = [];
-      results.push(dnsInfo);
-      results.push(`TCP PING ${resolvedIp}:${port} (${pingCount} attempts)\n`);
-      results.push(`---`);
-      
-      let successCount = 0;
-      let totalTime = 0;
-      let minTime = Infinity;
-      let maxTime = 0;
-      
-      for (let i = 0; i < pingCount; i++) {
-        const result = await tcpPing(resolvedIp, port, 3000);
-        
-        if (result.success) {
-          successCount++;
-          totalTime += result.time;
-          minTime = Math.min(minTime, result.time);
-          maxTime = Math.max(maxTime, result.time);
-          results.push(`tcp_seq=${i + 1} port=${port} time=${result.time} ms`);
-        } else {
-          results.push(`tcp_seq=${i + 1} port=${port} ${result.error || 'Connection failed'}`);
-        }
-        
-        // Small delay between attempts
-        if (i < pingCount - 1) {
-          await new Promise(r => setTimeout(r, 200));
-        }
-      }
-      
-      results.push(`---`);
-      const lossPercent = ((pingCount - successCount) / pingCount * 100).toFixed(1);
-      results.push(`${pingCount} packets transmitted, ${successCount} received, ${lossPercent}% packet loss`);
-      
-      if (successCount > 0) {
-        const avgTime = (totalTime / successCount).toFixed(2);
-        results.push(`rtt min/avg/max = ${minTime}/${avgTime}/${maxTime} ms`);
-      }
-      
-      res.json({ 
-        success: successCount > 0, 
-        output: results.join('\n'),
-        error: successCount === 0 ? 'All connection attempts failed' : null
-      });
-    } catch (error: any) {
-      res.json({ 
+      // Other ICMP error
+      return res.json({ 
         success: false, 
-        output: '',
-        error: error.message || 'TCP ping failed'
+        output: icmpError.stdout || '',
+        error: icmpError.stderr || icmpError.message || 'Ping failed',
+        method: 'icmp'
       });
     }
   });

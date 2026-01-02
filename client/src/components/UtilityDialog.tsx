@@ -145,7 +145,7 @@ export function UtilityDialog({ open, onOpenChange }: UtilityDialogProps) {
 
           <TabsContent value="ping" className="space-y-4 mt-4">
             <div className="text-xs text-muted-foreground mb-2">
-              Uses TCP connectivity check (tests ports 80, 443, 22, 161)
+              Tries ICMP ping first (EC2/Vultr), falls back to TCP connectivity check on Replit
             </div>
             <div className="flex gap-2 items-end">
               <div className="flex-1 space-y-2">
