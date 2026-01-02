@@ -45,9 +45,11 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
       utilization: item.utilization,
     })) || [];
 
-  const availability = device.totalChecks > 0 
-    ? ((device.successfulChecks / device.totalChecks) * 100).toFixed(1)
-    : "N/A";
+  const hasAvailabilityData = device.totalChecks > 0;
+  const availabilityValue = hasAvailabilityData 
+    ? (device.successfulChecks / device.totalChecks) * 100
+    : 0;
+  const availability = hasAvailabilityData ? availabilityValue.toFixed(1) : null;
 
   if (isLoading) {
     return (
@@ -79,8 +81,8 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
       <div className="flex items-center gap-4 text-xs">
         <div className="flex items-center gap-1.5">
           <span className="text-muted-foreground">Availability:</span>
-          <span className={`font-semibold ${parseFloat(availability) >= 99 ? 'text-green-500' : parseFloat(availability) >= 95 ? 'text-yellow-500' : 'text-red-500'}`}>
-            {availability}%
+          <span className={`font-semibold ${!hasAvailabilityData ? 'text-muted-foreground' : availabilityValue >= 99 ? 'text-green-500' : availabilityValue >= 95 ? 'text-yellow-500' : 'text-red-500'}`}>
+            {availability !== null ? `${availability}%` : "--"}
           </span>
         </div>
         <div className="flex items-center gap-1.5">

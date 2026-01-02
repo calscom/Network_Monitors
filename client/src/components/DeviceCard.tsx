@@ -42,15 +42,17 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
     ? formatDistanceToNow(new Date(device.lastCheck), { addSuffix: true })
     : "Never";
 
-  const availability = device.totalChecks > 0 
-    ? ((device.successfulChecks / device.totalChecks) * 100).toFixed(1)
-    : "N/A";
+  const hasAvailabilityData = device.totalChecks > 0;
+  const availabilityValue = hasAvailabilityData 
+    ? (device.successfulChecks / device.totalChecks) * 100
+    : 0;
+  const availability = hasAvailabilityData ? availabilityValue.toFixed(1) : null;
   
-  const availabilityColor = availability === "N/A" 
+  const availabilityColor = !hasAvailabilityData 
     ? "text-muted-foreground" 
-    : parseFloat(availability) >= 99 
+    : availabilityValue >= 99 
       ? "text-green-500" 
-      : parseFloat(availability) >= 95 
+      : availabilityValue >= 95 
         ? "text-yellow-500" 
         : "text-red-500";
 
@@ -80,7 +82,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
               </span>
               <span className={`text-[9px] sm:text-[10px] flex items-center gap-0.5 ${availabilityColor}`}>
                 <Activity className="w-2.5 h-2.5" />
-                {availability}%
+                {availability !== null ? `${availability}%` : "--"}
               </span>
             </div>
           </div>
