@@ -105,7 +105,7 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
       {chartData.length > 0 ? (
         <div className="h-[150px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
               <XAxis 
                 dataKey="time" 
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -116,7 +116,9 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 tickLine={false}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
-                unit=" Mbps"
+                tickFormatter={(value) => `${value}`}
+                label={{ value: 'Mbps', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                width={50}
               />
               <Tooltip 
                 contentStyle={{ 
