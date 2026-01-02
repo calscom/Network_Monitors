@@ -20,6 +20,9 @@ const TIME_RANGES = [
   { value: "6", label: "6 hours" },
   { value: "24", label: "24 hours" },
   { value: "168", label: "7 days" },
+  { value: "720", label: "30 days" },
+  { value: "2160", label: "90 days" },
+  { value: "8760", label: "1 year" },
 ];
 
 export function PerformanceChart({ device }: PerformanceChartProps) {
@@ -35,11 +38,19 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
     refetchInterval: 30000,
   });
 
+  const getTimeFormat = (hours: string) => {
+    const h = parseInt(hours);
+    if (h <= 24) return "HH:mm";
+    if (h <= 168) return "EEE HH:mm";
+    if (h <= 720) return "MMM d";
+    return "MMM d";
+  };
+
   const chartData = data?.history
     ?.slice()
     .reverse()
     .map((item) => ({
-      time: format(new Date(item.timestamp), "HH:mm"),
+      time: format(new Date(item.timestamp), getTimeFormat(timeRange)),
       download: parseFloat(item.downloadMbps || "0"),
       upload: parseFloat(item.uploadMbps || "0"),
       utilization: item.utilization,
@@ -67,7 +78,7 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
           <span className="text-sm font-medium">Performance History</span>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[100px] h-7 text-xs" data-testid="select-chart-time-range">
+          <SelectTrigger className="w-[110px] h-7 text-xs" data-testid="select-chart-time-range">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
