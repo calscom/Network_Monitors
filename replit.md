@@ -35,7 +35,9 @@ Preferred communication style: Simple, everyday language.
 ### API Structure
 - `GET /api/devices` - List all devices with current status
 - `POST /api/devices` - Create new device with validation
+- `PATCH /api/devices/:id` - Update device settings (including interface selection)
 - `DELETE /api/devices/:id` - Remove device by ID
+- `POST /api/discover-interfaces` - Discover SNMP interfaces on a device (returns list with auto-uplink detection)
 
 ### Build System
 - **Development**: tsx for TypeScript execution, Vite dev server with HMR
