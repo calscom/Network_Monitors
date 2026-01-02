@@ -676,6 +676,9 @@ export async function registerRoutes(
           });
         }
 
+        // Track availability: increment totalChecks, and successfulChecks on success
+        const isSuccess = newStatus === 'green' || newStatus === 'blue';
+        
         await storage.updateDeviceMetrics(device.id, {
           status: newStatus,
           utilization: newUtilization,
@@ -683,7 +686,9 @@ export async function registerRoutes(
           downloadMbps,
           uploadMbps,
           lastInCounter,
-          lastOutCounter
+          lastOutCounter,
+          totalChecks: device.totalChecks + 1,
+          successfulChecks: isSuccess ? device.successfulChecks + 1 : device.successfulChecks
         });
 
         // Save metrics snapshot for historical tracking (only when device is online)
@@ -692,7 +697,9 @@ export async function registerRoutes(
             deviceId: device.id,
             site: device.site,
             utilization: newUtilization,
-            bandwidthMBps
+            bandwidthMBps,
+            downloadMbps,
+            uploadMbps
           });
         }
         

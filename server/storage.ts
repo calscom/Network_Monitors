@@ -14,6 +14,8 @@ export interface IStorage {
     uploadMbps: string;
     lastInCounter: bigint;
     lastOutCounter: bigint;
+    totalChecks: number;
+    successfulChecks: number;
   }): Promise<Device>;
   updateDevice(id: number, device: Partial<InsertDevice>): Promise<Device>;
   updateDevicesSite(fromSite: string, toSite: string): Promise<number>;
@@ -53,6 +55,8 @@ export class DatabaseStorage implements IStorage {
     uploadMbps: string;
     lastInCounter: bigint;
     lastOutCounter: bigint;
+    totalChecks: number;
+    successfulChecks: number;
   }): Promise<Device> {
     const [device] = await db
       .update(devices)
@@ -64,6 +68,8 @@ export class DatabaseStorage implements IStorage {
         uploadMbps: metrics.uploadMbps,
         lastInCounter: metrics.lastInCounter,
         lastOutCounter: metrics.lastOutCounter,
+        totalChecks: metrics.totalChecks,
+        successfulChecks: metrics.successfulChecks,
         lastCheck: new Date(),
         lastSeen: metrics.status === 'green' ? new Date() : undefined 
       })
