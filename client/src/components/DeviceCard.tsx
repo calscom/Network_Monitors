@@ -28,7 +28,7 @@ interface DeviceCardProps {
 export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   const deleteMutation = useDeleteDevice();
   const [open, setOpen] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
 
   const getIcon = (type: string) => {
     switch (type.toLowerCase()) {
