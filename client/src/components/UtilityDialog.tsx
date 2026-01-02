@@ -144,6 +144,9 @@ export function UtilityDialog({ open, onOpenChange }: UtilityDialogProps) {
           </TabsList>
 
           <TabsContent value="ping" className="space-y-4 mt-4">
+            <div className="text-xs text-muted-foreground mb-2">
+              Uses TCP connectivity check (tests ports 80, 443, 22, 161)
+            </div>
             <div className="flex gap-2 items-end">
               <div className="flex-1 space-y-2">
                 <Label htmlFor="ping-target">Target (IP or hostname)</Label>
