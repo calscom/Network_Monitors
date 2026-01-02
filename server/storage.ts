@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { devices, logs, metricsHistory, users, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User } from "@shared/schema";
-import { eq, desc, sql, and, gte } from "drizzle-orm";
+import { eq, desc, asc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
   getDevices(): Promise<Device[]>;
@@ -32,7 +32,8 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getDevices(): Promise<Device[]> {
-    return await db.select().from(devices);
+    // Sort by site then by id for stable ordering (prevents card position changes on status updates)
+    return await db.select().from(devices).orderBy(asc(devices.site), asc(devices.id));
   }
 
   async createDevice(insertDevice: InsertDevice): Promise<Device> {
