@@ -114,7 +114,7 @@ function SiteColumnComponent({ column, index, onSiteClick }: {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className={`flex flex-col min-w-[140px] max-w-[180px] border border-border/50 rounded-lg overflow-hidden ${getSiteStatusColor()} border-t-4 hover-elevate cursor-pointer`}
+      className={`flex flex-col min-w-[140px] max-w-[180px] lg:max-w-none lg:w-full border border-border/50 rounded-lg overflow-hidden ${getSiteStatusColor()} border-t-4 hover-elevate cursor-pointer`}
       onClick={() => onSiteClick?.(column.site)}
       data-testid={`site-column-${index}`}
     >
@@ -222,8 +222,8 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
         </div>
       </div>
 
-      <div className="p-4 overflow-x-auto">
-        <div className="flex gap-3 min-w-max">
+      <div className="p-4 overflow-x-auto lg:overflow-x-visible">
+        <div className="flex gap-3 min-w-max lg:min-w-0 lg:grid lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 lg:gap-3">
           {columns.map((column, index) => (
             <SiteColumnComponent 
               key={column.site} 
