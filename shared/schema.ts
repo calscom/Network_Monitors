@@ -23,6 +23,7 @@ export const devices = pgTable("devices", {
   successfulChecks: integer("successful_checks").default(0).notNull(), // Successful poll responses
   interfaceIndex: integer("interface_index").default(1).notNull(), // SNMP interface index to monitor
   interfaceName: text("interface_name"), // Human-readable interface name
+  activeUsers: integer("active_users").default(0).notNull(), // Active hotspot/usermanager users (Mikrotik only)
 });
 
 export const insertDeviceSchema = createInsertSchema(devices).omit({
@@ -38,6 +39,7 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   lastSeen: true,
   totalChecks: true,
   successfulChecks: true,
+  activeUsers: true,
 });
 
 export const logs = pgTable("logs", {

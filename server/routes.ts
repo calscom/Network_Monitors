@@ -70,6 +70,10 @@ const OID_IF_ADMIN_STATUS = "1.3.6.1.2.1.2.2.1.7"; // Admin status
 const OID_IF_OPER_STATUS = "1.3.6.1.2.1.2.2.1.8";  // Operational status
 const OID_IF_ALIAS = "1.3.6.1.2.1.31.1.1.1.18";    // Interface alias (IF-MIB)
 
+// Mikrotik Hotspot/UserManager OIDs
+const OID_MIKROTIK_HOTSPOT_ACTIVE_USERS = "1.3.6.1.4.1.14988.1.1.5.1.1.1"; // MikroTik native hotspot active users table
+const OID_AAA_SESSIONS = "1.3.6.1.4.1.9.9.150.1.1.1.0"; // Cisco AAA sessions (also works on Mikrotik)
+
 // Global polling configuration
 let currentPollingInterval = 5000; // Default 5 seconds
 let pollingTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -762,6 +766,39 @@ export async function registerRoutes(
     res.send(csvContent);
   });
 
+  // Helper function to poll Mikrotik hotspot active users
+  const pollMikrotikActiveUsers = (ip: string, community: string): Promise<number> => {
+    return new Promise((resolve) => {
+      const session = snmp.createSession(ip, community, {
+        timeout: 2000,
+        retries: 1
+      });
+
+      let userCount = 0;
+
+      // First try the AAA sessions OID (direct count)
+      session.get([OID_AAA_SESSIONS], (error, varbinds) => {
+        if (!error && varbinds.length > 0 && !snmp.isVarbindError(varbinds[0])) {
+          userCount = parseInt(String(varbinds[0].value), 10) || 0;
+          console.log(`[snmp] Hotspot users for ${ip}: ${userCount} (AAA sessions)`);
+          session.close();
+          resolve(userCount);
+        } else {
+          // Fallback: count entries in MikroTik hotspot table using subtree walk
+          session.subtree(OID_MIKROTIK_HOTSPOT_ACTIVE_USERS, 20, (varbinds) => {
+            userCount += varbinds.length;
+          }, (err) => {
+            if (!err) {
+              console.log(`[snmp] Hotspot users for ${ip}: ${userCount} (table walk)`);
+            }
+            session.close();
+            resolve(userCount);
+          });
+        }
+      });
+    });
+  };
+
   // Helper function to poll a single device (returns a Promise)
   const pollDevice = (device: any, intervalSeconds: number): Promise<void> => {
     return new Promise((resolve) => {
@@ -859,6 +896,19 @@ export async function registerRoutes(
         // Track availability: increment totalChecks, and successfulChecks on success
         const isSuccess = newStatus === 'green' || newStatus === 'blue';
         
+        // Poll active users for Mikrotik devices (preserve last known value on failure)
+        let activeUsers = device.activeUsers || 0;
+        if (device.type === 'mikrotik' && isSuccess) {
+          try {
+            const polledUsers = await pollMikrotikActiveUsers(device.ip, device.community);
+            activeUsers = polledUsers; // Only update if poll succeeds
+          } catch (err) {
+            console.log(`[snmp] Could not poll hotspot users for ${device.name}: ${err}`);
+            // Keep the existing activeUsers value (already set above)
+          }
+        }
+        // If device is offline, preserve the last known user count (don't reset to 0)
+        
         await storage.updateDeviceMetrics(device.id, {
           status: newStatus,
           utilization: newUtilization,
@@ -868,7 +918,8 @@ export async function registerRoutes(
           lastInCounter,
           lastOutCounter,
           totalChecks: device.totalChecks + 1,
-          successfulChecks: isSuccess ? device.successfulChecks + 1 : device.successfulChecks
+          successfulChecks: isSuccess ? device.successfulChecks + 1 : device.successfulChecks,
+          activeUsers
         });
 
         // Save metrics snapshot for historical tracking (only when device is online)

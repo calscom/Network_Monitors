@@ -52,6 +52,7 @@ Preferred communication style: Simple, everyday language.
 
 ### SNMP Monitoring
 - **net-snmp**: Node.js library for SNMP polling to collect device metrics (ifInOctets OID for bandwidth)
+- **Mikrotik Hotspot Users**: For Mikrotik devices, polls active hotspot/usermanager users via SNMP OID 1.3.6.1.4.1.9.9.150.1.1.1.0 (AAA sessions) with fallback to native Mikrotik hotspot table walk (1.3.6.1.4.1.14988.1.1.5.1.1.1)
 
 ### UI Dependencies
 - **Radix UI**: Complete set of accessible, unstyled primitives (dialogs, dropdowns, tabs, etc.)

@@ -17,6 +17,7 @@ interface SiteColumn {
   onlineCount: number;
   offlineCount: number;
   totalDevices: number;
+  activeUsers: number;
   status: "up" | "down" | "mixed" | "empty";
 }
 
@@ -153,9 +154,15 @@ function SiteColumnComponent({ column, index, onSiteClick }: {
       </div>
 
       <div className="p-2 border-t border-border/30 bg-card/30">
-        <div className="flex items-center justify-center gap-1 text-muted-foreground">
-          <Users className="w-3 h-3" />
-          <span className="text-[10px] font-mono">{column.totalDevices}</span>
+        <div className="flex items-center justify-between gap-2 text-muted-foreground">
+          <div className="flex items-center gap-1" title="Devices">
+            <Server className="w-3 h-3" />
+            <span className="text-[10px] font-mono">{column.totalDevices}</span>
+          </div>
+          <div className="flex items-center gap-1 text-blue-400" title="Active Hotspot Users">
+            <Users className="w-3 h-3" />
+            <span className="text-[10px] font-mono font-semibold">{column.activeUsers}</span>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -183,6 +190,7 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
       const siteDevices = devices.filter(d => d.site === site);
       const onlineCount = siteDevices.filter(d => d.status === "green").length;
       const offlineCount = siteDevices.filter(d => d.status === "red" || d.status === "blue").length;
+      const activeUsers = siteDevices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
       
       let status: "up" | "down" | "mixed" | "empty" = "empty";
       if (siteDevices.length > 0) {
@@ -197,6 +205,7 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
         onlineCount,
         offlineCount,
         totalDevices: siteDevices.length,
+        activeUsers,
         status
       };
     });
@@ -214,6 +223,7 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
   const totalOnline = devices.filter(d => d.status === "green").length;
   const totalOffline = devices.filter(d => d.status === "red" || d.status === "blue").length;
   const totalRecovering = devices.filter(d => d.status === "yellow" || d.status === "blue").length;
+  const totalActiveUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
 
   return (
     <div className="glass rounded-xl overflow-hidden" data-testid="network-map-container">
@@ -323,6 +333,10 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
           </Badge>
           <Badge variant="outline" className="text-blue-500 border-blue-500/30 bg-blue-500/10">
             {totalRecovering} Recovering
+          </Badge>
+          <Badge variant="outline" className="text-purple-500 border-purple-500/30 bg-purple-500/10">
+            <Users className="w-3 h-3 mr-1" />
+            {totalActiveUsers} Hotspot Users
           </Badge>
         </div>
       </div>
