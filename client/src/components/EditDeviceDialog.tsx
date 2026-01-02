@@ -91,6 +91,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
       type: device.type,
       site: device.site,
       interfaceIndex: device.interfaceIndex || 1,
+      interfaceName: device.interfaceName || null,
     },
   });
 
@@ -264,7 +265,14 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                   <FormItem>
                     <FormLabel>Interface to Monitor</FormLabel>
                     <Select 
-                      onValueChange={(val) => field.onChange(parseInt(val))} 
+                      onValueChange={(val) => {
+                        const intVal = parseInt(val);
+                        field.onChange(intVal);
+                        const iface = interfaceData?.interfaces?.find(i => i.index === intVal);
+                        if (iface) {
+                          form.setValue("interfaceName", iface.name);
+                        }
+                      }} 
                       value={String(field.value || 1)}
                     >
                       <FormControl>

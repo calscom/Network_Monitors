@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
 import { useCreateDevice } from "@/hooks/use-devices";
 import { insertDeviceSchema, type InsertDevice } from "@shared/schema";
-import { Plus } from "lucide-react";
+import { Plus, Loader2, Network, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
+
+interface DiscoveredInterface {
+  index: number;
+  name: string;
+  isUplink: boolean;
+}
 import {
   Dialog,
   DialogContent,
@@ -46,6 +54,40 @@ export function AddDeviceDialog() {
     const saved = localStorage.getItem("monitor_sites");
     return saved ? JSON.parse(saved) : DEFAULT_SITES;
   });
+  const [discoveredInterfaces, setDiscoveredInterfaces] = useState<DiscoveredInterface[]>([]);
+  const [selectedInterface, setSelectedInterface] = useState<number>(1);
+  const [selectedInterfaceName, setSelectedInterfaceName] = useState<string | null>(null);
+
+  // Interface discovery mutation
+  const discoverMutation = useMutation({
+    mutationFn: async ({ ip, community }: { ip: string; community: string }) => {
+      const res = await apiRequest("POST", "/api/discover-interfaces", { ip, community });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setDiscoveredInterfaces(data.interfaces || []);
+      if (data.suggestedInterface) {
+        setSelectedInterface(data.suggestedInterface);
+        form.setValue("interfaceIndex", data.suggestedInterface);
+        const suggestedIface = data.interfaces?.find((i: DiscoveredInterface) => i.index === data.suggestedInterface);
+        if (suggestedIface) {
+          setSelectedInterfaceName(suggestedIface.name);
+          form.setValue("interfaceName", suggestedIface.name);
+        }
+      }
+      toast({
+        title: "Interfaces Discovered",
+        description: `Found ${data.interfaces?.length || 0} interfaces. Auto-selected interface ${data.suggestedInterface}.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Discovery Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -62,6 +104,14 @@ export function AddDeviceDialog() {
     };
   }, []);
 
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setDiscoveredInterfaces([]);
+      setSelectedInterface(1);
+    }
+  }, [open]);
+
   const form = useForm<InsertDevice>({
     resolver: zodResolver(insertDeviceSchema),
     defaultValues: {
@@ -69,8 +119,20 @@ export function AddDeviceDialog() {
       ip: "",
       community: "public",
       type: "generic",
+      interfaceIndex: 1,
+      interfaceName: null,
     },
   });
+
+  const handleDiscover = () => {
+    const ip = form.getValues("ip");
+    const community = form.getValues("community");
+    if (!ip) {
+      toast({ title: "Enter IP address first", variant: "destructive" });
+      return;
+    }
+    discoverMutation.mutate({ ip, community: community || "public" });
+  };
 
   const onSubmit = (data: InsertDevice) => {
     createMutation.mutate(data, {
@@ -206,6 +268,77 @@ export function AddDeviceDialog() {
                 </FormItem>
               )}
             />
+
+            {/* Interface Discovery Section */}
+            <div className="border-t border-white/10 pt-4 mt-2">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Network className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">SNMP Interface</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDiscover}
+                  disabled={discoverMutation.isPending}
+                  data-testid="button-discover-interfaces-add"
+                >
+                  {discoverMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                  ) : (
+                    <Search className="w-3 h-3 mr-1" />
+                  )}
+                  Discover
+                </Button>
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="interfaceIndex"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Interface to Monitor</FormLabel>
+                    <Select 
+                      onValueChange={(val) => {
+                        const intVal = parseInt(val);
+                        field.onChange(intVal);
+                        setSelectedInterface(intVal);
+                        const iface = discoveredInterfaces.find(i => i.index === intVal);
+                        if (iface) {
+                          setSelectedInterfaceName(iface.name);
+                          form.setValue("interfaceName", iface.name);
+                        }
+                      }} 
+                      value={String(field.value || 1)}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-secondary/50 border-white/10 focus:border-primary/50" data-testid="select-add-interface">
+                          <SelectValue placeholder="Select interface" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {discoveredInterfaces.length > 0 ? (
+                          discoveredInterfaces.map((iface) => (
+                            <SelectItem key={iface.index} value={String(iface.index)}>
+                              {iface.index}: {iface.name} {iface.isUplink && "(uplink)"}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="1">Interface 1 (default)</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {discoveredInterfaces.length > 0 
+                        ? `${discoveredInterfaces.length} interfaces found. Uplink auto-selected.`
+                        : "Click Discover to scan interfaces after entering IP and community."}
+                    </p>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <DialogFooter className="pt-4">
               <Button 

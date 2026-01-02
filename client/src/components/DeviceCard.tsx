@@ -84,6 +84,12 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
                 <Activity className="w-2.5 h-2.5" />
                 {availability !== null ? `${availability}%` : "--"}
               </span>
+              {device.interfaceName && (
+                <span className="text-[9px] sm:text-[10px] flex items-center gap-0.5 text-muted-foreground/60">
+                  <Network className="w-2.5 h-2.5" />
+                  {device.interfaceName}
+                </span>
+              )}
             </div>
           </div>
         </div>

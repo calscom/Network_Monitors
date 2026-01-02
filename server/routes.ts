@@ -371,6 +371,98 @@ export async function registerRoutes(
     }
   });
 
+  // Direct interface discovery by IP/community (for new devices before they're added)
+  app.post("/api/discover-interfaces", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const { ip, community } = req.body;
+      
+      if (!ip || !community) {
+        return res.status(400).json({ message: "IP address and community string are required" });
+      }
+
+      // Validate IP format
+      const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+      if (!ipRegex.test(ip)) {
+        return res.status(400).json({ message: "Invalid IP address format" });
+      }
+
+      const interfaces: Array<{
+        index: number;
+        name: string;
+        type: number;
+        speed: number;
+        adminStatus: number;
+        operStatus: number;
+        isUplink: boolean;
+      }> = [];
+
+      const session = snmp.createSession(ip, community, {
+        timeout: 5000,
+        retries: 1
+      });
+
+      // Walk the interface description OID
+      session.subtree(OID_IF_DESCR, 20, (varbinds) => {
+        for (const varbind of varbinds) {
+          if (!snmp.isVarbindError(varbind)) {
+            const oid = varbind.oid.toString();
+            const index = parseInt(oid.split('.').pop() || '0');
+            const name = varbind.value?.toString() || `Interface ${index}`;
+            
+            // Heuristic to identify uplink interfaces
+            const nameLower = name.toLowerCase();
+            const isUplink = nameLower.includes('wan') || 
+                           nameLower.includes('uplink') || 
+                           nameLower.includes('ether1') ||
+                           nameLower.includes('sfp') ||
+                           nameLower.includes('fiber') ||
+                           nameLower.includes('eth0') ||
+                           nameLower.includes('internet') ||
+                           nameLower.includes('outside');
+            
+            interfaces.push({
+              index,
+              name,
+              type: 0,
+              speed: 0,
+              adminStatus: 0,
+              operStatus: 0,
+              isUplink
+            });
+          }
+        }
+      }, (error) => {
+        session.close();
+        
+        if (error && interfaces.length === 0) {
+          console.error(`[snmp] Interface discovery failed for ${ip}: ${error.message}`);
+          return res.status(500).json({ 
+            message: `SNMP discovery failed: ${error.message}`,
+            interfaces: [] 
+          });
+        }
+
+        // Sort by interface index
+        interfaces.sort((a, b) => a.index - b.index);
+        
+        // Find the best uplink candidate
+        const uplinkInterface = interfaces.find(i => i.isUplink) || interfaces[0];
+        const suggestedIndex = uplinkInterface?.index || 1;
+        
+        console.log(`[snmp] Discovered ${interfaces.length} interfaces on ${ip}, suggested uplink: ${suggestedIndex}`);
+        res.json({ 
+          ip,
+          suggestedInterface: suggestedIndex,
+          interfaces 
+        });
+      });
+
+    } catch (err: any) {
+      console.error("Error discovering interfaces:", err);
+      res.status(500).json({ message: err.message || "Interface discovery failed" });
+    }
+  });
+
   // Polling interval endpoints
   app.get("/api/settings/polling", conditionalAuth, (req, res) => {
     res.json({ 

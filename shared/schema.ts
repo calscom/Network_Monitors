@@ -38,7 +38,6 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   lastSeen: true,
   totalChecks: true,
   successfulChecks: true,
-  interfaceName: true
 });
 
 export const logs = pgTable("logs", {
