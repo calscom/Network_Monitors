@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Device } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
-import { Server, Router, Wifi, Radio, Users, MonitorSmartphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Server, Router, Wifi, Radio, Users, MonitorSmartphone, LayoutGrid, GalleryHorizontal } from "lucide-react";
 
 interface NetworkMapProps {
   devices: Device[];
@@ -163,6 +164,14 @@ function SiteColumnComponent({ column, index, onSiteClick }: {
 
 export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [layoutMode, setLayoutMode] = useState<"grid" | "horizontal">(() => {
+    const saved = localStorage.getItem("networkMapLayout");
+    return (saved === "horizontal" || saved === "grid") ? saved : "grid";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("networkMapLayout", layoutMode);
+  }, [layoutMode]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -219,11 +228,34 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
             <span className="text-muted-foreground">Devices:</span>
             <span className="font-mono font-semibold">{devices.length}</span>
           </div>
+          <div className="flex items-center border border-border/50 rounded-md">
+            <Button
+              size="sm"
+              variant={layoutMode === "grid" ? "default" : "ghost"}
+              className="h-7 px-2 rounded-r-none"
+              onClick={() => setLayoutMode("grid")}
+              data-testid="button-layout-grid"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={layoutMode === "horizontal" ? "default" : "ghost"}
+              className="h-7 px-2 rounded-l-none"
+              onClick={() => setLayoutMode("horizontal")}
+              data-testid="button-layout-horizontal"
+            >
+              <GalleryHorizontal className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="p-4 overflow-x-auto lg:overflow-x-visible">
-        <div className="flex gap-3 min-w-max lg:min-w-0 lg:grid lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 lg:gap-3">
+      <div className={`p-4 ${layoutMode === "horizontal" ? "overflow-x-auto" : "overflow-x-auto lg:overflow-x-visible"}`}>
+        <div className={layoutMode === "horizontal" 
+          ? "flex gap-3 min-w-max" 
+          : "flex gap-3 min-w-max lg:min-w-0 lg:grid lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 lg:gap-3"
+        }>
           {columns.map((column, index) => (
             <SiteColumnComponent 
               key={column.site} 
