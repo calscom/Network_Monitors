@@ -130,7 +130,11 @@ CREATE TABLE devices (
   last_out_counter BIGINT DEFAULT 0 NOT NULL,
   last_check TIMESTAMP,
   last_seen TIMESTAMP,
-  site TEXT NOT NULL
+  site TEXT NOT NULL,
+  total_checks INTEGER DEFAULT 0 NOT NULL,
+  successful_checks INTEGER DEFAULT 0 NOT NULL,
+  interface_index INTEGER DEFAULT 1 NOT NULL,
+  interface_name TEXT
 );
 
 CREATE TABLE logs (
@@ -159,6 +163,18 @@ CREATE TABLE sessions (
   expire TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_sessions_expire ON sessions(expire);
+```
+
+### Database Migrations (Existing Installations)
+If you're upgrading an existing installation, run these ALTER TABLE commands:
+```sql
+-- Added for availability tracking
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS total_checks INTEGER DEFAULT 0 NOT NULL;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS successful_checks INTEGER DEFAULT 0 NOT NULL;
+
+-- Added for SNMP interface selection
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS interface_index INTEGER DEFAULT 1 NOT NULL;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS interface_name TEXT;
 ```
 
 ### Network Requirements
