@@ -363,72 +363,83 @@ export async function registerRoutes(
     });
   };
   
-  // Ping utility - tries ICMP first (works on EC2/Vultr), falls back to TCP (Replit)
-  app.post("/api/utility/ping", conditionalAuth, async (req, res) => {
-    const { target, count = 4 } = req.body;
+  // Streaming ping utility - real-time output via SSE
+  app.get("/api/utility/ping/stream", conditionalAuth, async (req, res) => {
+    const target = req.query.target as string;
+    const count = parseInt(req.query.count as string) || 4;
     
-    if (!target || typeof target !== 'string') {
+    if (!target) {
       return res.status(400).json({ message: "Target IP or hostname required" });
     }
     
-    // Sanitize input to prevent command injection
     const sanitizedTarget = target.replace(/[^a-zA-Z0-9.-]/g, '');
     if (!sanitizedTarget) {
       return res.status(400).json({ message: "Invalid target" });
     }
-    const pingCount = Math.min(Math.max(1, parseInt(count) || 4), 10);
+    const pingCount = Math.min(Math.max(1, count), 10);
     
-    // Try ICMP ping first (works on EC2/Vultr with proper permissions)
-    try {
-      const { stdout, stderr } = await execAsync(`ping -c ${pingCount} -W 2 ${sanitizedTarget}`, { timeout: 30000 });
-      return res.json({ 
-        success: true, 
-        output: stdout,
-        error: stderr || null,
-        method: 'icmp'
-      });
-    } catch (icmpError: any) {
-      // Check if it's a permission error (Replit) vs actual ping failure
-      const errorMsg = icmpError.stderr || icmpError.message || '';
-      const isPermissionError = errorMsg.includes('Operation not permitted') || 
-                                 errorMsg.includes('cap_net_raw') ||
-                                 errorMsg.includes('setuid');
-      
-      // If ICMP worked but host is unreachable, return that result
-      if (!isPermissionError && icmpError.stdout) {
-        return res.json({ 
-          success: false, 
-          output: icmpError.stdout,
-          error: icmpError.stderr || 'Host unreachable',
-          method: 'icmp'
-        });
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+    
+    const sendLine = (data: string) => {
+      res.write(`data: ${JSON.stringify({ line: data })}\n\n`);
+    };
+    
+    const sendDone = (success: boolean) => {
+      res.write(`data: ${JSON.stringify({ done: true, success })}\n\n`);
+      res.end();
+    };
+    
+    // Try ICMP ping first with spawn for streaming
+    const { spawn } = await import('child_process');
+    const pingProcess = spawn('ping', ['-c', pingCount.toString(), '-W', '2', sanitizedTarget]);
+    
+    let hasOutput = false;
+    let isPermissionError = false;
+    
+    pingProcess.stdout.on('data', (data) => {
+      hasOutput = true;
+      const lines = data.toString().split('\n').filter((l: string) => l.trim());
+      lines.forEach((line: string) => sendLine(line));
+    });
+    
+    pingProcess.stderr.on('data', (data) => {
+      const errorMsg = data.toString();
+      if (errorMsg.includes('Operation not permitted') || 
+          errorMsg.includes('cap_net_raw') ||
+          errorMsg.includes('setuid')) {
+        isPermissionError = true;
+      } else {
+        sendLine(`Error: ${errorMsg.trim()}`);
       }
-      
-      // Fall back to TCP ping for Replit environment
+    });
+    
+    pingProcess.on('close', async (code) => {
       if (isPermissionError) {
+        // Fall back to TCP ping with streaming
+        sendLine('[ICMP not available, using TCP connectivity check]');
+        
         try {
-          // Resolve hostname to IP
           let resolvedIp = sanitizedTarget;
-          let dnsInfo = '';
           
           try {
             const addresses = await dnsPromises.resolve4(sanitizedTarget);
             if (addresses.length > 0) {
               resolvedIp = addresses[0];
-              dnsInfo = `Resolved ${sanitizedTarget} to ${resolvedIp}\n`;
+              sendLine(`Resolved ${sanitizedTarget} to ${resolvedIp}`);
             }
           } catch (dnsError: any) {
             if (!sanitizedTarget.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-              return res.json({
-                success: false,
-                output: '',
-                error: `Could not resolve hostname: ${sanitizedTarget}`,
-                method: 'tcp'
-              });
+              sendLine(`Error: Could not resolve hostname: ${sanitizedTarget}`);
+              sendDone(false);
+              return;
             }
           }
           
-          // Try common ports
+          // Find open port
           const portsToTry = [80, 443, 22, 161];
           let successfulPort = 0;
           
@@ -441,11 +452,8 @@ export async function registerRoutes(
           }
           
           const port = successfulPort || 80;
-          const results: string[] = [];
-          results.push(dnsInfo);
-          results.push(`TCP PING ${resolvedIp}:${port} (${pingCount} attempts)`);
-          results.push(`[Using TCP connectivity check - ICMP not available]`);
-          results.push(`---`);
+          sendLine(`TCP PING ${resolvedIp}:${port} (${pingCount} attempts)`);
+          sendLine('---');
           
           let successCount = 0;
           let totalTime = 0;
@@ -460,9 +468,9 @@ export async function registerRoutes(
               totalTime += result.time;
               minTime = Math.min(minTime, result.time);
               maxTime = Math.max(maxTime, result.time);
-              results.push(`tcp_seq=${i + 1} port=${port} time=${result.time} ms`);
+              sendLine(`tcp_seq=${i + 1} port=${port} time=${result.time} ms`);
             } else {
-              results.push(`tcp_seq=${i + 1} port=${port} ${result.error || 'Connection failed'}`);
+              sendLine(`tcp_seq=${i + 1} port=${port} ${result.error || 'Connection failed'}`);
             }
             
             if (i < pingCount - 1) {
@@ -470,67 +478,87 @@ export async function registerRoutes(
             }
           }
           
-          results.push(`---`);
+          sendLine('---');
           const lossPercent = ((pingCount - successCount) / pingCount * 100).toFixed(1);
-          results.push(`${pingCount} packets transmitted, ${successCount} received, ${lossPercent}% packet loss`);
+          sendLine(`${pingCount} packets transmitted, ${successCount} received, ${lossPercent}% packet loss`);
           
           if (successCount > 0) {
             const avgTime = (totalTime / successCount).toFixed(2);
-            results.push(`rtt min/avg/max = ${minTime}/${avgTime}/${maxTime} ms`);
+            sendLine(`rtt min/avg/max = ${minTime}/${avgTime}/${maxTime} ms`);
           }
           
-          return res.json({ 
-            success: successCount > 0, 
-            output: results.join('\n'),
-            error: successCount === 0 ? 'All connection attempts failed' : null,
-            method: 'tcp'
-          });
-        } catch (tcpError: any) {
-          return res.json({ 
-            success: false, 
-            output: '',
-            error: tcpError.message || 'TCP ping failed',
-            method: 'tcp'
-          });
+          sendDone(successCount > 0);
+        } catch (err: any) {
+          sendLine(`Error: ${err.message}`);
+          sendDone(false);
         }
+      } else {
+        sendDone(code === 0);
       }
-      
-      // Other ICMP error
-      return res.json({ 
-        success: false, 
-        output: icmpError.stdout || '',
-        error: icmpError.stderr || icmpError.message || 'Ping failed',
-        method: 'icmp'
-      });
-    }
+    });
+    
+    pingProcess.on('error', (err) => {
+      sendLine(`Error: ${err.message}`);
+      sendDone(false);
+    });
+    
+    req.on('close', () => {
+      pingProcess.kill();
+    });
   });
   
-  // Traceroute utility endpoint
-  app.post("/api/utility/traceroute", conditionalAuth, async (req, res) => {
-    const { target } = req.body;
+  // Streaming traceroute utility - real-time output via SSE
+  app.get("/api/utility/traceroute/stream", conditionalAuth, async (req, res) => {
+    const target = req.query.target as string;
     
-    if (!target || typeof target !== 'string') {
+    if (!target) {
       return res.status(400).json({ message: "Target IP or hostname required" });
     }
     
-    // Sanitize input to prevent command injection
     const sanitizedTarget = target.replace(/[^a-zA-Z0-9.-]/g, '');
-    
-    try {
-      // Use traceroute with timeout, limit hops to 15
-      const { stdout, stderr } = await execAsync(`traceroute -m 15 -w 2 ${sanitizedTarget}`, { timeout: 60000 });
-      res.json({ 
-        success: true, 
-        output: stdout,
-        error: stderr || null
-      });
-    } catch (error: any) {
-      res.json({ 
-        success: false, 
-        output: error.stdout || '',
-        error: error.stderr || error.message || 'Traceroute failed'
-      });
+    if (!sanitizedTarget) {
+      return res.status(400).json({ message: "Invalid target" });
     }
+    
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+    
+    const sendLine = (data: string) => {
+      res.write(`data: ${JSON.stringify({ line: data })}\n\n`);
+    };
+    
+    const sendDone = (success: boolean) => {
+      res.write(`data: ${JSON.stringify({ done: true, success })}\n\n`);
+      res.end();
+    };
+    
+    const { spawn } = await import('child_process');
+    const traceProcess = spawn('traceroute', ['-m', '15', '-w', '2', sanitizedTarget]);
+    
+    traceProcess.stdout.on('data', (data) => {
+      const lines = data.toString().split('\n').filter((l: string) => l.trim());
+      lines.forEach((line: string) => sendLine(line));
+    });
+    
+    traceProcess.stderr.on('data', (data) => {
+      sendLine(`Error: ${data.toString().trim()}`);
+    });
+    
+    traceProcess.on('close', (code) => {
+      sendDone(code === 0);
+    });
+    
+    traceProcess.on('error', (err) => {
+      sendLine(`Error: ${err.message}`);
+      sendDone(false);
+    });
+    
+    req.on('close', () => {
+      traceProcess.kill();
+    });
   });
 
   app.get("/api/devices/template", conditionalAuth, async (req, res) => {
