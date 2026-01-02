@@ -1,8 +1,8 @@
 import { Device } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
-import { PerformanceComparison } from "./PerformanceComparison";
-import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp } from "lucide-react";
+import { PerformanceChart } from "./PerformanceChart";
+import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -42,6 +42,18 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
     ? formatDistanceToNow(new Date(device.lastCheck), { addSuffix: true })
     : "Never";
 
+  const availability = device.totalChecks > 0 
+    ? ((device.successfulChecks / device.totalChecks) * 100).toFixed(1)
+    : "N/A";
+  
+  const availabilityColor = availability === "N/A" 
+    ? "text-muted-foreground" 
+    : parseFloat(availability) >= 99 
+      ? "text-green-500" 
+      : parseFloat(availability) >= 95 
+        ? "text-yellow-500" 
+        : "text-red-500";
+
   const handleDelete = () => {
     deleteMutation.mutate(device.id);
     setOpen(false);
@@ -65,6 +77,10 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
               </span>
               <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
                 {device.type}
+              </span>
+              <span className={`text-[9px] sm:text-[10px] flex items-center gap-0.5 ${availabilityColor}`}>
+                <Activity className="w-2.5 h-2.5" />
+                {availability}%
               </span>
             </div>
           </div>
@@ -150,7 +166,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
           </div>
         </div>
 
-        {showHistory && <PerformanceComparison device={device} />}
+        {showHistory && <PerformanceChart device={device} />}
       </div>
     </div>
   );
