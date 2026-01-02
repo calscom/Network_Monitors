@@ -19,6 +19,8 @@ export const devices = pgTable("devices", {
   lastCheck: timestamp("last_check"),
   lastSeen: timestamp("last_seen"),
   site: text("site").notNull(), // The 12 site names
+  totalChecks: integer("total_checks").default(0).notNull(), // Total SNMP poll attempts
+  successfulChecks: integer("successful_checks").default(0).notNull(), // Successful poll responses
 });
 
 export const insertDeviceSchema = createInsertSchema(devices).omit({
@@ -31,7 +33,9 @@ export const insertDeviceSchema = createInsertSchema(devices).omit({
   lastInCounter: true,
   lastOutCounter: true,
   lastCheck: true,
-  lastSeen: true
+  lastSeen: true,
+  totalChecks: true,
+  successfulChecks: true
 });
 
 export const logs = pgTable("logs", {
@@ -51,6 +55,8 @@ export const metricsHistory = pgTable("metrics_history", {
   site: text("site").notNull(),
   utilization: integer("utilization").default(0).notNull(),
   bandwidthMBps: text("bandwidth_mbps").default("0").notNull(),
+  downloadMbps: text("download_mbps").default("0").notNull(),
+  uploadMbps: text("upload_mbps").default("0").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
