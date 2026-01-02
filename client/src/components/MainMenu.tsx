@@ -59,8 +59,10 @@ import {
   Server,
   Eye,
   Timer,
-  RefreshCw
+  RefreshCw,
+  Terminal
 } from "lucide-react";
+import { UtilityDialog } from "./UtilityDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Device } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -86,6 +88,7 @@ export function MainMenu({
   canManage = false
 }: MainMenuProps) {
   const [siteManagerOpen, setSiteManagerOpen] = useState(false);
+  const [utilityOpen, setUtilityOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [newSiteName, setNewSiteName] = useState("");
@@ -575,8 +578,20 @@ export function MainMenu({
               </DropdownMenuSub>
             </>
           )}
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem 
+            onClick={() => setUtilityOpen(true)}
+            data-testid="menu-utility"
+          >
+            <Terminal className="w-4 h-4 mr-2" />
+            Network Utilities
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      <UtilityDialog open={utilityOpen} onOpenChange={setUtilityOpen} />
 
       <Dialog open={siteManagerOpen} onOpenChange={setSiteManagerOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">

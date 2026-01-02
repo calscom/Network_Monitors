@@ -4,8 +4,12 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import snmp from "net-snmp";
+import { exec } from "child_process";
+import { promisify } from "util";
 import { insertDeviceSchema, type UserRole } from "@shared/schema";
 import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage } from "./replit_integrations/auth";
+
+const execAsync = promisify(exec);
 
 // Check if running on Replit (has REPL_ID environment variable)
 const isReplitEnvironment = !!process.env.REPL_ID;
@@ -324,6 +328,64 @@ export async function registerRoutes(
     res.json({ interval: currentPollingInterval });
   });
 
+  // ============= UTILITY ROUTES (Ping & Traceroute) =============
+  
+  // Ping utility endpoint
+  app.post("/api/utility/ping", conditionalAuth, async (req, res) => {
+    const { target, count = 4 } = req.body;
+    
+    if (!target || typeof target !== 'string') {
+      return res.status(400).json({ message: "Target IP or hostname required" });
+    }
+    
+    // Sanitize input to prevent command injection
+    const sanitizedTarget = target.replace(/[^a-zA-Z0-9.-]/g, '');
+    const pingCount = Math.min(Math.max(1, parseInt(count) || 4), 10);
+    
+    try {
+      const { stdout, stderr } = await execAsync(`ping -c ${pingCount} -W 2 ${sanitizedTarget}`, { timeout: 30000 });
+      res.json({ 
+        success: true, 
+        output: stdout,
+        error: stderr || null
+      });
+    } catch (error: any) {
+      res.json({ 
+        success: false, 
+        output: error.stdout || '',
+        error: error.stderr || error.message || 'Ping failed'
+      });
+    }
+  });
+  
+  // Traceroute utility endpoint
+  app.post("/api/utility/traceroute", conditionalAuth, async (req, res) => {
+    const { target } = req.body;
+    
+    if (!target || typeof target !== 'string') {
+      return res.status(400).json({ message: "Target IP or hostname required" });
+    }
+    
+    // Sanitize input to prevent command injection
+    const sanitizedTarget = target.replace(/[^a-zA-Z0-9.-]/g, '');
+    
+    try {
+      // Use traceroute with timeout, limit hops to 15
+      const { stdout, stderr } = await execAsync(`traceroute -m 15 -w 2 ${sanitizedTarget}`, { timeout: 60000 });
+      res.json({ 
+        success: true, 
+        output: stdout,
+        error: stderr || null
+      });
+    } catch (error: any) {
+      res.json({ 
+        success: false, 
+        output: error.stdout || '',
+        error: error.stderr || error.message || 'Traceroute failed'
+      });
+    }
+  });
+
   app.get("/api/devices/template", conditionalAuth, async (req, res) => {
     const devices = await storage.getDevices();
     const headers = ["name", "ip", "community", "type", "site"];
@@ -416,28 +478,7 @@ export async function registerRoutes(
           newUtilization = 0;
         }
 
-        // Mocking for Demo ONLY if it's a localhost or specific ranges
-        const isMockable = device.ip === '127.0.0.1' || 
-                          device.ip === 'localhost' || 
-                          device.ip.startsWith('10.0.0.') ||
-                          device.ip.startsWith('10.10.10.') ||
-                          device.ip.startsWith('192.168.1.');
-
-        if (isMockable) {
-           if (device.status === 'red' || error) {
-             newStatus = 'green';
-           } else {
-             newStatus = 'green';
-           }
-           // Use real data if available, otherwise mock it
-           if (parseFloat(downloadMbps) === 0 && parseFloat(uploadMbps) === 0) {
-             downloadMbps = (Math.random() * 60 + 10).toFixed(2);
-             uploadMbps = (Math.random() * 30 + 5).toFixed(2);
-             const totalMbps = parseFloat(downloadMbps) + parseFloat(uploadMbps);
-             bandwidthMBps = totalMbps.toFixed(2);
-             newUtilization = Math.floor((totalMbps / 1000) * 100);
-           }
-        }
+        // Real SNMP data only - no simulation
 
         if (device.status !== newStatus) {
           console.log(`[snmp] Status change for ${device.name}: ${device.status} -> ${newStatus}`);
@@ -470,8 +511,8 @@ export async function registerRoutes(
           lastOutCounter
         });
 
-        // Save metrics snapshot for historical tracking (every poll cycle)
-        if (newStatus === 'green' || isMockable) {
+        // Save metrics snapshot for historical tracking (only when device is online)
+        if (newStatus === 'green') {
           await storage.saveMetricsSnapshot({
             deviceId: device.id,
             site: device.site,
