@@ -1,0 +1,28 @@
+
+Jan 04 21:27:47 Calsq-Server node[1048866]: error: permission denied for table device_interfaces
+Jan 04 21:27:47 Calsq-Server node[1048866]:     at /opt/networkmonitor/dist/index.cjs:64:13326
+Jan 04 21:27:47 Calsq-Server node[1048866]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 04 21:27:47 Calsq-Server node[1048866]:     at async /opt/networkmonitor/dist/index.cjs:76:32474
+Jan 04 21:27:47 Calsq-Server node[1048866]:     at async Xf.getDeviceInterfaces (/opt/networkmonitor/dist/index.cjs:76:106665)
+Jan 04 21:27:47 Calsq-Server node[1048866]:     at async Req.responseCb (/opt/networkmonitor/dist/index.cjs:113:2771) {
+Jan 04 21:27:47 Calsq-Server node[1048866]:   length: 105,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   severity: 'ERROR',
+Jan 04 21:27:47 Calsq-Server node[1048866]:   code: '42501',
+Jan 04 21:27:47 Calsq-Server node[1048866]:   detail: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   hint: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   position: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   internalPosition: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   internalQuery: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   where: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   schema: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   table: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   column: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   dataType: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   constraint: undefined,
+Jan 04 21:27:47 Calsq-Server node[1048866]:   file: 'aclchk.c',
+Jan 04 21:27:47 Calsq-Server node[1048866]:   line: '3452',
+Jan 04 21:27:47 Calsq-Server node[1048866]:   routine: 'aclcheck_error'
+Jan 04 21:27:47 Calsq-Server node[1048866]: }
+Jan 04 21:27:47 Calsq-Server node[1048866]: Node.js v20.19.6
+Jan 04 21:27:47 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 04 21:27:47 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
