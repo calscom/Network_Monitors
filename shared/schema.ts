@@ -66,12 +66,41 @@ export const metricsHistory = pgTable("metrics_history", {
 
 export const insertMetricsHistorySchema = createInsertSchema(metricsHistory).omit({ id: true, timestamp: true });
 
+// Device interfaces table for multi-interface monitoring
+export const deviceInterfaces = pgTable("device_interfaces", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  interfaceIndex: integer("interface_index").notNull(),
+  interfaceName: text("interface_name"),
+  isPrimary: integer("is_primary").default(0).notNull(), // 1 = primary, 0 = secondary
+  status: text("status").default("unknown").notNull(),
+  utilization: integer("utilization").default(0).notNull(),
+  downloadMbps: text("download_mbps").default("0").notNull(),
+  uploadMbps: text("upload_mbps").default("0").notNull(),
+  lastInCounter: bigint("last_in_counter", { mode: "bigint" }).default(sql`0`).notNull(),
+  lastOutCounter: bigint("last_out_counter", { mode: "bigint" }).default(sql`0`).notNull(),
+  lastCheck: timestamp("last_check"),
+});
+
+export const insertDeviceInterfaceSchema = createInsertSchema(deviceInterfaces).omit({
+  id: true,
+  status: true,
+  utilization: true,
+  downloadMbps: true,
+  uploadMbps: true,
+  lastInCounter: true,
+  lastOutCounter: true,
+  lastCheck: true,
+});
+
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Log = typeof logs.$inferSelect;
 export type InsertLog = z.infer<typeof insertLogSchema>;
 export type MetricsHistory = typeof metricsHistory.$inferSelect;
 export type InsertMetricsHistory = z.infer<typeof insertMetricsHistorySchema>;
+export type DeviceInterface = typeof deviceInterfaces.$inferSelect;
+export type InsertDeviceInterface = z.infer<typeof insertDeviceInterfaceSchema>;
 
 // Export auth models
 export * from "./models/auth";

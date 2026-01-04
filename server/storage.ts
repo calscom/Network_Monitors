@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User } from "@shared/schema";
+import { devices, logs, metricsHistory, users, deviceInterfaces, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface } from "@shared/schema";
 import { eq, desc, asc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
@@ -28,6 +28,19 @@ export interface IStorage {
   // User management
   getAllUsers(): Promise<User[]>;
   updateUserRole(userId: string, role: string): Promise<User | null>;
+  // Device interfaces
+  getDeviceInterfaces(deviceId: number): Promise<DeviceInterface[]>;
+  addDeviceInterface(iface: InsertDeviceInterface): Promise<DeviceInterface>;
+  removeDeviceInterface(id: number): Promise<void>;
+  updateDeviceInterfaceMetrics(id: number, metrics: {
+    status: string;
+    utilization: number;
+    downloadMbps: string;
+    uploadMbps: string;
+    lastInCounter: bigint;
+    lastOutCounter: bigint;
+  }): Promise<DeviceInterface>;
+  setDeviceInterfaces(deviceId: number, interfaces: InsertDeviceInterface[]): Promise<DeviceInterface[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -43,6 +56,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDevice(id: number): Promise<void> {
     // Delete related records first (foreign key constraints)
+    await db.delete(deviceInterfaces).where(eq(deviceInterfaces.deviceId, id));
     await db.delete(metricsHistory).where(eq(metricsHistory.deviceId, id));
     await db.delete(logs).where(eq(logs.deviceId, id));
     // Now delete the device
@@ -171,6 +185,61 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user || null;
+  }
+
+  // Device interfaces methods
+  async getDeviceInterfaces(deviceId: number): Promise<DeviceInterface[]> {
+    return await db
+      .select()
+      .from(deviceInterfaces)
+      .where(eq(deviceInterfaces.deviceId, deviceId))
+      .orderBy(desc(deviceInterfaces.isPrimary), asc(deviceInterfaces.interfaceIndex));
+  }
+
+  async addDeviceInterface(iface: InsertDeviceInterface): Promise<DeviceInterface> {
+    const [result] = await db.insert(deviceInterfaces).values(iface).returning();
+    return result;
+  }
+
+  async removeDeviceInterface(id: number): Promise<void> {
+    await db.delete(deviceInterfaces).where(eq(deviceInterfaces.id, id));
+  }
+
+  async updateDeviceInterfaceMetrics(id: number, metrics: {
+    status: string;
+    utilization: number;
+    downloadMbps: string;
+    uploadMbps: string;
+    lastInCounter: bigint;
+    lastOutCounter: bigint;
+  }): Promise<DeviceInterface> {
+    const [result] = await db
+      .update(deviceInterfaces)
+      .set({
+        status: metrics.status,
+        utilization: metrics.utilization,
+        downloadMbps: metrics.downloadMbps,
+        uploadMbps: metrics.uploadMbps,
+        lastInCounter: metrics.lastInCounter,
+        lastOutCounter: metrics.lastOutCounter,
+        lastCheck: new Date(),
+      })
+      .where(eq(deviceInterfaces.id, id))
+      .returning();
+    return result;
+  }
+
+  async setDeviceInterfaces(deviceId: number, interfaces: InsertDeviceInterface[]): Promise<DeviceInterface[]> {
+    // Delete existing interfaces for this device
+    await db.delete(deviceInterfaces).where(eq(deviceInterfaces.deviceId, deviceId));
+    
+    if (interfaces.length === 0) {
+      return [];
+    }
+    
+    // Insert new interfaces
+    const results = await db.insert(deviceInterfaces).values(interfaces).returning();
+    return results;
   }
 }
 
