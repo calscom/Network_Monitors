@@ -1,0 +1,32 @@
+Jan 04 21:24:05 Calsq-Server node[1047605]: error: relation "device_interfaces" does not exist
+Jan 04 21:24:05 Calsq-Server node[1047605]:     at /opt/networkmonitor/dist/index.cjs:64:13326
+Jan 04 21:24:05 Calsq-Server node[1047605]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 04 21:24:05 Calsq-Server node[1047605]:     at async /opt/networkmonitor/dist/index.cjs:76:32474
+Jan 04 21:24:05 Calsq-Server node[1047605]:     at async Xf.getDeviceInterfaces (/opt/networkmonitor/dist/index.cjs:76:106665)
+Jan 04 21:24:05 Calsq-Server node[1047605]:     at async Req.responseCb (/opt/networkmonitor/dist/index.cjs:113:2771) {
+Jan 04 21:24:05 Calsq-Server node[1047605]:   length: 117,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   severity: 'ERROR',
+Jan 04 21:24:05 Calsq-Server node[1047605]:   code: '42P01',
+Jan 04 21:24:05 Calsq-Server node[1047605]:   detail: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   hint: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   position: '192',
+Jan 04 21:24:05 Calsq-Server node[1047605]:   internalPosition: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   internalQuery: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   where: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   schema: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   table: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   column: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   dataType: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   constraint: undefined,
+Jan 04 21:24:05 Calsq-Server node[1047605]:   file: 'parse_relation.c',
+Jan 04 21:24:05 Calsq-Server node[1047605]:   line: '1381',
+Jan 04 21:24:05 Calsq-Server node[1047605]:   routine: 'parserOpenTable'
+Jan 04 21:24:05 Calsq-Server node[1047605]: }
+Jan 04 21:24:05 Calsq-Server node[1047605]: Node.js v20.19.6
+Jan 04 21:24:05 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 04 21:24:05 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 04 21:24:15 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 1.
+Jan 04 21:24:15 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 04 21:24:15 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 04 21:24:15 Calsq-Server node[1047666]: [auth] Self-hosted mode: authentication disabled, all users have admin access
+Jan 04 21:24:15 Calsq-Server node[1047666]: 9:24:15 PM [express] serving on port 5000
