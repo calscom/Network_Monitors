@@ -328,13 +328,18 @@ export async function registerRoutes(
         return res.status(400).json({ message: "interfaces must be an array" });
       }
 
-      // Prepare interfaces with deviceId
+      // Prepare interfaces with deviceId - handle both old and new field names
       const interfacesToSave = interfaces.map((iface: any, idx: number) => ({
         deviceId,
-        interfaceIndex: iface.interfaceIndex || iface.index,
-        interfaceName: iface.interfaceName || iface.name,
-        isPrimary: iface.isPrimary ? 1 : (idx === 0 ? 1 : 0), // First one is primary by default
+        interfaceIndex: iface.interfaceIndex ?? iface.index ?? 1,
+        interfaceName: iface.interfaceName ?? iface.name ?? `Interface ${iface.interfaceIndex || iface.index || 1}`,
+        isPrimary: typeof iface.isPrimary === 'number' 
+          ? iface.isPrimary 
+          : (iface.isPrimary === true ? 1 : (idx === 0 ? 1 : 0)),
       }));
+
+      console.log(`[interfaces] Saving ${interfacesToSave.length} interfaces for device ${deviceId}:`, 
+        interfacesToSave.map(i => `${i.interfaceName} (idx:${i.interfaceIndex}, primary:${i.isPrimary})`).join(', '));
 
       const savedInterfaces = await storage.setDeviceInterfaces(deviceId, interfacesToSave);
       

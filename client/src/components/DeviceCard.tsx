@@ -1,8 +1,8 @@
-import { Device } from "@shared/schema";
+import { Device, DeviceInterface } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
 import { PerformanceChart } from "./PerformanceChart";
-import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity } from "lucide-react";
+import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity, Layers } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteDevice } from "@/hooks/use-devices";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { EditDeviceDialog } from "./EditDeviceDialog";
 
@@ -29,6 +30,18 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   const deleteMutation = useDeleteDevice();
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
+  const [showInterfaces, setShowInterfaces] = useState(false);
+
+  // Fetch monitored interfaces for this device
+  const { data: monitoredInterfaces = [] } = useQuery<DeviceInterface[]>({
+    queryKey: ['/api/devices', device.id, 'monitored-interfaces'],
+    enabled: showInterfaces, // Only fetch when expanded
+    refetchInterval: 2000, // Refresh with main polling
+  });
+
+  // Filter to show only secondary interfaces (non-primary)
+  const secondaryInterfaces = monitoredInterfaces.filter(i => i.isPrimary !== 1);
+  const hasSecondaryInterfaces = secondaryInterfaces.length > 0;
 
   const getIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -118,6 +131,37 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
         </div>
 
         <UtilizationGauge value={device.utilization} bandwidth={device.bandwidthMBps} />
+
+        {/* Secondary Interfaces Expandable Section */}
+        {showInterfaces && hasSecondaryInterfaces && (
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1">
+              <Layers className="w-3 h-3" />
+              Additional Interfaces
+            </div>
+            {secondaryInterfaces.map((iface) => (
+              <div
+                key={iface.id}
+                className="p-2 rounded-lg bg-secondary/30 border border-white/5"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium">{iface.interfaceName || `Interface ${iface.interfaceIndex}`}</span>
+                  <StatusBadge status={iface.status || 'unknown'} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-1">
+                    <ArrowDown className="w-3 h-3 text-[hsl(var(--status-green))]" />
+                    <span className="text-[10px] font-mono">{iface.downloadMbps || '0.00'} Mbps</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <ArrowUp className="w-3 h-3 text-[hsl(var(--status-blue))]" />
+                    <span className="text-[10px] font-mono">{iface.uploadMbps || '0.00'} Mbps</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         
         <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground pt-2 border-t border-white/5 gap-2">
           <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
@@ -126,6 +170,17 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
           </div>
           
           <div className="flex items-center gap-1 group/actions">
+            {/* Show interfaces toggle only if there are secondary interfaces to show */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs gap-1"
+              onClick={() => setShowInterfaces(!showInterfaces)}
+              data-testid={`button-toggle-interfaces-${device.id}`}
+            >
+              {showInterfaces ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              <Layers className="w-3 h-3" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"

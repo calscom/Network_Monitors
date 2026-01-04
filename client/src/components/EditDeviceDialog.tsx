@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Device, InsertDevice, insertDeviceSchema } from "@shared/schema";
+import { Device, InsertDevice, insertDeviceSchema, DeviceInterface } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,9 +27,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Edit2, Loader2, RefreshCw, Network } from "lucide-react";
+import { Edit2, Loader2, RefreshCw, Network, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface DiscoveredInterface {
@@ -57,6 +58,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
   const [availableSites, setAvailableSites] = useState<string[]>(SITES);
   const [selectedInterface, setSelectedInterface] = useState<number>(device.interfaceIndex || 1);
   const [discoverEnabled, setDiscoverEnabled] = useState(false);
+  const [additionalInterfaces, setAdditionalInterfaces] = useState<number[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("monitor_sites");
@@ -64,6 +66,22 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
       setAvailableSites(JSON.parse(saved));
     }
   }, [open]);
+
+  // Fetch currently monitored interfaces
+  const { data: monitoredInterfaces = [] } = useQuery<DeviceInterface[]>({
+    queryKey: ['/api/devices', device.id, 'monitored-interfaces'],
+    enabled: open,
+  });
+
+  // Initialize additional interfaces from existing data when dialog opens
+  useEffect(() => {
+    if (open && monitoredInterfaces.length > 0) {
+      const secondary = monitoredInterfaces
+        .filter(i => i.isPrimary !== 1)
+        .map(i => i.interfaceIndex);
+      setAdditionalInterfaces(secondary);
+    }
+  }, [open, monitoredInterfaces]);
 
   // Interface discovery query
   const { data: interfaceData, isLoading: isDiscovering, refetch: discoverInterfaces } = useQuery<{
@@ -117,6 +135,63 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
     },
   });
 
+  // Save monitored interfaces mutation
+  const saveInterfacesMutation = useMutation({
+    mutationFn: async (interfaces: Array<{ interfaceIndex: number; interfaceName: string; isPrimary: number }>) => {
+      const res = await apiRequest("POST", `/api/devices/${device.id}/monitored-interfaces`, { interfaces });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/devices', device.id, 'monitored-interfaces'] });
+    },
+  });
+
+  const handleFormSubmit = async (data: InsertDevice) => {
+    // First save the device
+    await mutation.mutateAsync(data);
+
+    // Build interface list from discovery data OR from existing monitored interfaces
+    const primaryIndex = data.interfaceIndex || 1;
+    const primaryName = data.interfaceName || device.interfaceName || `Interface ${primaryIndex}`;
+    
+    // Build interfaces to save
+    const interfacesToSave: Array<{ interfaceIndex: number; interfaceName: string; isPrimary: number }> = [
+      { interfaceIndex: primaryIndex, interfaceName: primaryName, isPrimary: 1 }
+    ];
+
+    // Add secondary interfaces
+    if (interfaceData?.interfaces && interfaceData.interfaces.length > 0) {
+      // Use discovered interfaces data
+      additionalInterfaces.forEach(idx => {
+        const iface = interfaceData.interfaces.find(i => i.index === idx);
+        interfacesToSave.push({
+          interfaceIndex: idx,
+          interfaceName: iface?.name || `Interface ${idx}`,
+          isPrimary: 0
+        });
+      });
+    } else if (additionalInterfaces.length > 0) {
+      // Use existing monitored interfaces data
+      additionalInterfaces.forEach(idx => {
+        const existing = monitoredInterfaces.find(i => i.interfaceIndex === idx);
+        interfacesToSave.push({
+          interfaceIndex: idx,
+          interfaceName: existing?.interfaceName || `Interface ${idx}`,
+          isPrimary: 0
+        });
+      });
+    }
+
+    // Always save interfaces if we have any (primary + any additional)
+    await saveInterfacesMutation.mutateAsync(interfacesToSave);
+  };
+
+  const toggleAdditionalInterface = (index: number) => {
+    setAdditionalInterfaces(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -137,7 +212,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -301,14 +376,51 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                   </FormItem>
                 )}
               />
+
+              {/* Additional Interfaces Selection */}
+              {interfaceData?.interfaces && interfaceData.interfaces.length > 1 && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Layers className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Additional Interfaces (Optional)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Select additional interfaces to monitor alongside the primary interface
+                  </p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {interfaceData.interfaces
+                      .filter(iface => iface.index !== form.getValues("interfaceIndex"))
+                      .map((iface) => (
+                        <label 
+                          key={iface.index}
+                          className="flex items-center gap-2 p-2 rounded-md bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={additionalInterfaces.includes(iface.index)}
+                            onCheckedChange={() => toggleAdditionalInterface(iface.index)}
+                            data-testid={`checkbox-interface-${iface.index}`}
+                          />
+                          <span className="text-xs">
+                            {iface.index}: {iface.name}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                  {additionalInterfaces.length > 0 && (
+                    <p className="text-xs text-primary mt-2">
+                      {additionalInterfaces.length} additional interface{additionalInterfaces.length > 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-edit">
-                {mutation.isPending ? "Saving..." : "Save Changes"}
+              <Button type="submit" disabled={mutation.isPending || saveInterfacesMutation.isPending} data-testid="button-save-edit">
+                {(mutation.isPending || saveInterfacesMutation.isPending) ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>
