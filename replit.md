@@ -38,6 +38,8 @@ Preferred communication style: Simple, everyday language.
 - `PATCH /api/devices/:id` - Update device settings (including interface selection)
 - `DELETE /api/devices/:id` - Remove device by ID
 - `POST /api/discover-interfaces` - Discover SNMP interfaces on a device (returns list with auto-uplink detection)
+- `GET /api/devices/:id/monitored-interfaces` - Get list of monitored interfaces for a device
+- `POST /api/devices/:id/monitored-interfaces` - Set interfaces to monitor (supports multiple)
 
 ### Build System
 - **Development**: tsx for TypeScript execution, Vite dev server with HMR
@@ -166,6 +168,21 @@ CREATE TABLE sessions (
   expire TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_sessions_expire ON sessions(expire);
+
+CREATE TABLE device_interfaces (
+  id SERIAL PRIMARY KEY,
+  device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+  interface_index INTEGER NOT NULL,
+  interface_name TEXT,
+  is_primary INTEGER DEFAULT 0 NOT NULL,
+  status TEXT DEFAULT 'unknown',
+  utilization INTEGER DEFAULT 0,
+  download_mbps TEXT DEFAULT '0.00',
+  upload_mbps TEXT DEFAULT '0.00',
+  last_in_counter BIGINT DEFAULT 0,
+  last_out_counter BIGINT DEFAULT 0,
+  last_check TIMESTAMP
+);
 ```
 
 ### Database Migrations (Existing Installations)
