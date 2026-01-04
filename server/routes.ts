@@ -300,6 +300,60 @@ export async function registerRoutes(
     }
   });
 
+  // Get monitored interfaces for a device
+  app.get("/api/devices/:id/monitored-interfaces", conditionalAuth, async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      const interfaces = await storage.getDeviceInterfaces(deviceId);
+      res.json(interfaces);
+    } catch (err: any) {
+      console.error("Error fetching monitored interfaces:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // Set monitored interfaces for a device
+  app.post("/api/devices/:id/monitored-interfaces", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      
+      const { interfaces } = req.body;
+      if (!Array.isArray(interfaces)) {
+        return res.status(400).json({ message: "interfaces must be an array" });
+      }
+
+      // Prepare interfaces with deviceId
+      const interfacesToSave = interfaces.map((iface: any, idx: number) => ({
+        deviceId,
+        interfaceIndex: iface.interfaceIndex || iface.index,
+        interfaceName: iface.interfaceName || iface.name,
+        isPrimary: iface.isPrimary ? 1 : (idx === 0 ? 1 : 0), // First one is primary by default
+      }));
+
+      const savedInterfaces = await storage.setDeviceInterfaces(deviceId, interfacesToSave);
+      
+      // Also update the device's primary interface
+      const primaryInterface = savedInterfaces.find(i => i.isPrimary === 1);
+      if (primaryInterface) {
+        await storage.updateDevice(deviceId, {
+          interfaceIndex: primaryInterface.interfaceIndex,
+          interfaceName: primaryInterface.interfaceName,
+        });
+      }
+
+      res.json(savedInterfaces);
+    } catch (err: any) {
+      console.error("Error setting monitored interfaces:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   // SNMP Interface Discovery endpoint
   app.get("/api/devices/:id/interfaces", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
     try {
@@ -934,6 +988,70 @@ export async function registerRoutes(
           });
         }
         
+        session.close();
+
+        // Poll additional monitored interfaces (secondary interfaces)
+        const monitoredInterfaces = await storage.getDeviceInterfaces(device.id);
+        const secondaryInterfaces = monitoredInterfaces.filter(i => i.isPrimary !== 1);
+        
+        for (const iface of secondaryInterfaces) {
+          await pollSecondaryInterface(device, iface, intervalSeconds);
+        }
+        
+        resolve();
+      });
+    });
+  };
+
+  // Helper function to poll a secondary interface
+  const pollSecondaryInterface = (device: any, iface: any, intervalSeconds: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const session = snmp.createSession(device.ip, device.community, {
+        timeout: 2000,
+        retries: 1
+      });
+
+      const ifIndex = iface.interfaceIndex;
+      const OID_IF_IN = `${OID_IF_IN_OCTETS_BASE}.${ifIndex}`;
+      const OID_IF_OUT = `${OID_IF_OUT_OCTETS_BASE}.${ifIndex}`;
+
+      session.get([OID_IF_IN, OID_IF_OUT], async (error, varbinds) => {
+        let ifaceStatus = 'red';
+        let ifaceUtilization = 0;
+        let ifaceDownload = "0.00";
+        let ifaceUpload = "0.00";
+        let ifaceLastIn = iface.lastInCounter;
+        let ifaceLastOut = iface.lastOutCounter;
+
+        if (!error && varbinds.length >= 2 && !snmp.isVarbindError(varbinds[0]) && !snmp.isVarbindError(varbinds[1])) {
+          const currentIn = BigInt(varbinds[0].value);
+          const currentOut = BigInt(varbinds[1].value);
+          ifaceStatus = 'green';
+
+          if (ifaceLastIn > BigInt(0) && currentIn >= ifaceLastIn) {
+            const deltaBytes = Number(currentIn - ifaceLastIn);
+            ifaceDownload = ((deltaBytes * 8) / (intervalSeconds * 1000 * 1000)).toFixed(2);
+          }
+          if (ifaceLastOut > BigInt(0) && currentOut >= ifaceLastOut) {
+            const deltaBytes = Number(currentOut - ifaceLastOut);
+            ifaceUpload = ((deltaBytes * 8) / (intervalSeconds * 1000 * 1000)).toFixed(2);
+          }
+
+          const totalMbps = parseFloat(ifaceDownload) + parseFloat(ifaceUpload);
+          ifaceUtilization = Math.min(100, Math.floor((totalMbps / 1000) * 100));
+          ifaceLastIn = currentIn;
+          ifaceLastOut = currentOut;
+        }
+
+        await storage.updateDeviceInterfaceMetrics(iface.id, {
+          status: ifaceStatus,
+          utilization: ifaceUtilization,
+          downloadMbps: ifaceDownload,
+          uploadMbps: ifaceUpload,
+          lastInCounter: ifaceLastIn,
+          lastOutCounter: ifaceLastOut,
+        });
+
         session.close();
         resolve();
       });
