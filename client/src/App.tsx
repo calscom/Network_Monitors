@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import Dashboard from "@/pages/Dashboard";
 import LandingPage from "@/pages/LandingPage";
 import UserManagement from "@/pages/UserManagement";
+import NotificationSettings from "@/pages/NotificationSettings";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -15,6 +16,7 @@ function AuthenticatedRoutes() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/users" component={UserManagement} />
+      <Route path="/notifications" component={NotificationSettings} />
       <Route component={NotFound} />
     </Switch>
   );

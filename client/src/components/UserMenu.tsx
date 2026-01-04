@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Shield, User, Eye, Users } from "lucide-react";
+import { LogOut, Shield, User, Eye, Users, Bell } from "lucide-react";
 
 const roleLabels: Record<UserRole, string> = {
   admin: "Administrator",
@@ -83,6 +83,10 @@ export function UserMenu() {
             <DropdownMenuItem onClick={() => setLocation("/users")} data-testid="menu-item-users">
               <Users className="w-4 h-4 mr-2" />
               Manage Users
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setLocation("/notifications")} data-testid="menu-item-notifications">
+              <Bell className="w-4 h-4 mr-2" />
+              Notification Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

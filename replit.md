@@ -40,6 +40,9 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/discover-interfaces` - Discover SNMP interfaces on a device (returns list with auto-uplink detection)
 - `GET /api/devices/:id/monitored-interfaces` - Get list of monitored interfaces for a device
 - `POST /api/devices/:id/monitored-interfaces` - Set interfaces to monitor (supports multiple)
+- `GET /api/settings/notifications` - Get notification settings (admin only)
+- `POST /api/settings/notifications` - Update notification settings (admin only)
+- `POST /api/settings/notifications/test-telegram` - Send test message to Telegram (admin only)
 
 ### Build System
 - **Development**: tsx for TypeScript execution, Vite dev server with HMR
@@ -182,6 +185,22 @@ CREATE TABLE device_interfaces (
   last_in_counter BIGINT DEFAULT 0,
   last_out_counter BIGINT DEFAULT 0,
   last_check TIMESTAMP
+);
+
+CREATE TABLE notification_settings (
+  id SERIAL PRIMARY KEY,
+  email_enabled INTEGER DEFAULT 0 NOT NULL,
+  email_recipients TEXT,
+  telegram_enabled INTEGER DEFAULT 0 NOT NULL,
+  telegram_bot_token TEXT,
+  telegram_chat_id TEXT,
+  notify_on_offline INTEGER DEFAULT 1 NOT NULL,
+  notify_on_recovery INTEGER DEFAULT 1 NOT NULL,
+  notify_on_high_utilization INTEGER DEFAULT 0 NOT NULL,
+  utilization_threshold INTEGER DEFAULT 90 NOT NULL,
+  cooldown_minutes INTEGER DEFAULT 5 NOT NULL,
+  last_notification_at TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
 );
 ```
 

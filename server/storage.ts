@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, deviceInterfaces, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface } from "@shared/schema";
+import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings } from "@shared/schema";
 import { eq, desc, asc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
@@ -41,6 +41,10 @@ export interface IStorage {
     lastOutCounter: bigint;
   }): Promise<DeviceInterface>;
   setDeviceInterfaces(deviceId: number, interfaces: InsertDeviceInterface[]): Promise<DeviceInterface[]>;
+  // Notification settings
+  getNotificationSettings(): Promise<NotificationSettings | null>;
+  saveNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
+  updateLastNotificationTime(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -240,6 +244,57 @@ export class DatabaseStorage implements IStorage {
     // Insert new interfaces
     const results = await db.insert(deviceInterfaces).values(interfaces).returning();
     return results;
+  }
+
+  async getNotificationSettings(): Promise<NotificationSettings | null> {
+    const [settings] = await db.select().from(notificationSettings).limit(1);
+    return settings || null;
+  }
+
+  async saveNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings> {
+    // Check if settings exist
+    const existing = await this.getNotificationSettings();
+    
+    // Default values for required fields
+    const defaults: InsertNotificationSettings = {
+      emailEnabled: 0,
+      emailRecipients: '',
+      telegramEnabled: 0,
+      telegramBotToken: '',
+      telegramChatId: '',
+      notifyOnOffline: 1,
+      notifyOnRecovery: 1,
+      notifyOnHighUtilization: 0,
+      utilizationThreshold: 90,
+      cooldownMinutes: 5,
+    };
+    
+    if (existing) {
+      const [updated] = await db
+        .update(notificationSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(notificationSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Merge with defaults for first insert
+      const fullSettings = { ...defaults, ...settings };
+      const [created] = await db
+        .insert(notificationSettings)
+        .values(fullSettings)
+        .returning();
+      return created;
+    }
+  }
+
+  async updateLastNotificationTime(): Promise<void> {
+    const existing = await this.getNotificationSettings();
+    if (existing) {
+      await db
+        .update(notificationSettings)
+        .set({ lastNotificationAt: new Date() })
+        .where(eq(notificationSettings.id, existing.id));
+    }
   }
 }
 

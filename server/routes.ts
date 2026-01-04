@@ -8,8 +8,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import net from "net";
 import dns from "dns";
-import { insertDeviceSchema, type UserRole } from "@shared/schema";
+import { insertDeviceSchema, type UserRole, insertNotificationSettingsSchema } from "@shared/schema";
 import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage } from "./replit_integrations/auth";
+import { testTelegramConnection, notifyDeviceOffline, notifyDeviceRecovery, notifyHighUtilization } from "./notifications";
 
 const dnsPromises = dns.promises;
 
@@ -570,6 +571,71 @@ export async function registerRoutes(
     res.json({ interval: currentPollingInterval });
   });
 
+  // ============= NOTIFICATION SETTINGS ROUTES =============
+  
+  app.get("/api/settings/notifications", conditionalAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const settings = await storage.getNotificationSettings();
+      if (!settings) {
+        return res.json({
+          emailEnabled: 0,
+          emailRecipients: '',
+          telegramEnabled: 0,
+          telegramBotToken: '',
+          telegramChatId: '',
+          notifyOnOffline: 1,
+          notifyOnRecovery: 1,
+          notifyOnHighUtilization: 0,
+          utilizationThreshold: 90,
+          cooldownMinutes: 5,
+        });
+      }
+      res.json(settings);
+    } catch (err: any) {
+      console.error('Error fetching notification settings:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/settings/notifications", conditionalAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const parsed = insertNotificationSettingsSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      
+      const settings = await storage.saveNotificationSettings(parsed.data);
+      
+      await storage.createLog({
+        deviceId: null,
+        site: "System",
+        type: 'settings_changed',
+        message: 'Notification settings updated'
+      });
+      
+      res.json(settings);
+    } catch (err: any) {
+      console.error('Error saving notification settings:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/settings/notifications/test-telegram", conditionalAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { botToken, chatId } = req.body;
+      
+      if (!botToken || !chatId) {
+        return res.status(400).json({ message: 'Bot token and chat ID are required' });
+      }
+      
+      const result = await testTelegramConnection(botToken, chatId);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error testing Telegram:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
   // ============= UTILITY ROUTES (Ping & Traceroute) =============
   
   // Helper: TCP-based ping for environments without raw socket access
@@ -950,6 +1016,16 @@ export async function registerRoutes(
             type: 'status_change',
             message: `${device.name} status changed: ${oldLabel} → ${newLabel}`
           });
+          
+          if (newStatus === 'red' && device.status !== 'red') {
+            notifyDeviceOffline(device).catch(err => 
+              console.error('[notifications] Failed to send offline notification:', err)
+            );
+          } else if ((newStatus === 'green' || newStatus === 'blue') && device.status === 'red') {
+            notifyDeviceRecovery(device).catch(err => 
+              console.error('[notifications] Failed to send recovery notification:', err)
+            );
+          }
         }
 
         // Track availability: increment totalChecks, and successfulChecks on success
@@ -980,6 +1056,12 @@ export async function registerRoutes(
           successfulChecks: isSuccess ? device.successfulChecks + 1 : device.successfulChecks,
           activeUsers
         });
+
+        if (isSuccess && newUtilization >= 90) {
+          notifyHighUtilization({ ...device, utilization: newUtilization }, newUtilization).catch(err => 
+            console.error('[notifications] Failed to send high utilization notification:', err)
+          );
+        }
 
         // Save metrics snapshot for historical tracking (only when device is online)
         if (newStatus === 'green') {

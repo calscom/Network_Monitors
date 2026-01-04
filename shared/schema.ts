@@ -93,6 +93,33 @@ export const insertDeviceInterfaceSchema = createInsertSchema(deviceInterfaces).
   lastCheck: true,
 });
 
+// Notification settings table
+export const notificationSettings = pgTable("notification_settings", {
+  id: serial("id").primaryKey(),
+  // Email settings
+  emailEnabled: integer("email_enabled").default(0).notNull(), // 0 = disabled, 1 = enabled
+  emailRecipients: text("email_recipients"), // Comma-separated email addresses
+  // Telegram settings
+  telegramEnabled: integer("telegram_enabled").default(0).notNull(),
+  telegramBotToken: text("telegram_bot_token"),
+  telegramChatId: text("telegram_chat_id"),
+  // Notification preferences
+  notifyOnOffline: integer("notify_on_offline").default(1).notNull(),
+  notifyOnRecovery: integer("notify_on_recovery").default(1).notNull(),
+  notifyOnHighUtilization: integer("notify_on_high_utilization").default(0).notNull(),
+  utilizationThreshold: integer("utilization_threshold").default(90).notNull(),
+  // Cooldown to prevent spam (minutes)
+  cooldownMinutes: integer("cooldown_minutes").default(5).notNull(),
+  lastNotificationAt: timestamp("last_notification_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertNotificationSettingsSchema = createInsertSchema(notificationSettings).omit({
+  id: true,
+  lastNotificationAt: true,
+  updatedAt: true,
+});
+
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Log = typeof logs.$inferSelect;
@@ -101,6 +128,8 @@ export type MetricsHistory = typeof metricsHistory.$inferSelect;
 export type InsertMetricsHistory = z.infer<typeof insertMetricsHistorySchema>;
 export type DeviceInterface = typeof deviceInterfaces.$inferSelect;
 export type InsertDeviceInterface = z.infer<typeof insertDeviceInterfaceSchema>;
+export type NotificationSettings = typeof notificationSettings.$inferSelect;
+export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 
 // Export auth models
 export * from "./models/auth";
