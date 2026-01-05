@@ -4,7 +4,7 @@ import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
 import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: logs } = useQuery<Log[]>({
     queryKey: ["/api/logs"],
@@ -96,7 +97,22 @@ export default function Dashboard() {
     critical: devices?.filter(d => d.status === 'red' || d.status === 'blue').length || 0,
   };
 
-  const filteredDevices = devices?.filter(d => d.site === activeSite) || [];
+  // Search filter function
+  const matchesSearch = (device: { name: string; ip: string; site: string }) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      device.name.toLowerCase().includes(query) ||
+      device.ip.toLowerCase().includes(query) ||
+      device.site.toLowerCase().includes(query)
+    );
+  };
+
+  // Apply search filter first, then site filter for tab view
+  const searchFilteredDevices = devices?.filter(matchesSearch) || [];
+  const filteredDevices = searchQuery.trim() 
+    ? searchFilteredDevices 
+    : devices?.filter(d => d.site === activeSite) || [];
   const upDevices = devices?.filter(d => d.status === 'green') || [];
   const downDevices = devices?.filter(d => d.status === 'red' || d.status === 'blue') || [];
 
@@ -227,8 +243,39 @@ export default function Dashboard() {
           />
         )}
 
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              type="text"
+              placeholder="Search by device name, IP, or site..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9 h-10 w-full max-w-md bg-secondary/30 border-white/10"
+              data-testid="input-device-search"
+            />
+            {searchQuery && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                onClick={() => setSearchQuery("")}
+                data-testid="button-clear-search"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Found {filteredDevices.length} device{filteredDevices.length !== 1 ? 's' : ''} matching "{searchQuery}"
+            </p>
+          )}
+        </div>
+
         {/* Site Tabs Navigation */}
-        {viewMode === "list" && (
+        {viewMode === "list" && !searchQuery && (
         <div className="space-y-4 sm:space-y-6">
           <Tabs value={activeSite} onValueChange={setActiveSite} className="w-full">
             <div className="flex items-center gap-2 mb-3 sm:mb-4 overflow-x-auto pb-2 scrollbar-hide">
@@ -394,6 +441,56 @@ export default function Dashboard() {
             </div>
           </Tabs>
         </div>
+        )}
+
+        {/* Search Results View */}
+        {searchQuery && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 pb-3 sm:pb-4 gap-2">
+              <h2 className="text-base sm:text-xl font-semibold text-foreground flex items-center gap-2 flex-wrap">
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                Search Results
+                <span className="text-xs sm:text-sm font-normal text-muted-foreground">
+                  ({filteredDevices.length} devices)
+                </span>
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery("")}
+                className="text-muted-foreground"
+                data-testid="button-clear-search-results"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Clear Search
+              </Button>
+            </div>
+            
+            {filteredDevices.length === 0 ? (
+              <div className="text-center py-12 sm:py-20 rounded-xl glass border-dashed border-2 border-white/10">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <Search className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">No devices found</h3>
+                <p className="text-muted-foreground max-w-md mx-auto text-sm sm:text-base px-4">
+                  No devices match "{searchQuery}". Try a different search term.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+                {filteredDevices.map((device, idx) => (
+                  <motion.div
+                    key={device.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.03 }}
+                  >
+                    <DeviceCard device={device} canManage={canManageDevices} />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
