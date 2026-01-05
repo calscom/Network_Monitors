@@ -85,12 +85,6 @@ const POLLING_OPTIONS = [
   { value: 60000, label: "60 sec" },
   { value: 120000, label: "2 min" },
   { value: 300000, label: "5 min" },
-]; 
-
-const SITES = [
-  "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Bama", "05-Ngala", 
-  "06-Dikwa", "07-Monguno", "08-Damasak", "09-Banki", "10-CN1", 
-  "11-CN2", "12-Damboa"
 ];
 
 export async function registerRoutes(
@@ -1158,6 +1152,21 @@ export async function registerRoutes(
           lastOutCounter: ifaceLastOut,
         });
 
+        // Save interface metrics snapshot for historical graphing
+        try {
+          await storage.saveInterfaceMetricsSnapshot({
+            interfaceId: iface.id,
+            deviceId: device.id,
+            site: device.site,
+            interfaceName: iface.interfaceName,
+            utilization: ifaceUtilization,
+            downloadMbps: ifaceDownload,
+            uploadMbps: ifaceUpload,
+          });
+        } catch (historyErr) {
+          console.error(`[snmp] Error saving interface history for interface ${iface.id}:`, historyErr);
+        }
+
         session.close();
         resolve();
       });
@@ -1178,20 +1187,6 @@ export async function registerRoutes(
   
   // Start polling
   pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
-
-  // Seed data with 12 sites
-  const existing = await storage.getDevices();
-  if (existing.length === 0) {
-    for (const siteName of SITES) {
-      await storage.createDevice({
-        name: `${siteName} Gateway`,
-        ip: `10.0.0.${SITES.indexOf(siteName) + 1}`,
-        community: "public",
-        type: siteName.toLowerCase().includes('cloud') ? 'generic' : 'mikrotik',
-        site: siteName
-      });
-    }
-  }
 
   return httpServer;
 }
