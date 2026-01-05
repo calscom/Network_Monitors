@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Activity, Shield, Wifi, Users } from "lucide-react";
 
 export default function LandingPage() {
@@ -11,9 +12,12 @@ export default function LandingPage() {
             <Activity className="w-6 h-6 text-primary" />
             <h1 className="text-xl font-bold">Network Monitor</h1>
           </div>
-          <Button asChild data-testid="button-login">
-            <a href="/api/login">Sign In</a>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button asChild data-testid="button-login">
+              <a href="/api/login">Sign In</a>
+            </Button>
+          </div>
         </div>
       </header>
 

@@ -4,6 +4,7 @@ import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
 import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X } from "lucide-react";
 import { motion, Reorder } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
@@ -167,6 +168,7 @@ export default function Dashboard() {
                 <p className="text-muted-foreground text-sm sm:text-base md:text-lg">Real-time SNMP status & utilization dashboard</p>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
+                <ThemeToggle />
                 <MainMenu 
                   sites={sites} 
                   onSitesChange={handleSitesChange} 
