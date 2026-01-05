@@ -36,6 +36,15 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   // Fetch monitored interfaces for this device
   const { data: monitoredInterfaces = [] } = useQuery<DeviceInterface[]>({
     queryKey: ['/api/devices', device.id, 'monitored-interfaces'],
+    queryFn: async () => {
+      const res = await fetch(`/api/devices/${device.id}/monitored-interfaces`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch interfaces: ${res.statusText}`);
+      }
+      return res.json();
+    },
     enabled: showInterfaces, // Only fetch when expanded
     refetchInterval: 2000, // Refresh with main polling
   });
