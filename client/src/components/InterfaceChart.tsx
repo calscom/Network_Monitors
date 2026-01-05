@@ -14,6 +14,9 @@ const TIME_RANGES = [
   { value: "1", label: "1h" },
   { value: "6", label: "6h" },
   { value: "24", label: "24h" },
+  { value: "168", label: "7d" },
+  { value: "720", label: "30d" },
+  { value: "8760", label: "1y" },
 ];
 
 export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
@@ -37,7 +40,10 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
   const getTimeFormat = (hours: string) => {
     const h = parseInt(hours);
     if (h <= 6) return "HH:mm";
-    return "HH:mm";
+    if (h <= 24) return "HH:mm";
+    if (h <= 168) return "EEE HH:mm"; // 7 days - show day + time
+    if (h <= 720) return "MMM d"; // 30 days - show month + day
+    return "MMM yyyy"; // 1 year - show month + year
   };
 
   // Safely process chart data with error handling

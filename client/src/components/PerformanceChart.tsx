@@ -41,9 +41,9 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
   const getTimeFormat = (hours: string) => {
     const h = parseInt(hours);
     if (h <= 24) return "HH:mm";
-    if (h <= 168) return "EEE HH:mm";
-    if (h <= 720) return "MMM d";
-    return "MMM d";
+    if (h <= 168) return "EEE HH:mm"; // 7 days - show day + time
+    if (h <= 720) return "MMM d"; // 30 days - show month + day
+    return "MMM yyyy"; // >30 days - show month + year
   };
 
   const chartData = data?.history

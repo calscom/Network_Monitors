@@ -152,6 +152,8 @@ export class DatabaseStorage implements IStorage {
 
   async getHistoricalMetrics(deviceId: number, hoursBack: number = 24): Promise<MetricsHistory[]> {
     const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+    // Adjust limit based on time range to ensure enough data points
+    const limit = hoursBack <= 24 ? 500 : hoursBack <= 720 ? 1000 : 2000;
     return await db
       .select()
       .from(metricsHistory)
@@ -160,7 +162,7 @@ export class DatabaseStorage implements IStorage {
         gte(metricsHistory.timestamp, since)
       ))
       .orderBy(desc(metricsHistory.timestamp))
-      .limit(500);
+      .limit(limit);
   }
 
   async getHistoricalAverages(deviceId: number, hoursBack: number = 24): Promise<{ avgUtilization: number; avgBandwidth: number }> {
@@ -312,6 +314,9 @@ export class DatabaseStorage implements IStorage {
     const since = new Date();
     since.setHours(since.getHours() - hoursBack);
     
+    // Adjust limit based on time range to ensure enough data points
+    const limit = hoursBack <= 24 ? 500 : hoursBack <= 720 ? 1000 : 2000;
+    
     const records = await db
       .select()
       .from(interfaceMetricsHistory)
@@ -322,9 +327,33 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(interfaceMetricsHistory.timestamp))
-      .limit(500);
+      .limit(limit);
     
     return records;
+  }
+
+  async getAppSettings(): Promise<AppSettings | null> {
+    const [settings] = await db.select().from(appSettings).limit(1);
+    return settings || null;
+  }
+
+  async savePollingInterval(intervalMs: number): Promise<AppSettings> {
+    const existing = await this.getAppSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(appSettings)
+        .set({ pollingIntervalMs: intervalMs, updatedAt: new Date() })
+        .where(eq(appSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(appSettings)
+        .values({ pollingIntervalMs: intervalMs })
+        .returning();
+      return created;
+    }
   }
 }
 

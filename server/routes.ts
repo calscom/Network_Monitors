@@ -307,7 +307,8 @@ export async function registerRoutes(
       
       const history = await storage.getInterfaceHistoricalMetrics(interfaceId, hours);
       
-      res.json({ history });
+      // Return array directly for frontend compatibility
+      res.json(history);
     } catch (err: any) {
       console.error("Error fetching interface history:", err);
       res.status(500).json({ message: err.message || "Internal server error" });
@@ -558,6 +559,13 @@ export async function registerRoutes(
     
     const oldInterval = currentPollingInterval;
     currentPollingInterval = interval;
+    
+    // Persist to database for restart persistence
+    try {
+      await storage.savePollingInterval(interval);
+    } catch (err) {
+      console.error('[settings] Failed to persist polling interval:', err);
+    }
     
     // Clear the existing timeout to prevent duplicate polling loops
     if (pollingTimeoutId) {
@@ -1184,6 +1192,19 @@ export async function registerRoutes(
     // Schedule next poll with current interval (only after all devices complete)
     pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
   };
+  
+  // Load persisted polling interval from database on startup
+  try {
+    const appSettingsData = await storage.getAppSettings();
+    if (appSettingsData && appSettingsData.pollingIntervalMs) {
+      currentPollingInterval = appSettingsData.pollingIntervalMs;
+      console.log(`[settings] Loaded persisted polling interval: ${currentPollingInterval}ms`);
+    } else {
+      console.log(`[settings] Using default polling interval: ${currentPollingInterval}ms`);
+    }
+  } catch (err) {
+    console.error('[settings] Failed to load polling interval, using default:', err);
+  }
   
   // Start polling
   pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);

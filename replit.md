@@ -215,6 +215,12 @@ CREATE TABLE interface_metrics_history (
   upload_mbps TEXT DEFAULT '0' NOT NULL,
   timestamp TIMESTAMP DEFAULT NOW() NOT NULL
 );
+
+CREATE TABLE app_settings (
+  id SERIAL PRIMARY KEY,
+  polling_interval_ms INTEGER DEFAULT 5000 NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
 ```
 
 ### Database Migrations (Existing Installations)
@@ -273,6 +279,13 @@ CREATE TABLE IF NOT EXISTS interface_metrics_history (
   upload_mbps TEXT DEFAULT '0' NOT NULL,
   timestamp TIMESTAMP DEFAULT NOW() NOT NULL
 );
+
+-- App settings (for polling interval persistence across restarts)
+CREATE TABLE IF NOT EXISTS app_settings (
+  id SERIAL PRIMARY KEY,
+  polling_interval_ms INTEGER DEFAULT 5000 NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
 ```
 
 ### Grant Permissions (Important for Self-Hosted)
@@ -290,6 +303,7 @@ GRANT ALL PRIVILEGES ON sessions TO your_db_user;
 GRANT ALL PRIVILEGES ON device_interfaces TO your_db_user;
 GRANT ALL PRIVILEGES ON notification_settings TO your_db_user;
 GRANT ALL PRIVILEGES ON interface_metrics_history TO your_db_user;
+GRANT ALL PRIVILEGES ON app_settings TO your_db_user;
 
 -- And sequences:
 GRANT USAGE, SELECT ON SEQUENCE devices_id_seq TO your_db_user;
@@ -297,6 +311,7 @@ GRANT USAGE, SELECT ON SEQUENCE logs_id_seq TO your_db_user;
 GRANT USAGE, SELECT ON SEQUENCE device_interfaces_id_seq TO your_db_user;
 GRANT USAGE, SELECT ON SEQUENCE notification_settings_id_seq TO your_db_user;
 GRANT USAGE, SELECT ON SEQUENCE interface_metrics_history_id_seq TO your_db_user;
+GRANT USAGE, SELECT ON SEQUENCE app_settings_id_seq TO your_db_user;
 ```
 
 ### Network Requirements
