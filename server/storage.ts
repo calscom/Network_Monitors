@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory } from "@shared/schema";
+import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings } from "@shared/schema";
 import { eq, desc, asc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
@@ -48,6 +48,9 @@ export interface IStorage {
   // Interface metrics history
   saveInterfaceMetricsSnapshot(snapshot: InsertInterfaceMetricsHistory): Promise<InterfaceMetricsHistory>;
   getInterfaceHistoricalMetrics(interfaceId: number, hoursBack?: number): Promise<InterfaceMetricsHistory[]>;
+  // App settings (polling interval persistence)
+  getAppSettings(): Promise<AppSettings | null>;
+  savePollingInterval(intervalMs: number): Promise<AppSettings>;
 }
 
 export class DatabaseStorage implements IStorage {

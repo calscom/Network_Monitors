@@ -108,6 +108,18 @@ export const interfaceMetricsHistory = pgTable("interface_metrics_history", {
 
 export const insertInterfaceMetricsHistorySchema = createInsertSchema(interfaceMetricsHistory).omit({ id: true, timestamp: true });
 
+// Application settings table (single row for global config)
+export const appSettings = pgTable("app_settings", {
+  id: serial("id").primaryKey(),
+  pollingIntervalMs: integer("polling_interval_ms").default(5000).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAppSettingsSchema = createInsertSchema(appSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Notification settings table
 export const notificationSettings = pgTable("notification_settings", {
   id: serial("id").primaryKey(),
@@ -147,6 +159,8 @@ export type InterfaceMetricsHistory = typeof interfaceMetricsHistory.$inferSelec
 export type InsertInterfaceMetricsHistory = z.infer<typeof insertInterfaceMetricsHistorySchema>;
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+export type AppSettings = typeof appSettings.$inferSelect;
+export type InsertAppSettings = z.infer<typeof insertAppSettingsSchema>;
 
 // Export auth models
 export * from "./models/auth";
