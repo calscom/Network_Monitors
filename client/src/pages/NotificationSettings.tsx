@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Mail, Send, Save, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Bell, Mail, Send, Save, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
 import { SiTelegram } from "react-icons/si";
+import { Link } from "wouter";
 
 interface NotificationSettings {
   id?: number;
@@ -143,12 +144,20 @@ export default function NotificationSettings() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Bell className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Notification Settings</h1>
-          <p className="text-muted-foreground">Configure alerts for device status changes</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Bell className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Notification Settings</h1>
+            <p className="text-muted-foreground">Configure alerts for device status changes</p>
+          </div>
         </div>
+        <Link href="/">
+          <Button variant="outline" data-testid="button-back-dashboard">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
       </div>
 
       <Card>

@@ -138,14 +138,25 @@ export default function Dashboard() {
     });
   }, [siteDevices, deviceOrder, activeSite]);
 
+  // Local state for drag-and-drop reordering (to make drops stick visually)
+  const [displayedDevices, setDisplayedDevices] = useState<Device[]>([]);
+  
+  // Sync displayedDevices with orderedSiteDevices when site changes or devices update
+  useEffect(() => {
+    setDisplayedDevices(orderedSiteDevices);
+  }, [orderedSiteDevices]);
+
   const filteredDevices = searchQuery.trim() 
     ? searchFilteredDevices 
-    : orderedSiteDevices;
+    : displayedDevices;
   const upDevices = devices?.filter(d => d.status === 'green') || [];
   const downDevices = devices?.filter(d => d.status === 'red' || d.status === 'blue') || [];
 
   // Handle device reorder
   const handleReorder = (reorderedDevices: Device[]) => {
+    // Update displayed devices immediately for visual feedback
+    setDisplayedDevices(reorderedDevices);
+    // Persist the order
     const newOrder = reorderedDevices.map(d => d.id);
     setDeviceOrder(prev => ({
       ...prev,
@@ -420,12 +431,12 @@ export default function Dashboard() {
                 ) : (
                   <Reorder.Group 
                     axis="y" 
-                    values={orderedSiteDevices} 
+                    values={displayedDevices} 
                     onReorder={handleReorder}
                     className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6"
                     data-testid="device-reorder-group"
                   >
-                    {orderedSiteDevices.map((device) => (
+                    {displayedDevices.map((device) => (
                       <Reorder.Item
                         key={device.id}
                         value={device}
