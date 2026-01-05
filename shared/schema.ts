@@ -93,6 +93,21 @@ export const insertDeviceInterfaceSchema = createInsertSchema(deviceInterfaces).
   lastCheck: true,
 });
 
+// Interface metrics history for graphing
+export const interfaceMetricsHistory = pgTable("interface_metrics_history", {
+  id: serial("id").primaryKey(),
+  interfaceId: integer("interface_id").references(() => deviceInterfaces.id).notNull(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  site: text("site").notNull(),
+  interfaceName: text("interface_name"),
+  utilization: integer("utilization").default(0).notNull(),
+  downloadMbps: text("download_mbps").default("0").notNull(),
+  uploadMbps: text("upload_mbps").default("0").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertInterfaceMetricsHistorySchema = createInsertSchema(interfaceMetricsHistory).omit({ id: true, timestamp: true });
+
 // Notification settings table
 export const notificationSettings = pgTable("notification_settings", {
   id: serial("id").primaryKey(),
@@ -128,6 +143,8 @@ export type MetricsHistory = typeof metricsHistory.$inferSelect;
 export type InsertMetricsHistory = z.infer<typeof insertMetricsHistorySchema>;
 export type DeviceInterface = typeof deviceInterfaces.$inferSelect;
 export type InsertDeviceInterface = z.infer<typeof insertDeviceInterfaceSchema>;
+export type InterfaceMetricsHistory = typeof interfaceMetricsHistory.$inferSelect;
+export type InsertInterfaceMetricsHistory = z.infer<typeof insertInterfaceMetricsHistorySchema>;
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 
