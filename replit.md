@@ -202,6 +202,18 @@ CREATE TABLE notification_settings (
   last_notification_at TIMESTAMP,
   updated_at TIMESTAMP DEFAULT NOW() NOT NULL
 );
+
+CREATE TABLE interface_metrics_history (
+  id SERIAL PRIMARY KEY,
+  interface_id INTEGER REFERENCES device_interfaces(id) NOT NULL,
+  device_id INTEGER REFERENCES devices(id) NOT NULL,
+  site TEXT NOT NULL,
+  interface_name TEXT,
+  utilization INTEGER DEFAULT 0 NOT NULL,
+  download_mbps TEXT DEFAULT '0' NOT NULL,
+  upload_mbps TEXT DEFAULT '0' NOT NULL,
+  timestamp TIMESTAMP DEFAULT NOW() NOT NULL
+);
 ```
 
 ### Database Migrations (Existing Installations)
@@ -246,6 +258,19 @@ CREATE TABLE IF NOT EXISTS notification_settings (
   cooldown_minutes INTEGER DEFAULT 5 NOT NULL,
   last_notification_at TIMESTAMP,
   updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- Interface metrics history (for graphing secondary interfaces)
+CREATE TABLE IF NOT EXISTS interface_metrics_history (
+  id SERIAL PRIMARY KEY,
+  interface_id INTEGER REFERENCES device_interfaces(id) NOT NULL,
+  device_id INTEGER REFERENCES devices(id) NOT NULL,
+  site TEXT NOT NULL,
+  interface_name TEXT,
+  utilization INTEGER DEFAULT 0 NOT NULL,
+  download_mbps TEXT DEFAULT '0' NOT NULL,
+  upload_mbps TEXT DEFAULT '0' NOT NULL,
+  timestamp TIMESTAMP DEFAULT NOW() NOT NULL
 );
 ```
 
