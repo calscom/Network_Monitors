@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings } from "@shared/schema";
+import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory } from "@shared/schema";
 import { eq, desc, asc, sql, and, gte } from "drizzle-orm";
 
 export interface IStorage {
@@ -45,6 +45,9 @@ export interface IStorage {
   getNotificationSettings(): Promise<NotificationSettings | null>;
   saveNotificationSettings(settings: Partial<InsertNotificationSettings>): Promise<NotificationSettings>;
   updateLastNotificationTime(): Promise<void>;
+  // Interface metrics history
+  saveInterfaceMetricsSnapshot(snapshot: InsertInterfaceMetricsHistory): Promise<InterfaceMetricsHistory>;
+  getInterfaceHistoricalMetrics(interfaceId: number, hoursBack?: number): Promise<InterfaceMetricsHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -295,6 +298,30 @@ export class DatabaseStorage implements IStorage {
         .set({ lastNotificationAt: new Date() })
         .where(eq(notificationSettings.id, existing.id));
     }
+  }
+
+  async saveInterfaceMetricsSnapshot(snapshot: InsertInterfaceMetricsHistory): Promise<InterfaceMetricsHistory> {
+    const [record] = await db.insert(interfaceMetricsHistory).values(snapshot).returning();
+    return record;
+  }
+
+  async getInterfaceHistoricalMetrics(interfaceId: number, hoursBack: number = 24): Promise<InterfaceMetricsHistory[]> {
+    const since = new Date();
+    since.setHours(since.getHours() - hoursBack);
+    
+    const records = await db
+      .select()
+      .from(interfaceMetricsHistory)
+      .where(
+        and(
+          eq(interfaceMetricsHistory.interfaceId, interfaceId),
+          gte(interfaceMetricsHistory.timestamp, since)
+        )
+      )
+      .orderBy(desc(interfaceMetricsHistory.timestamp))
+      .limit(500);
+    
+    return records;
   }
 }
 
