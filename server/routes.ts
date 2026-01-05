@@ -301,6 +301,25 @@ export async function registerRoutes(
     }
   });
 
+  // Get interface metrics history for graphing
+  app.get("/api/interfaces/:id/history", conditionalAuth, async (req, res) => {
+    try {
+      const interfaceId = Number(req.params.id);
+      const hours = Number(req.query.hours) || 24;
+      
+      if (isNaN(interfaceId)) {
+        return res.status(400).json({ message: "Invalid interface ID" });
+      }
+      
+      const history = await storage.getInterfaceHistoricalMetrics(interfaceId, hours);
+      
+      res.json({ history });
+    } catch (err: any) {
+      console.error("Error fetching interface history:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   // Get monitored interfaces for a device
   app.get("/api/devices/:id/monitored-interfaces", conditionalAuth, async (req, res) => {
     try {
