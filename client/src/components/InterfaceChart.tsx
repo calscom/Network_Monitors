@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 import { InterfaceMetricsHistory, DeviceInterface } from "@shared/schema";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Activity, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, Loader2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface InterfaceChartProps {
@@ -20,14 +20,17 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
   const [showChart, setShowChart] = useState(false);
   const [timeRange, setTimeRange] = useState("24");
   
-  const { data, isLoading } = useQuery<InterfaceMetricsHistory[]>({
+  const { data, isLoading, error } = useQuery<InterfaceMetricsHistory[]>({
     queryKey: ["/api/interfaces", interfaceData.id, "history", timeRange],
     queryFn: async () => {
       const res = await fetch(`/api/interfaces/${interfaceData.id}/history?hours=${timeRange}`);
-      if (!res.ok) throw new Error("Failed to fetch interface history");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to fetch interface history");
+      }
       return res.json();
     },
-    enabled: showChart,
+    enabled: showChart && !!interfaceData.id,
     refetchInterval: 30000,
   });
 
@@ -37,14 +40,26 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
     return "HH:mm";
   };
 
-  const chartData = data
-    ?.slice()
-    .reverse()
-    .map((item) => ({
-      time: format(new Date(item.timestamp), getTimeFormat(timeRange)),
-      download: parseFloat(item.downloadMbps || "0"),
-      upload: parseFloat(item.uploadMbps || "0"),
-    })) || [];
+  // Safely process chart data with error handling
+  let chartData: { time: string; download: number; upload: number }[] = [];
+  try {
+    if (data && Array.isArray(data)) {
+      chartData = data
+        .slice()
+        .reverse()
+        .map((item) => {
+          const timestamp = item.timestamp ? new Date(item.timestamp) : new Date();
+          return {
+            time: format(timestamp, getTimeFormat(timeRange)),
+            download: parseFloat(item.downloadMbps || "0"),
+            upload: parseFloat(item.uploadMbps || "0"),
+          };
+        });
+    }
+  } catch (e) {
+    console.error("Error processing chart data:", e);
+    chartData = [];
+  }
 
   return (
     <div className="mt-2">
@@ -62,7 +77,7 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
 
       {showChart && (
         <div className="mt-2 p-2 rounded bg-secondary/20 border border-white/5">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[9px] text-muted-foreground">History</span>
             <div className="flex gap-1">
               {TIME_RANGES.map(range => (
@@ -79,7 +94,12 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
             </div>
           </div>
 
-          {isLoading ? (
+          {error ? (
+            <div className="h-[60px] flex items-center justify-center gap-2 text-destructive text-[10px]">
+              <AlertCircle className="w-3 h-3" />
+              <span>Failed to load history</span>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             </div>
