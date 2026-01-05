@@ -2,6 +2,7 @@ import { Device, DeviceInterface } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
 import { PerformanceChart } from "./PerformanceChart";
+import { InterfaceChart } from "./InterfaceChart";
 import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity, Layers } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -158,6 +159,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
                     <span className="text-[10px] font-mono">{iface.uploadMbps || '0.00'} Mbps</span>
                   </div>
                 </div>
+                <InterfaceChart interfaceData={iface} />
               </div>
             ))}
           </div>
