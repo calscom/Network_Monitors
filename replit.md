@@ -43,6 +43,7 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/settings/notifications` - Get notification settings (admin only)
 - `POST /api/settings/notifications` - Update notification settings (admin only)
 - `POST /api/settings/notifications/test-telegram` - Send test message to Telegram (admin only)
+- `GET /api/interfaces/:id/history` - Get historical metrics for a specific interface (for graphing)
 
 ### Build System
 - **Development**: tsx for TypeScript execution, Vite dev server with HMR
@@ -274,7 +275,60 @@ CREATE TABLE IF NOT EXISTS interface_metrics_history (
 );
 ```
 
+### Grant Permissions (Important for Self-Hosted)
+After creating tables, grant permissions to your database user:
+```sql
+-- Replace 'your_db_user' with your actual database username
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO your_db_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO your_db_user;
+
+-- Or grant individually for each table:
+GRANT ALL PRIVILEGES ON devices TO your_db_user;
+GRANT ALL PRIVILEGES ON logs TO your_db_user;
+GRANT ALL PRIVILEGES ON users TO your_db_user;
+GRANT ALL PRIVILEGES ON sessions TO your_db_user;
+GRANT ALL PRIVILEGES ON device_interfaces TO your_db_user;
+GRANT ALL PRIVILEGES ON notification_settings TO your_db_user;
+GRANT ALL PRIVILEGES ON interface_metrics_history TO your_db_user;
+
+-- And sequences:
+GRANT USAGE, SELECT ON SEQUENCE devices_id_seq TO your_db_user;
+GRANT USAGE, SELECT ON SEQUENCE logs_id_seq TO your_db_user;
+GRANT USAGE, SELECT ON SEQUENCE device_interfaces_id_seq TO your_db_user;
+GRANT USAGE, SELECT ON SEQUENCE notification_settings_id_seq TO your_db_user;
+GRANT USAGE, SELECT ON SEQUENCE interface_metrics_history_id_seq TO your_db_user;
+```
+
 ### Network Requirements
 - Outbound UDP port 161 for SNMP polling
 - Inbound TCP port 5000 (or 80/443 with reverse proxy)
 - Deploy inside VPC for access to internal network devices
+
+### Systemd Service (Optional)
+Create `/etc/systemd/system/networkmonitor.service`:
+```ini
+[Unit]
+Description=Network Monitor Dashboard
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/networkmonitor
+Environment=NODE_ENV=production
+Environment=DATABASE_URL=postgresql://user:pass@localhost:5432/networkmonitor
+Environment=SESSION_SECRET=your_random_32_char_string
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable networkmonitor
+sudo systemctl start networkmonitor
+```
