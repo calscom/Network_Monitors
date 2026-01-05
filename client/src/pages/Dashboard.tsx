@@ -5,8 +5,9 @@ import { NetworkMap } from "@/components/NetworkMap";
 import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { motion, Reorder } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
+import { Device } from "@shared/schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,10 @@ export default function Dashboard() {
   const [editName, setEditName] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchQuery, setSearchQuery] = useState("");
+  const [deviceOrder, setDeviceOrder] = useState<Record<string, number[]>>(() => {
+    const saved = localStorage.getItem("device_order");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const { data: logs } = useQuery<Log[]>({
     queryKey: ["/api/logs"],
@@ -69,6 +74,10 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem("monitor_sites", JSON.stringify(sites));
   }, [sites]);
+
+  useEffect(() => {
+    localStorage.setItem("device_order", JSON.stringify(deviceOrder));
+  }, [deviceOrder]);
 
   const handleRenameSite = () => {
     if (!editName.trim()) return;
@@ -110,11 +119,38 @@ export default function Dashboard() {
 
   // Apply search filter first, then site filter for tab view
   const searchFilteredDevices = devices?.filter(matchesSearch) || [];
+  const siteDevices = devices?.filter(d => d.site === activeSite) || [];
+  
+  // Order devices based on saved order for the active site
+  const orderedSiteDevices = useMemo(() => {
+    const order = deviceOrder[activeSite];
+    if (!order || order.length === 0) return siteDevices;
+    
+    // Sort devices based on saved order, new devices go to the end
+    return [...siteDevices].sort((a, b) => {
+      const aIndex = order.indexOf(a.id);
+      const bIndex = order.indexOf(b.id);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  }, [siteDevices, deviceOrder, activeSite]);
+
   const filteredDevices = searchQuery.trim() 
     ? searchFilteredDevices 
-    : devices?.filter(d => d.site === activeSite) || [];
+    : orderedSiteDevices;
   const upDevices = devices?.filter(d => d.status === 'green') || [];
   const downDevices = devices?.filter(d => d.status === 'red' || d.status === 'blue') || [];
+
+  // Handle device reorder
+  const handleReorder = (reorderedDevices: Device[]) => {
+    const newOrder = reorderedDevices.map(d => d.id);
+    setDeviceOrder(prev => ({
+      ...prev,
+      [activeSite]: newOrder
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4 md:p-8 lg:p-12">
@@ -380,18 +416,25 @@ export default function Dashboard() {
                     {canManageDevices && <AddDeviceDialog />}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-                    {filteredDevices.map((device, idx) => (
-                      <motion.div
+                  <Reorder.Group 
+                    axis="y" 
+                    values={orderedSiteDevices} 
+                    onReorder={handleReorder}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6"
+                    data-testid="device-reorder-group"
+                  >
+                    {orderedSiteDevices.map((device) => (
+                      <Reorder.Item
                         key={device.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.05 }}
+                        value={device}
+                        className="cursor-grab active:cursor-grabbing"
+                        whileDrag={{ scale: 1.02, boxShadow: "0 8px 20px rgba(0,0,0,0.3)" }}
+                        data-testid={`reorder-item-${device.id}`}
                       >
                         <DeviceCard device={device} canManage={canManageDevices} />
-                      </motion.div>
+                      </Reorder.Item>
                     ))}
-                  </div>
+                  </Reorder.Group>
                 )}
               </div>
 
