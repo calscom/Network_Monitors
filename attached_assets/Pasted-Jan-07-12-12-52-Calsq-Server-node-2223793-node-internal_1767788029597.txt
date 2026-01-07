@@ -1,0 +1,50 @@
+Jan 07 12:12:52 Calsq-Server node[2223793]: node:internal/modules/cjs/loader:1210
+Jan 07 12:12:52 Calsq-Server node[2223793]:   throw err;
+Jan 07 12:12:52 Calsq-Server node[2223793]:   ^
+Jan 07 12:12:52 Calsq-Server node[2223793]: Error: Cannot find module 'bcryptjs'
+Jan 07 12:12:52 Calsq-Server node[2223793]: Require stack:
+Jan 07 12:12:52 Calsq-Server node[2223793]: - /opt/networkmonitor/dist/index.cjs
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module._load (node:internal/modules/cjs/loader:1038:27)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module.require (node:internal/modules/cjs/loader:1289:19)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at require (node:internal/modules/helpers:182:18)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Object.<anonymous> (/opt/networkmonitor/dist/index.cjs:109:3899)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module.load (node:internal/modules/cjs/loader:1266:32)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Module._load (node:internal/modules/cjs/loader:1091:12)
+Jan 07 12:12:52 Calsq-Server node[2223793]:     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {
+Jan 07 12:12:52 Calsq-Server node[2223793]:   code: 'MODULE_NOT_FOUND',
+Jan 07 12:12:52 Calsq-Server node[2223793]:   requireStack: [ '/opt/networkmonitor/dist/index.cjs' ]
+Jan 07 12:12:52 Calsq-Server node[2223793]: }
+Jan 07 12:12:52 Calsq-Server node[2223793]: Node.js v20.19.6
+Jan 07 12:12:52 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 07 12:12:52 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 07 12:13:02 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 3.
+Jan 07 12:13:02 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 07 12:13:02 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 07 12:13:02 Calsq-Server node[2223883]: node:internal/modules/cjs/loader:1210
+Jan 07 12:13:02 Calsq-Server node[2223883]:   throw err;
+Jan 07 12:13:02 Calsq-Server node[2223883]:   ^
+Jan 07 12:13:02 Calsq-Server node[2223883]: Error: Cannot find module 'bcryptjs'
+Jan 07 12:13:02 Calsq-Server node[2223883]: Require stack:
+Jan 07 12:13:02 Calsq-Server node[2223883]: - /opt/networkmonitor/dist/index.cjs
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module._load (node:internal/modules/cjs/loader:1038:27)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module.require (node:internal/modules/cjs/loader:1289:19)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at require (node:internal/modules/helpers:182:18)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Object.<anonymous> (/opt/networkmonitor/dist/index.cjs:109:3899)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module.load (node:internal/modules/cjs/loader:1266:32)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Module._load (node:internal/modules/cjs/loader:1091:12)
+Jan 07 12:13:02 Calsq-Server node[2223883]:     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {
+Jan 07 12:13:02 Calsq-Server node[2223883]:   code: 'MODULE_NOT_FOUND',
+Jan 07 12:13:02 Calsq-Server node[2223883]:   requireStack: [ '/opt/networkmonitor/dist/index.cjs' ]
+Jan 07 12:13:02 Calsq-Server node[2223883]: }
+Jan 07 12:13:02 Calsq-Server node[2223883]: Node.js v20.19.6
+Jan 07 12:13:02 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 07 12:13:02 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 07 12:13:12 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 4.
+Jan 07 12:13:12 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 07 12:13:12 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
