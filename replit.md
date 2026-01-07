@@ -83,12 +83,19 @@ Preferred communication style: Simple, everyday language.
 
 ### Auth Flow
 - **On Replit**: Uses Replit Auth (OpenID Connect) supporting Google, GitHub, X, Apple, and email/password. New users default to 'viewer' role. Admins can promote users via User Management page.
-- **Self-Hosted**: Authentication is automatically disabled when `REPL_ID` environment variable is not present. All users are treated as admins with full access. This is ideal for internal network monitoring tools.
+- **Self-Hosted**: Uses local username/password authentication with bcrypt-hashed passwords. First deployment requires creating an initial admin account via the setup form. Sessions are stored in the database using connect-pg-simple.
+
+### Self-Hosted Authentication Endpoints
+- `GET /api/auth/user` - Returns current user (without password) or 401 if not authenticated
+- `POST /api/auth/login` - Authenticate with email/password, returns user on success
+- `POST /api/auth/logout` - Destroys session and clears cookie
+- `POST /api/auth/setup` - Creates first admin account (only works when no users exist)
+- `GET /api/auth/needs-setup` - Returns whether initial admin setup is required
 
 ### Conditional Auth Implementation
 - `isReplitEnvironment` check in `server/routes.ts` detects Replit platform via `REPL_ID` env var
-- `conditionalAuth` middleware bypasses authentication on self-hosted deployments
-- `requireRole` middleware grants admin access to all users when self-hosted
+- Self-hosted sessions query the local users table directly (excluding password field)
+- Frontend detects environment via hostname pattern matching (replit.co, repl.co)
 
 ## Deployment Guide (Vultr/AWS EC2)
 
@@ -163,6 +170,7 @@ CREATE TABLE users (
   last_name VARCHAR(255),
   profile_image_url TEXT,
   role VARCHAR(20) DEFAULT 'viewer',
+  password VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
