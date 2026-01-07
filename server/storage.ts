@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings } from "@shared/schema";
-import { eq, desc, asc, sql, and, gte } from "drizzle-orm";
+import { eq, desc, asc, sql, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   getDevices(): Promise<Device[]>;
@@ -23,8 +23,8 @@ export interface IStorage {
   getLogs(site?: string): Promise<Log[]>;
   createLog(log: InsertLog): Promise<Log>;
   saveMetricsSnapshot(snapshot: InsertMetricsHistory): Promise<MetricsHistory>;
-  getHistoricalMetrics(deviceId: number, hoursBack?: number): Promise<MetricsHistory[]>;
-  getHistoricalAverages(deviceId: number, hoursBack?: number): Promise<{ avgUtilization: number; avgBandwidth: number }>;
+  getHistoricalMetrics(deviceId: number, hoursBack?: number, startDate?: Date, endDate?: Date): Promise<MetricsHistory[]>;
+  getHistoricalAverages(deviceId: number, hoursBack?: number, startDate?: Date, endDate?: Date): Promise<{ avgUtilization: number; avgBandwidth: number }>;
   // User management
   getAllUsers(): Promise<User[]>;
   updateUserRole(userId: string, role: string): Promise<User | null>;
@@ -47,7 +47,7 @@ export interface IStorage {
   updateLastNotificationTime(): Promise<void>;
   // Interface metrics history
   saveInterfaceMetricsSnapshot(snapshot: InsertInterfaceMetricsHistory): Promise<InterfaceMetricsHistory>;
-  getInterfaceHistoricalMetrics(interfaceId: number, hoursBack?: number): Promise<InterfaceMetricsHistory[]>;
+  getInterfaceHistoricalMetrics(interfaceId: number, hoursBack?: number, startDate?: Date, endDate?: Date): Promise<InterfaceMetricsHistory[]>;
   // App settings (polling interval persistence)
   getAppSettings(): Promise<AppSettings | null>;
   savePollingInterval(intervalMs: number): Promise<AppSettings>;
@@ -150,8 +150,11 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async getHistoricalMetrics(deviceId: number, hoursBack: number = 24): Promise<MetricsHistory[]> {
-    const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+  async getHistoricalMetrics(deviceId: number, hoursBack: number = 24, startDate?: Date, endDate?: Date): Promise<MetricsHistory[]> {
+    // Use custom range if provided, otherwise fall back to hoursBack
+    const since = startDate || new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+    const until = endDate || new Date();
+    
     // Adjust limit based on time range to ensure enough data points
     const limit = hoursBack <= 24 ? 500 : hoursBack <= 720 ? 1000 : 2000;
     return await db
@@ -159,14 +162,16 @@ export class DatabaseStorage implements IStorage {
       .from(metricsHistory)
       .where(and(
         eq(metricsHistory.deviceId, deviceId),
-        gte(metricsHistory.timestamp, since)
+        gte(metricsHistory.timestamp, since),
+        lte(metricsHistory.timestamp, until)
       ))
       .orderBy(desc(metricsHistory.timestamp))
       .limit(limit);
   }
 
-  async getHistoricalAverages(deviceId: number, hoursBack: number = 24): Promise<{ avgUtilization: number; avgBandwidth: number }> {
-    const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+  async getHistoricalAverages(deviceId: number, hoursBack: number = 24, startDate?: Date, endDate?: Date): Promise<{ avgUtilization: number; avgBandwidth: number }> {
+    const since = startDate || new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+    const until = endDate || new Date();
     const result = await db
       .select({
         avgUtilization: sql<number>`COALESCE(AVG(${metricsHistory.utilization}), 0)`,
@@ -175,7 +180,8 @@ export class DatabaseStorage implements IStorage {
       .from(metricsHistory)
       .where(and(
         eq(metricsHistory.deviceId, deviceId),
-        gte(metricsHistory.timestamp, since)
+        gte(metricsHistory.timestamp, since),
+        lte(metricsHistory.timestamp, until)
       ));
     
     const avgUtil = Number(result[0]?.avgUtilization) || 0;
@@ -310,9 +316,10 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async getInterfaceHistoricalMetrics(interfaceId: number, hoursBack: number = 24): Promise<InterfaceMetricsHistory[]> {
-    const since = new Date();
-    since.setHours(since.getHours() - hoursBack);
+  async getInterfaceHistoricalMetrics(interfaceId: number, hoursBack: number = 24, startDate?: Date, endDate?: Date): Promise<InterfaceMetricsHistory[]> {
+    // Use custom range if provided, otherwise fall back to hoursBack
+    const since = startDate || new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+    const until = endDate || new Date();
     
     // Adjust limit based on time range to ensure enough data points
     const limit = hoursBack <= 24 ? 500 : hoursBack <= 720 ? 1000 : 2000;
@@ -323,7 +330,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(interfaceMetricsHistory.interfaceId, interfaceId),
-          gte(interfaceMetricsHistory.timestamp, since)
+          gte(interfaceMetricsHistory.timestamp, since),
+          lte(interfaceMetricsHistory.timestamp, until)
         )
       )
       .orderBy(desc(interfaceMetricsHistory.timestamp))

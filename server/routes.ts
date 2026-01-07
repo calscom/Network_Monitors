@@ -279,14 +279,29 @@ export async function registerRoutes(
   app.get("/api/devices/:id/history", conditionalAuth, async (req, res) => {
     try {
       const deviceId = Number(req.params.id);
-      const hours = Number(req.query.hours) || 24;
       
       if (isNaN(deviceId)) {
         return res.status(400).json({ message: "Invalid device ID" });
       }
       
-      const history = await storage.getHistoricalMetrics(deviceId, hours);
-      const averages = await storage.getHistoricalAverages(deviceId, hours);
+      // Support custom date range or hours-back
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      let hours = 24;
+      
+      if (req.query.start && req.query.end) {
+        startDate = new Date(req.query.start as string);
+        endDate = new Date(req.query.end as string);
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return res.status(400).json({ message: "Invalid date format" });
+        }
+        hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
+      } else {
+        hours = Number(req.query.hours) || 24;
+      }
+      
+      const history = await storage.getHistoricalMetrics(deviceId, hours, startDate, endDate);
+      const averages = await storage.getHistoricalAverages(deviceId, hours, startDate, endDate);
       
       res.json({ history, averages });
     } catch (err: any) {
@@ -299,13 +314,28 @@ export async function registerRoutes(
   app.get("/api/interfaces/:id/history", conditionalAuth, async (req, res) => {
     try {
       const interfaceId = Number(req.params.id);
-      const hours = Number(req.query.hours) || 24;
       
       if (isNaN(interfaceId)) {
         return res.status(400).json({ message: "Invalid interface ID" });
       }
       
-      const history = await storage.getInterfaceHistoricalMetrics(interfaceId, hours);
+      // Support custom date range or hours-back
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      let hours = 24;
+      
+      if (req.query.start && req.query.end) {
+        startDate = new Date(req.query.start as string);
+        endDate = new Date(req.query.end as string);
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return res.status(400).json({ message: "Invalid date format" });
+        }
+        hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
+      } else {
+        hours = Number(req.query.hours) || 24;
+      }
+      
+      const history = await storage.getInterfaceHistoricalMetrics(interfaceId, hours, startDate, endDate);
       
       // Return array directly for frontend compatibility
       res.json(history);
