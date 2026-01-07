@@ -1,5 +1,10 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import type { User } from "@shared/models/auth";
+
+const isReplitEnvironment = typeof window !== "undefined" && 
+  (window.location.hostname.includes("replit") || 
+   window.location.hostname.includes("repl.co") ||
+   !!import.meta.env.VITE_REPLIT_ENV);
 
 async function fetchUser(): Promise<User | null> {
   const response = await fetch("/api/auth/user", {
@@ -23,16 +28,35 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: fetchUser,
     retry: false,
-    staleTime: 0, // Always revalidate on page load
+    staleTime: 0,
     refetchOnMount: true,
   });
 
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+  });
+
   const handleLogout = () => {
-    // Clear the auth cache before redirecting
-    queryClient.setQueryData(["/api/auth/user"], null);
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-    // Redirect to logout endpoint
-    window.location.href = "/api/logout";
+    if (isReplitEnvironment) {
+      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      window.location.href = "/api/logout";
+    } else {
+      logoutMutation.mutate();
+    }
   };
 
   return {
@@ -40,6 +64,7 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user,
     logout: handleLogout,
-    isLoggingOut: false,
+    isLoggingOut: logoutMutation.isPending,
+    isReplitEnvironment,
   };
 }

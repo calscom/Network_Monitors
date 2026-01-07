@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/use-auth";
 import Dashboard from "@/pages/Dashboard";
 import LandingPage from "@/pages/LandingPage";
+import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
 import NotificationSettings from "@/pages/NotificationSettings";
 import NotFound from "@/pages/not-found";
@@ -24,7 +25,7 @@ function AuthenticatedRoutes() {
 }
 
 function AppContent() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, isReplitEnvironment } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,7 +39,10 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LandingPage />;
+    if (isReplitEnvironment) {
+      return <LandingPage />;
+    }
+    return <Login />;
   }
 
   return <AuthenticatedRoutes />;
