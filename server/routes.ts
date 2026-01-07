@@ -78,6 +78,7 @@ const OID_AAA_SESSIONS = "1.3.6.1.4.1.9.9.150.1.1.1.0"; // Cisco AAA sessions (a
 // Global polling configuration
 let currentPollingInterval = 5000; // Default 5 seconds
 let pollingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let isAvailabilityResetInProgress = false; // Flag to pause polling during monthly reset
 const POLLING_OPTIONS = [
   { value: 5000, label: "5 sec" },
   { value: 10000, label: "10 sec" },
@@ -433,6 +434,140 @@ export async function registerRoutes(
       });
     } catch (err: any) {
       console.error("Error fetching comparison data:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // Get monthly availability for a device
+  app.get("/api/devices/:id/availability/monthly", conditionalAuth, async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+      const records = await storage.getMonthlyAvailability(deviceId, year);
+      res.json(records);
+    } catch (err: any) {
+      console.error("Error fetching monthly availability:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // Get annual availability for a device
+  app.get("/api/devices/:id/availability/annual", conditionalAuth, async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      const year = req.query.year ? Number(req.query.year) : undefined;
+      const records = await storage.getAnnualAvailability(deviceId, year);
+      res.json(records);
+    } catch (err: any) {
+      console.error("Error fetching annual availability:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // Get all monthly availability for a year (all devices)
+  app.get("/api/availability/monthly", conditionalAuth, async (req, res) => {
+    try {
+      const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+      const records = await storage.getAllMonthlyAvailabilityForYear(year);
+      res.json(records);
+    } catch (err: any) {
+      console.error("Error fetching all monthly availability:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // Get all annual availability for a year (all devices)
+  app.get("/api/availability/annual", conditionalAuth, async (req, res) => {
+    try {
+      const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+      const records = await storage.getAllAnnualAvailability(year);
+      res.json(records);
+    } catch (err: any) {
+      console.error("Error fetching all annual availability:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // Manual trigger for availability snapshot (admin only, for testing)
+  app.post("/api/availability/snapshot", conditionalAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const now = new Date();
+      const year = req.body.year || now.getFullYear();
+      const month = req.body.month || (now.getMonth() + 1);
+      
+      const allDevices = await storage.getDevices();
+      const results: any[] = [];
+      
+      for (const device of allDevices) {
+        const exists = await storage.monthlySnapshotExists(device.id, year, month);
+        if (exists) {
+          results.push({ device: device.name, status: 'skipped', reason: 'Snapshot already exists' });
+          continue;
+        }
+        
+        const uptimePercentage = device.totalChecks > 0 
+          ? ((device.successfulChecks / device.totalChecks) * 100).toFixed(2)
+          : "0.00";
+        
+        await storage.saveMonthlyAvailability({
+          deviceId: device.id,
+          year,
+          month,
+          totalChecks: device.totalChecks,
+          successfulChecks: device.successfulChecks,
+          uptimePercentage
+        });
+        
+        // Update annual aggregate
+        const monthlyRecords = await storage.getMonthlyAvailability(device.id, year);
+        const annualTotalChecks = monthlyRecords.reduce((sum, r) => sum + r.totalChecks, 0);
+        const annualSuccessfulChecks = monthlyRecords.reduce((sum, r) => sum + r.successfulChecks, 0);
+        const annualUptimePercentage = annualTotalChecks > 0
+          ? ((annualSuccessfulChecks / annualTotalChecks) * 100).toFixed(2)
+          : "0.00";
+        
+        await storage.saveAnnualAvailability({
+          deviceId: device.id,
+          year,
+          totalChecks: annualTotalChecks,
+          successfulChecks: annualSuccessfulChecks,
+          uptimePercentage: annualUptimePercentage,
+          monthsRecorded: monthlyRecords.length
+        });
+        
+        if (req.body.resetCounters) {
+          await storage.resetDeviceAvailabilityCounters(device.id);
+        }
+        
+        results.push({ 
+          device: device.name, 
+          status: 'created', 
+          uptime: uptimePercentage,
+          checks: `${device.successfulChecks}/${device.totalChecks}`
+        });
+      }
+      
+      await storage.createLog({
+        deviceId: null,
+        site: 'System',
+        type: 'system',
+        message: `Manual availability snapshot triggered for ${year}-${String(month).padStart(2, '0')}`
+      });
+      
+      res.json({ 
+        message: `Processed ${allDevices.length} devices`,
+        year,
+        month,
+        results
+      });
+    } catch (err: any) {
+      console.error("Error creating manual snapshot:", err);
       res.status(500).json({ message: err.message || "Internal server error" });
     }
   });
@@ -1298,6 +1433,23 @@ export async function registerRoutes(
         }
         // If device is offline, preserve the last known user count (don't reset to 0)
         
+        // Skip update if availability reset is in progress
+        if (isAvailabilityResetInProgress) {
+          console.log(`[snmp] Skipping metrics update for ${device.name} - availability reset in progress`);
+          session.close();
+          resolve();
+          return;
+        }
+        
+        // Re-fetch current device state to get fresh counter values (avoids race with reset)
+        const freshDevices = await storage.getDevices();
+        const freshDevice = freshDevices.find(d => d.id === device.id);
+        if (!freshDevice) {
+          session.close();
+          resolve();
+          return;
+        }
+        
         await storage.updateDeviceMetrics(device.id, {
           status: newStatus,
           utilization: newUtilization,
@@ -1306,8 +1458,8 @@ export async function registerRoutes(
           uploadMbps,
           lastInCounter,
           lastOutCounter,
-          totalChecks: device.totalChecks + 1,
-          successfulChecks: isSuccess ? device.successfulChecks + 1 : device.successfulChecks,
+          totalChecks: freshDevice.totalChecks + 1,
+          successfulChecks: isSuccess ? freshDevice.successfulChecks + 1 : freshDevice.successfulChecks,
           activeUsers
         });
 
@@ -1512,26 +1664,44 @@ export async function registerRoutes(
       }
     }
     
+    // Skip update if availability reset is in progress to avoid overwriting reset counters
+    if (isAvailabilityResetInProgress) {
+      console.log(`[poll] Skipping update for ${device.name} - availability reset in progress`);
+      return;
+    }
+    
     // For ping-only and hybrid modes without SNMP data: preserve existing metrics, just update status and counters
     // Only set metrics to zero for ping_only devices; hybrid modes should preserve last known SNMP values
     const isPingOnlyMode = pollType === 'ping_only';
     
+    // Re-fetch current device state to get latest counter values (avoids race with reset)
+    const freshDevices = await storage.getDevices();
+    const freshDevice = freshDevices.find(d => d.id === device.id);
+    if (!freshDevice) return;
+    
     await storage.updateDeviceMetrics(device.id, {
       status: newStatus,
-      utilization: isPingOnlyMode ? 0 : device.utilization,
-      bandwidthMBps: isPingOnlyMode ? "0.00" : device.bandwidthMBps,
-      downloadMbps: isPingOnlyMode ? "0.00" : device.downloadMbps,
-      uploadMbps: isPingOnlyMode ? "0.00" : device.uploadMbps,
-      lastInCounter: isPingOnlyMode ? BigInt(0) : device.lastInCounter,
-      lastOutCounter: isPingOnlyMode ? BigInt(0) : device.lastOutCounter,
-      totalChecks: device.totalChecks + 1,
-      successfulChecks: isOnline ? device.successfulChecks + 1 : device.successfulChecks,
-      activeUsers: isPingOnlyMode ? 0 : device.activeUsers
+      utilization: isPingOnlyMode ? 0 : freshDevice.utilization,
+      bandwidthMBps: isPingOnlyMode ? "0.00" : freshDevice.bandwidthMBps,
+      downloadMbps: isPingOnlyMode ? "0.00" : freshDevice.downloadMbps,
+      uploadMbps: isPingOnlyMode ? "0.00" : freshDevice.uploadMbps,
+      lastInCounter: isPingOnlyMode ? BigInt(0) : freshDevice.lastInCounter,
+      lastOutCounter: isPingOnlyMode ? BigInt(0) : freshDevice.lastOutCounter,
+      totalChecks: freshDevice.totalChecks + 1,
+      successfulChecks: isOnline ? freshDevice.successfulChecks + 1 : freshDevice.successfulChecks,
+      activeUsers: isPingOnlyMode ? 0 : freshDevice.activeUsers
     });
   };
 
   // Background polling service with dynamic interval
   const pollDevices = async () => {
+    // Skip polling if availability reset is in progress
+    if (isAvailabilityResetInProgress) {
+      console.log('[poll] Skipping poll cycle - availability reset in progress');
+      pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+      return;
+    }
+    
     const devices = await storage.getDevices();
     const intervalSeconds = currentPollingInterval / 1000;
     
@@ -1557,6 +1727,112 @@ export async function registerRoutes(
   
   // Start polling
   pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+
+  // Month-end availability reset scheduler
+  // Runs at 23:59 on the last day of each month
+  const runMonthEndAvailabilitySnapshot = async () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-12
+    
+    console.log(`[availability] Running month-end availability snapshot for ${year}-${String(month).padStart(2, '0')}`);
+    
+    // Set flag to pause polling during reset
+    isAvailabilityResetInProgress = true;
+    console.log('[availability] Pausing polling for availability reset');
+    
+    try {
+      // Wait a moment for any in-flight polls to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Fetch fresh device data after polls have settled
+      const allDevices = await storage.getDevices();
+      
+      for (const device of allDevices) {
+        // Check if snapshot already exists for this device/month (idempotency)
+        const exists = await storage.monthlySnapshotExists(device.id, year, month);
+        if (exists) {
+          console.log(`[availability] Snapshot already exists for device ${device.name} (${year}-${month}), skipping`);
+          continue;
+        }
+        
+        // Calculate uptime percentage
+        const uptimePercentage = device.totalChecks > 0 
+          ? ((device.successfulChecks / device.totalChecks) * 100).toFixed(2)
+          : "0.00";
+        
+        // Save monthly snapshot
+        await storage.saveMonthlyAvailability({
+          deviceId: device.id,
+          year,
+          month,
+          totalChecks: device.totalChecks,
+          successfulChecks: device.successfulChecks,
+          uptimePercentage
+        });
+        
+        console.log(`[availability] Saved monthly snapshot for ${device.name}: ${uptimePercentage}% (${device.successfulChecks}/${device.totalChecks})`);
+        
+        // Update annual aggregate
+        const monthlyRecords = await storage.getMonthlyAvailability(device.id, year);
+        const annualTotalChecks = monthlyRecords.reduce((sum, r) => sum + r.totalChecks, 0);
+        const annualSuccessfulChecks = monthlyRecords.reduce((sum, r) => sum + r.successfulChecks, 0);
+        const annualUptimePercentage = annualTotalChecks > 0
+          ? ((annualSuccessfulChecks / annualTotalChecks) * 100).toFixed(2)
+          : "0.00";
+        
+        await storage.saveAnnualAvailability({
+          deviceId: device.id,
+          year,
+          totalChecks: annualTotalChecks,
+          successfulChecks: annualSuccessfulChecks,
+          uptimePercentage: annualUptimePercentage,
+          monthsRecorded: monthlyRecords.length
+        });
+        
+        console.log(`[availability] Updated annual aggregate for ${device.name}: ${annualUptimePercentage}% (${monthlyRecords.length} months)`);
+        
+        // Reset device counters for next month
+        await storage.resetDeviceAvailabilityCounters(device.id);
+      }
+      
+      // Log system event
+      await storage.createLog({
+        deviceId: null,
+        site: 'System',
+        type: 'system',
+        message: `Monthly availability reset completed for ${allDevices.length} devices (${year}-${String(month).padStart(2, '0')})`
+      });
+      
+      console.log(`[availability] Month-end snapshot complete for ${allDevices.length} devices`);
+    } catch (err) {
+      console.error('[availability] Failed to run month-end snapshot:', err);
+    } finally {
+      // Resume polling
+      isAvailabilityResetInProgress = false;
+      console.log('[availability] Resuming polling after availability reset');
+    }
+  };
+
+  // Check every minute if we need to run the month-end snapshot
+  const checkMonthEndSchedule = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    
+    // Check if it's the last day of the month at 23:59
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const isLastDayOfMonth = tomorrow.getDate() === 1;
+    
+    if (isLastDayOfMonth && hours === 23 && minutes === 59) {
+      runMonthEndAvailabilitySnapshot();
+    }
+  };
+
+  // Run check every minute
+  setInterval(checkMonthEndSchedule, 60000);
+  console.log('[availability] Month-end availability scheduler started');
 
   return httpServer;
 }
