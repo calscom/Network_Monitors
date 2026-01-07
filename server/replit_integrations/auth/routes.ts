@@ -143,9 +143,9 @@ export function registerAuthRoutes(app: Express): void {
           lastName: newUser.lastName,
           role: newUser.role
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Setup error:", error);
-        res.status(500).json({ message: "Setup failed" });
+        res.status(500).json({ message: error?.message || "Setup failed" });
       }
     });
 
