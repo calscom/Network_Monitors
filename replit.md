@@ -44,6 +44,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/settings/notifications` - Update notification settings (admin only)
 - `POST /api/settings/notifications/test-telegram` - Send test message to Telegram (admin only)
 - `GET /api/interfaces/:id/history` - Get historical metrics for a specific interface (for graphing)
+- `GET /api/devices/:id/compare` - Get period-over-period comparison data (day, week, or month) for performance analysis
 
 ### Build System
 - **Development**: tsx for TypeScript execution, Vite dev server with HMR
