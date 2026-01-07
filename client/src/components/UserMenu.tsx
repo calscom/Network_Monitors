@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Shield, User, Eye, Users, Bell, Trash2 } from "lucide-react";
+import { LogOut, Shield, User, Eye, Users, Bell, Trash2, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -126,6 +126,11 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        
+        <DropdownMenuItem onClick={() => setLocation("/activity")} data-testid="menu-item-activity">
+          <History className="w-4 h-4 mr-2" />
+          Activity Log
+        </DropdownMenuItem>
         
         {userRole === 'admin' && (
           <>

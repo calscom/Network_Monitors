@@ -10,6 +10,7 @@ import Login from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
 import UserManagement from "@/pages/UserManagement";
 import NotificationSettings from "@/pages/NotificationSettings";
+import ActivityLog from "@/pages/ActivityLog";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -19,6 +20,7 @@ function AuthenticatedRoutes() {
       <Route path="/" component={Dashboard} />
       <Route path="/users" component={UserManagement} />
       <Route path="/notifications" component={NotificationSettings} />
+      <Route path="/activity" component={ActivityLog} />
       <Route component={NotFound} />
     </Switch>
   );
