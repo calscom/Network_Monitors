@@ -159,29 +159,25 @@ export class DatabaseStorage implements IStorage {
     // For large time ranges, use time-based bucketing to sample data evenly
     // This ensures charts show the full requested range, not just recent data
     if (rangeHours > 168) { // More than 7 days
-      // Determine bucket interval based on range
-      let bucketInterval: string;
-      if (rangeHours > 720) { // >30 days: daily buckets
-        bucketInterval = '1 day';
-      } else { // 7-30 days: hourly buckets
-        bucketInterval = '1 hour';
-      }
+      // Determine bucket interval based on range (valid date_trunc units)
+      // Use sql.raw() to insert literal SQL for the unit since date_trunc requires a literal string
+      const bucketUnit = rangeHours > 720 ? sql.raw(`'day'`) : sql.raw(`'hour'`);
       
       const bucketedData = await db.execute(sql`
         SELECT 
           MIN(id) as id,
           ${deviceId} as device_id,
-          MIN(site) as site,
+          MAX(site) as site,
           ROUND(AVG(utilization))::integer as utilization,
           ROUND(AVG(CAST(bandwidth_mbps AS DECIMAL)), 2)::text as bandwidth_mbps,
           ROUND(AVG(CAST(download_mbps AS DECIMAL)), 2)::text as download_mbps,
           ROUND(AVG(CAST(upload_mbps AS DECIMAL)), 2)::text as upload_mbps,
-          date_trunc(${bucketInterval}, timestamp) as timestamp
+          date_trunc(${bucketUnit}, timestamp) as timestamp
         FROM metrics_history
         WHERE device_id = ${deviceId}
           AND timestamp >= ${since}
           AND timestamp <= ${until}
-        GROUP BY date_trunc(${bucketInterval}, timestamp)
+        GROUP BY date_trunc(${bucketUnit}, timestamp)
         ORDER BY timestamp ASC
       `);
       
@@ -197,7 +193,8 @@ export class DatabaseStorage implements IStorage {
       }));
     }
     
-    // For smaller ranges, return raw data ordered by time ascending
+    // For smaller ranges (<=7 days), return all raw data ordered by time ascending
+    // The time filter naturally limits the data volume for these ranges
     return await db
       .select()
       .from(metricsHistory)
@@ -206,8 +203,7 @@ export class DatabaseStorage implements IStorage {
         gte(metricsHistory.timestamp, since),
         lte(metricsHistory.timestamp, until)
       ))
-      .orderBy(asc(metricsHistory.timestamp))
-      .limit(2000);
+      .orderBy(asc(metricsHistory.timestamp));
   }
 
   async getHistoricalAverages(deviceId: number, hoursBack: number = 24, startDate?: Date, endDate?: Date): Promise<{ avgUtilization: number; avgBandwidth: number }> {
@@ -366,30 +362,26 @@ export class DatabaseStorage implements IStorage {
     // For large time ranges, use time-based bucketing to sample data evenly
     // This ensures charts show the full requested range, not just recent data
     if (rangeHours > 168) { // More than 7 days
-      // Determine bucket interval based on range
-      let bucketInterval: string;
-      if (rangeHours > 720) { // >30 days: daily buckets
-        bucketInterval = '1 day';
-      } else { // 7-30 days: hourly buckets
-        bucketInterval = '1 hour';
-      }
+      // Determine bucket interval based on range (valid date_trunc units)
+      // Use sql.raw() to insert literal SQL for the unit since date_trunc requires a literal string
+      const bucketUnit = rangeHours > 720 ? sql.raw(`'day'`) : sql.raw(`'hour'`);
       
       const bucketedData = await db.execute(sql`
         SELECT 
           MIN(id) as id,
           ${interfaceId} as interface_id,
-          MIN(device_id) as device_id,
-          MIN(site) as site,
-          MIN(interface_name) as interface_name,
+          MAX(device_id) as device_id,
+          MAX(site) as site,
+          MAX(interface_name) as interface_name,
           ROUND(AVG(utilization))::integer as utilization,
           ROUND(AVG(CAST(download_mbps AS DECIMAL)), 2)::text as download_mbps,
           ROUND(AVG(CAST(upload_mbps AS DECIMAL)), 2)::text as upload_mbps,
-          date_trunc(${bucketInterval}, timestamp) as timestamp
+          date_trunc(${bucketUnit}, timestamp) as timestamp
         FROM interface_metrics_history
         WHERE interface_id = ${interfaceId}
           AND timestamp >= ${since}
           AND timestamp <= ${until}
-        GROUP BY date_trunc(${bucketInterval}, timestamp)
+        GROUP BY date_trunc(${bucketUnit}, timestamp)
         ORDER BY timestamp ASC
       `);
       
@@ -406,7 +398,8 @@ export class DatabaseStorage implements IStorage {
       }));
     }
     
-    // For smaller ranges, return raw data ordered by time ascending
+    // For smaller ranges (<=7 days), return all raw data ordered by time ascending
+    // The time filter naturally limits the data volume for these ranges
     const records = await db
       .select()
       .from(interfaceMetricsHistory)
@@ -417,8 +410,7 @@ export class DatabaseStorage implements IStorage {
           lte(interfaceMetricsHistory.timestamp, until)
         )
       )
-      .orderBy(asc(interfaceMetricsHistory.timestamp))
-      .limit(2000);
+      .orderBy(asc(interfaceMetricsHistory.timestamp));
     
     return records;
   }
