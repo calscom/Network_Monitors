@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/use-auth";
 import Dashboard from "@/pages/Dashboard";
-import LandingPage from "@/pages/LandingPage";
 import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
 import NotificationSettings from "@/pages/NotificationSettings";
@@ -39,9 +38,6 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    if (isReplitEnvironment) {
-      return <LandingPage />;
-    }
     return <Login />;
   }
 
