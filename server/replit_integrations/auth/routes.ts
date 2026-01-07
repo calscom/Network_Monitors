@@ -20,21 +20,21 @@ export function registerAuthRoutes(app: Express): void {
       if (!req.session?.userId) {
         return res.status(401).json({ message: "Not authenticated" });
       }
-      const user = await authStorage.getUser(req.session.userId);
+      const [user] = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        role: users.role,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      }).from(users).where(eq(users.id, req.session.userId));
       if (!user) {
         req.session.destroy(() => {});
         return res.status(401).json({ message: "User not found" });
       }
-      return res.json({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        profileImageUrl: user.profileImageUrl,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      });
+      return res.json(user);
     }
     
     isAuthenticated(req, res, async () => {
