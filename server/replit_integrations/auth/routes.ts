@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { db } from "../../db";
 import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
@@ -122,8 +123,10 @@ export function registerAuthRoutes(app: Express): void {
         }
         
         const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = crypto.randomUUID();
         
         const [newUser] = await db.insert(users).values({
+          id: userId,
           email,
           password: hashedPassword,
           firstName: firstName || "Admin",
