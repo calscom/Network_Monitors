@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { db } from "../../db";
 import { users, passwordResetTokens } from "@shared/models/auth";
 import { eq, and, gt, isNull } from "drizzle-orm";
-import { sendWelcomeEmail, sendPasswordResetEmail } from "../../email";
+import { sendWelcomeEmail, sendPasswordResetEmail, sendAccountDeletionEmail } from "../../email";
 import { storage } from "../../storage";
 
 const isReplitEnvironment = !!process.env.REPL_ID;
@@ -354,6 +354,60 @@ export function registerAuthRoutes(app: Express): void {
       } catch (error: any) {
         console.error("Verify token error:", error);
         res.status(500).json({ valid: false, message: "Failed to verify token" });
+      }
+    });
+
+    app.delete("/api/auth/account", async (req: any, res) => {
+      try {
+        if (!req.session?.userId) {
+          return res.status(401).json({ message: "Not authenticated" });
+        }
+
+        const { password } = req.body;
+        
+        if (!password) {
+          return res.status(400).json({ message: "Password is required to delete account" });
+        }
+
+        const [user] = await db.select().from(users).where(eq(users.id, req.session.userId));
+        
+        if (!user || !user.password) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) {
+          return res.status(401).json({ message: "Invalid password" });
+        }
+
+        await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+        
+        await db.delete(users).where(eq(users.id, user.id));
+
+        const userEmail = user.email ?? "";
+        const userFirstName = user.firstName ?? "";
+        
+        storage.createLog({
+          deviceId: null,
+          site: "System",
+          type: "user_deleted",
+          message: `User ${userEmail} deleted their account`
+        }).catch(err => console.error("[log] Failed to log account deletion:", err));
+
+        sendAccountDeletionEmail(userEmail, userFirstName).catch(err => {
+          console.error("[email] Background account deletion email failed:", err);
+        });
+
+        req.session.destroy((err: any) => {
+          if (err) {
+            console.error("Session destruction error:", err);
+          }
+          res.clearCookie("connect.sid");
+          res.json({ message: "Account deleted successfully" });
+        });
+      } catch (error: any) {
+        console.error("Account deletion error:", error);
+        res.status(500).json({ message: "Failed to delete account" });
       }
     });
   }

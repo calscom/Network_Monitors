@@ -77,6 +77,8 @@ export default function Dashboard() {
         return { color: 'text-orange-400', bg: 'border-l-orange-500', icon: 'setup' };
       case 'user_role_changed':
         return { color: 'text-indigo-400', bg: 'border-l-indigo-500', icon: 'role' };
+      case 'user_deleted':
+        return { color: 'text-red-400', bg: 'border-l-red-500', icon: 'delete' };
       default:
         return { color: 'text-primary/80', bg: 'border-l-primary/30', icon: 'system' };
     }

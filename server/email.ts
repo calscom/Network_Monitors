@@ -93,6 +93,41 @@ export async function sendPasswordResetEmail(to: string, resetToken: string, bas
   }
 }
 
+export async function sendAccountDeletionEmail(to: string, firstName: string): Promise<boolean> {
+  try {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+      console.log("[email] SMTP not configured, skipping account deletion email");
+      return false;
+    }
+
+    await transporter.sendMail({
+      from: `"Network Monitor" <${fromEmail}>`,
+      to,
+      subject: "Account Deleted - Network Monitor",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626;">Account Deleted</h1>
+          <p>Hello ${firstName || "there"},</p>
+          <p>Your Network Monitor account has been successfully deleted. All your data has been removed from our system.</p>
+          <div style="margin: 30px 0; padding: 20px; background-color: #fef2f2; border-radius: 8px;">
+            <p style="margin: 0; color: #991b1b;">
+              If you did not request this deletion, please contact the system administrator immediately.
+            </p>
+          </div>
+          <p>If you wish to use Network Monitor again in the future, you can create a new account.</p>
+          <p style="color: #6b7280; font-size: 14px;">This is an automated message from Network Monitor Dashboard.</p>
+        </div>
+      `,
+    });
+
+    console.log(`[email] Account deletion email sent to ${to}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[email] Failed to send account deletion email to ${to}:`, error.message);
+    return false;
+  }
+}
+
 export async function testEmailConnection(): Promise<{ success: boolean; message: string }> {
   try {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
