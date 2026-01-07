@@ -1067,6 +1067,117 @@ export async function registerRoutes(
     });
   };
 
+  // Helper function to ping a device (ICMP ping via system command)
+  const pingDevice = (device: any): Promise<void> => {
+    return new Promise(async (resolve) => {
+      console.log(`[ping] Pinging ${device.name} at ${device.ip}...`);
+      
+      try {
+        // Use system ping command with timeout
+        const { stdout, stderr } = await execAsync(`ping -c 1 -W 2 ${device.ip}`, { timeout: 5000 });
+        
+        let newStatus = 'green';
+        
+        // Check if ping was successful
+        if (stdout.includes('1 received') || stdout.includes('1 packets received') || stdout.includes('bytes from')) {
+          console.log(`[ping] ${device.name} is reachable`);
+          
+          // If device was previously offline, mark as recovering
+          if (device.status === 'red') {
+            newStatus = 'blue';
+          } else {
+            newStatus = 'green';
+          }
+          
+          // Log status change if recovering
+          if (device.status !== newStatus) {
+            console.log(`[ping] Status change for ${device.name}: ${device.status} -> ${newStatus}`);
+            
+            const statusLabels: Record<string, string> = {
+              'green': 'Online',
+              'red': 'Offline',
+              'blue': 'Recovering',
+              'unknown': 'Unknown'
+            };
+            const oldLabel = statusLabels[device.status] || device.status;
+            const newLabel = statusLabels[newStatus] || newStatus;
+            
+            await storage.createLog({
+              deviceId: device.id,
+              site: device.site,
+              type: 'status_change',
+              message: `${device.name} status changed: ${oldLabel} → ${newLabel}`
+            });
+            
+            if (device.status === 'red') {
+              notifyDeviceRecovery(device).catch(err => 
+                console.error('[notifications] Failed to send recovery notification:', err)
+              );
+            }
+          }
+          
+          await storage.updateDeviceMetrics(device.id, {
+            status: newStatus,
+            utilization: 0,
+            bandwidthMBps: "0.00",
+            downloadMbps: "0.00",
+            uploadMbps: "0.00",
+            lastInCounter: BigInt(0),
+            lastOutCounter: BigInt(0),
+            totalChecks: device.totalChecks + 1,
+            successfulChecks: device.successfulChecks + 1,
+            activeUsers: 0
+          });
+        } else {
+          throw new Error('Ping failed - no response');
+        }
+      } catch (error: any) {
+        console.log(`[ping] ${device.name} is unreachable: ${error.message || 'timeout'}`);
+        
+        const newStatus = 'red';
+        
+        // Log status change to offline
+        if (device.status !== 'red') {
+          console.log(`[ping] Status change for ${device.name}: ${device.status} -> red`);
+          
+          const statusLabels: Record<string, string> = {
+            'green': 'Online',
+            'red': 'Offline',
+            'blue': 'Recovering',
+            'unknown': 'Unknown'
+          };
+          const oldLabel = statusLabels[device.status] || device.status;
+          
+          await storage.createLog({
+            deviceId: device.id,
+            site: device.site,
+            type: 'status_change',
+            message: `${device.name} status changed: ${oldLabel} → Offline`
+          });
+          
+          notifyDeviceOffline(device).catch(err => 
+            console.error('[notifications] Failed to send offline notification:', err)
+          );
+        }
+        
+        await storage.updateDeviceMetrics(device.id, {
+          status: newStatus,
+          utilization: 0,
+          bandwidthMBps: "0.00",
+          downloadMbps: "0.00",
+          uploadMbps: "0.00",
+          lastInCounter: BigInt(0),
+          lastOutCounter: BigInt(0),
+          totalChecks: device.totalChecks + 1,
+          successfulChecks: device.successfulChecks,
+          activeUsers: 0
+        });
+      }
+      
+      resolve();
+    });
+  };
+
   // Helper function to poll a single device (returns a Promise)
   const pollDevice = (device: any, intervalSeconds: number): Promise<void> => {
     return new Promise((resolve) => {
@@ -1308,8 +1419,15 @@ export async function registerRoutes(
     const devices = await storage.getDevices();
     const intervalSeconds = currentPollingInterval / 1000;
     
-    // Poll all devices in parallel and wait for all to complete
-    await Promise.all(devices.map(device => pollDevice(device, intervalSeconds)));
+    // Separate ping-only devices from SNMP devices
+    const pingDevices = devices.filter(d => d.type === 'ping');
+    const snmpDevices = devices.filter(d => d.type !== 'ping');
+    
+    // Poll all devices in parallel: ping devices use pingDevice, others use SNMP pollDevice
+    await Promise.all([
+      ...pingDevices.map(device => pingDevice(device)),
+      ...snmpDevices.map(device => pollDevice(device, intervalSeconds))
+    ]);
     
     // Schedule next poll with current interval (only after all devices complete)
     pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);

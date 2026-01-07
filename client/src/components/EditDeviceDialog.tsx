@@ -239,19 +239,21 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="community"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>SNMP Community</FormLabel>
-                  <FormControl>
-                    <Input {...field} data-testid="input-edit-community" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {form.watch("type") !== "ping" && (
+              <FormField
+                control={form.control}
+                name="community"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SNMP Community</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-community" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -266,6 +268,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="ping">Ping Only</SelectItem>
                         <SelectItem value="unifi">Ubiquiti UniFi</SelectItem>
                         <SelectItem value="mikrotik">MikroTik RouterOS</SelectItem>
                         <SelectItem value="fortigate">Fortigate</SelectItem>
@@ -306,7 +309,8 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
               />
             </div>
             
-            {/* Interface Selection */}
+            {/* Interface Selection - Hidden for ping devices */}
+            {form.watch("type") !== "ping" && (
             <div className="border-t border-white/10 pt-4 mt-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -414,6 +418,13 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                 </div>
               )}
             </div>
+            )}
+            
+            {form.watch("type") === "ping" && (
+              <div className="text-sm text-muted-foreground bg-secondary/30 p-3 rounded-md border border-white/10 mt-4">
+                <p>Ping-only devices are monitored for online/offline status using ICMP ping. No bandwidth or traffic metrics are collected.</p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>

@@ -3,7 +3,7 @@ import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
 import { PerformanceChart } from "./PerformanceChart";
 import { InterfaceChart } from "./InterfaceChart";
-import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity, Layers } from "lucide-react";
+import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity, Layers, Radio } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -57,9 +57,12 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
     switch (type.toLowerCase()) {
       case 'unifi': return <Router className="w-6 h-6 text-primary" />;
       case 'mikrotik': return <Server className="w-6 h-6 text-primary" />;
+      case 'ping': return <Radio className="w-6 h-6 text-primary" />;
       default: return <Network className="w-6 h-6 text-primary" />;
     }
   };
+  
+  const isPingDevice = device.type === 'ping';
 
   const lastChecked = device.lastCheck 
     ? formatDistanceToNow(new Date(device.lastCheck), { addSuffix: true })
@@ -122,28 +125,43 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
 
       {/* Metrics */}
       <div className="space-y-3 sm:space-y-4">
-        {/* Download/Upload Speed Display */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-lg bg-secondary/50 border border-white/5">
-            <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--status-green))] shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground tracking-wider">Download</p>
-              <p className="text-xs sm:text-sm font-mono font-semibold truncate">{device.downloadMbps} <span className="text-[10px] sm:text-xs text-muted-foreground">Mbps</span></p>
+        {/* Ping-only device simplified display */}
+        {isPingDevice ? (
+          <div className="p-3 rounded-lg bg-secondary/50 border border-white/5">
+            <div className="flex items-center justify-center gap-2">
+              <Radio className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Ping Monitoring Only</span>
             </div>
+            <p className="text-xs text-center text-muted-foreground/60 mt-2">
+              Tracks online/offline status via ICMP ping
+            </p>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-lg bg-secondary/50 border border-white/5">
-            <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--status-blue))] shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground tracking-wider">Upload</p>
-              <p className="text-xs sm:text-sm font-mono font-semibold truncate">{device.uploadMbps} <span className="text-[10px] sm:text-xs text-muted-foreground">Mbps</span></p>
+        ) : (
+          <>
+            {/* Download/Upload Speed Display */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-lg bg-secondary/50 border border-white/5">
+                <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--status-green))] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground tracking-wider">Download</p>
+                  <p className="text-xs sm:text-sm font-mono font-semibold truncate">{device.downloadMbps} <span className="text-[10px] sm:text-xs text-muted-foreground">Mbps</span></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-lg bg-secondary/50 border border-white/5">
+                <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--status-blue))] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground tracking-wider">Upload</p>
+                  <p className="text-xs sm:text-sm font-mono font-semibold truncate">{device.uploadMbps} <span className="text-[10px] sm:text-xs text-muted-foreground">Mbps</span></p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <UtilizationGauge value={device.utilization} bandwidth={device.bandwidthMBps} />
+            <UtilizationGauge value={device.utilization} bandwidth={device.bandwidthMBps} />
+          </>
+        )}
 
-        {/* Secondary Interfaces Expandable Section */}
-        {showInterfaces && hasSecondaryInterfaces && (
+        {/* Secondary Interfaces Expandable Section - Hidden for ping devices */}
+        {!isPingDevice && showInterfaces && hasSecondaryInterfaces && (
           <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1">
               <Layers className="w-3 h-3" />
@@ -181,27 +199,32 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
           </div>
           
           <div className="flex items-center gap-1 group/actions">
-            {/* Show interfaces toggle only if there are secondary interfaces to show */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs gap-1"
-              onClick={() => setShowInterfaces(!showInterfaces)}
-              data-testid={`button-toggle-interfaces-${device.id}`}
-            >
-              {showInterfaces ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              <Layers className="w-3 h-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs gap-1"
-              onClick={() => setShowHistory(!showHistory)}
-              data-testid={`button-toggle-history-${device.id}`}
-            >
-              {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              History
-            </Button>
+            {/* Show interfaces toggle only for SNMP devices with secondary interfaces */}
+            {!isPingDevice && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs gap-1"
+                onClick={() => setShowInterfaces(!showInterfaces)}
+                data-testid={`button-toggle-interfaces-${device.id}`}
+              >
+                {showInterfaces ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                <Layers className="w-3 h-3" />
+              </Button>
+            )}
+            {/* Show history toggle only for SNMP devices */}
+            {!isPingDevice && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs gap-1"
+                onClick={() => setShowHistory(!showHistory)}
+                data-testid={`button-toggle-history-${device.id}`}
+              >
+                {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                History
+              </Button>
+            )}
             
             {canManage && (
               <>
@@ -240,7 +263,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
           </div>
         </div>
 
-        {showHistory && <PerformanceChart device={device} />}
+        {!isPingDevice && showHistory && <PerformanceChart device={device} />}
       </div>
     </div>
   );

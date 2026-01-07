@@ -166,7 +166,9 @@ export function AddDeviceDialog() {
         <DialogHeader>
           <DialogTitle className="text-xl font-display">Add Network Device</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Add a new device to monitor via SNMP v2.
+            {form.watch("type") === "ping" 
+              ? "Add a device to monitor via ICMP ping (online/offline status only)."
+              : "Add a new device to monitor via SNMP v2."}
           </DialogDescription>
         </DialogHeader>
         
@@ -214,6 +216,7 @@ export function AddDeviceDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="ping">Ping Only</SelectItem>
                         <SelectItem value="unifi">Ubiquiti UniFi</SelectItem>
                         <SelectItem value="mikrotik">MikroTik RouterOS</SelectItem>
                         <SelectItem value="fortigate">Fortigate</SelectItem>
@@ -255,90 +258,100 @@ export function AddDeviceDialog() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="community"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>SNMP Community</FormLabel>
-                  <FormControl>
-                    <Input placeholder="public" {...field} className="bg-secondary/50 border-white/10 focus:border-primary/50" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Interface Discovery Section */}
-            <div className="border-t border-white/10 pt-4 mt-2">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Network className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">SNMP Interface</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDiscover}
-                  disabled={discoverMutation.isPending}
-                  data-testid="button-discover-interfaces-add"
-                >
-                  {discoverMutation.isPending ? (
-                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                  ) : (
-                    <Search className="w-3 h-3 mr-1" />
-                  )}
-                  Discover
-                </Button>
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="interfaceIndex"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Interface to Monitor</FormLabel>
-                    <Select 
-                      onValueChange={(val) => {
-                        const intVal = parseInt(val);
-                        field.onChange(intVal);
-                        setSelectedInterface(intVal);
-                        const iface = discoveredInterfaces.find(i => i.index === intVal);
-                        if (iface) {
-                          setSelectedInterfaceName(iface.name);
-                          form.setValue("interfaceName", iface.name);
-                        }
-                      }} 
-                      value={String(field.value || 1)}
-                    >
+            {form.watch("type") !== "ping" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="community"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SNMP Community</FormLabel>
                       <FormControl>
-                        <SelectTrigger className="bg-secondary/50 border-white/10 focus:border-primary/50" data-testid="select-add-interface">
-                          <SelectValue placeholder="Select interface" />
-                        </SelectTrigger>
+                        <Input placeholder="public" {...field} className="bg-secondary/50 border-white/10 focus:border-primary/50" />
                       </FormControl>
-                      <SelectContent>
-                        {discoveredInterfaces.length > 0 ? (
-                          discoveredInterfaces.map((iface) => (
-                            <SelectItem key={iface.index} value={String(iface.index)}>
-                              {iface.index}: {iface.name} {iface.isUplink && "(uplink)"}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="1">Interface 1 (default)</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {discoveredInterfaces.length > 0 
-                        ? `${discoveredInterfaces.length} interfaces found. Uplink auto-selected.`
-                        : "Click Discover to scan interfaces after entering IP and community."}
-                    </p>
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Interface Discovery Section */}
+                <div className="border-t border-white/10 pt-4 mt-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Network className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">SNMP Interface</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDiscover}
+                      disabled={discoverMutation.isPending}
+                      data-testid="button-discover-interfaces-add"
+                    >
+                      {discoverMutation.isPending ? (
+                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                      ) : (
+                        <Search className="w-3 h-3 mr-1" />
+                      )}
+                      Discover
+                    </Button>
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="interfaceIndex"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interface to Monitor</FormLabel>
+                        <Select 
+                          onValueChange={(val) => {
+                            const intVal = parseInt(val);
+                            field.onChange(intVal);
+                            setSelectedInterface(intVal);
+                            const iface = discoveredInterfaces.find(i => i.index === intVal);
+                            if (iface) {
+                              setSelectedInterfaceName(iface.name);
+                              form.setValue("interfaceName", iface.name);
+                            }
+                          }} 
+                          value={String(field.value || 1)}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-secondary/50 border-white/10 focus:border-primary/50" data-testid="select-add-interface">
+                              <SelectValue placeholder="Select interface" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {discoveredInterfaces.length > 0 ? (
+                              discoveredInterfaces.map((iface) => (
+                                <SelectItem key={iface.index} value={String(iface.index)}>
+                                  {iface.index}: {iface.name} {iface.isUplink && "(uplink)"}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="1">Interface 1 (default)</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {discoveredInterfaces.length > 0 
+                            ? `${discoveredInterfaces.length} interfaces found. Uplink auto-selected.`
+                            : "Click Discover to scan interfaces after entering IP and community."}
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+            
+            {form.watch("type") === "ping" && (
+              <div className="text-sm text-muted-foreground bg-secondary/30 p-3 rounded-md border border-white/10">
+                <p>Ping-only devices are monitored for online/offline status using ICMP ping. No bandwidth or traffic metrics are collected.</p>
+              </div>
+            )}
 
             <DialogFooter className="pt-4">
               <Button 
