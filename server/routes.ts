@@ -345,6 +345,95 @@ export async function registerRoutes(
     }
   });
 
+  // Compare device performance between two time periods
+  app.get("/api/devices/:id/compare", conditionalAuth, async (req, res) => {
+    try {
+      const deviceId = Number(req.params.id);
+      
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      
+      // Get comparison period type (e.g., "day", "week", "month")
+      const periodType = (req.query.period as string) || "day";
+      
+      // Calculate current and previous periods based on type
+      const now = new Date();
+      let currentStart: Date;
+      let currentEnd: Date = now;
+      let previousStart: Date;
+      let previousEnd: Date;
+      
+      switch (periodType) {
+        case "day":
+          // Compare today vs yesterday
+          currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          previousEnd = new Date(currentStart);
+          previousStart = new Date(previousEnd.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case "week":
+          // Compare this week vs last week
+          currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          previousEnd = new Date(currentStart);
+          previousStart = new Date(previousEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "month":
+          // Compare this month vs last month
+          currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          previousEnd = new Date(currentStart);
+          previousStart = new Date(previousEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          previousEnd = new Date(currentStart);
+          previousStart = new Date(previousEnd.getTime() - 24 * 60 * 60 * 1000);
+      }
+      
+      const hoursBack = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60));
+      
+      // Fetch data for both periods in parallel
+      const [currentData, previousData, currentAvgResult, previousAvgResult] = await Promise.all([
+        storage.getHistoricalMetrics(deviceId, hoursBack, currentStart, currentEnd),
+        storage.getHistoricalMetrics(deviceId, hoursBack, previousStart, previousEnd),
+        storage.getHistoricalAverages(deviceId, hoursBack, currentStart, currentEnd),
+        storage.getHistoricalAverages(deviceId, hoursBack, previousStart, previousEnd)
+      ]);
+      
+      // Ensure averages have default values if no data exists
+      const defaultAvg = { avgUtilization: 0, avgBandwidth: 0 };
+      const currentAvg = currentAvgResult || defaultAvg;
+      const previousAvg = previousAvgResult || defaultAvg;
+      
+      // Calculate percentage changes (only if previous period has data)
+      const utilizationChange = previousAvg.avgUtilization > 0 
+        ? ((currentAvg.avgUtilization - previousAvg.avgUtilization) / previousAvg.avgUtilization) * 100 
+        : 0;
+      const bandwidthChange = previousAvg.avgBandwidth > 0 
+        ? ((currentAvg.avgBandwidth - previousAvg.avgBandwidth) / previousAvg.avgBandwidth) * 100 
+        : 0;
+      
+      res.json({
+        current: {
+          period: { start: currentStart, end: currentEnd },
+          data: currentData || [],
+          averages: currentAvg
+        },
+        previous: {
+          period: { start: previousStart, end: previousEnd },
+          data: previousData || [],
+          averages: previousAvg
+        },
+        changes: {
+          utilization: Math.round(utilizationChange * 10) / 10,
+          bandwidth: Math.round(bandwidthChange * 10) / 10
+        }
+      });
+    } catch (err: any) {
+      console.error("Error fetching comparison data:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   // Get monitored interfaces for a device
   app.get("/api/devices/:id/monitored-interfaces", conditionalAuth, async (req, res) => {
     try {
