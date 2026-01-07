@@ -1,0 +1,27 @@
+Jan 07 18:22:41 Calsq-Server node[2347763]: error: column "poll_type" does not exist
+Jan 07 18:22:41 Calsq-Server node[2347763]:     at /opt/networkmonitor/dist/index.cjs:64:13326
+Jan 07 18:22:41 Calsq-Server node[2347763]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Jan 07 18:22:41 Calsq-Server node[2347763]:     at async /opt/networkmonitor/dist/index.cjs:128:32500
+Jan 07 18:22:41 Calsq-Server node[2347763]:     at async Mm.getDevices (/opt/networkmonitor/dist/index.cjs:128:105646)
+Jan 07 18:22:41 Calsq-Server node[2347763]:     at async Timeout.p [as _onTimeout] (/opt/networkmonitor/dist/index.cjs:246:7431) {
+Jan 07 18:22:41 Calsq-Server node[2347763]:   length: 109,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   severity: 'ERROR',
+Jan 07 18:22:41 Calsq-Server node[2347763]:   code: '42703',
+Jan 07 18:22:41 Calsq-Server node[2347763]:   detail: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   hint: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   position: '49',
+Jan 07 18:22:41 Calsq-Server node[2347763]:   internalPosition: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   internalQuery: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   where: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   schema: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   table: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   column: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   dataType: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   constraint: undefined,
+Jan 07 18:22:41 Calsq-Server node[2347763]:   file: 'parse_relation.c',
+Jan 07 18:22:41 Calsq-Server node[2347763]:   line: '3647',
+Jan 07 18:22:41 Calsq-Server node[2347763]:   routine: 'errorMissingColumn'
+Jan 07 18:22:41 Calsq-Server node[2347763]: }
+Jan 07 18:22:41 Calsq-Server node[2347763]: Node.js v20.19.6
+Jan 07 18:22:41 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 07 18:22:41 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
