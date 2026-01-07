@@ -95,6 +95,50 @@ export function registerAuthRoutes(app: Express): void {
       });
     });
 
+    app.post("/api/auth/signup", async (req: any, res) => {
+      try {
+        const { email, password, firstName, lastName } = req.body;
+        
+        if (!email || !password) {
+          return res.status(400).json({ message: "Email and password required" });
+        }
+        
+        if (password.length < 6) {
+          return res.status(400).json({ message: "Password must be at least 6 characters" });
+        }
+        
+        const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+        if (existingUser) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = crypto.randomUUID();
+        
+        const [newUser] = await db.insert(users).values({
+          id: userId,
+          email,
+          password: hashedPassword,
+          firstName: firstName || "",
+          lastName: lastName || "",
+          role: "viewer"
+        }).returning();
+        
+        req.session.userId = newUser.id;
+        
+        res.json({
+          id: newUser.id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role
+        });
+      } catch (error: any) {
+        console.error("Signup error:", error);
+        res.status(500).json({ message: error?.message || "Signup failed" });
+      }
+    });
+
     app.get("/api/login", (req, res) => {
       res.redirect("/");
     });
