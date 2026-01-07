@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import { storage } from "../../storage";
 
 const getOidcConfig = memoize(
   async () => {
@@ -116,13 +117,41 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any) => {
+      if (err || !user) {
+        return res.redirect("/api/login");
+      }
+      req.login(user, async (loginErr) => {
+        if (loginErr) {
+          return res.redirect("/api/login");
+        }
+        try {
+          const email = user?.claims?.email || user?.claims?.sub || "Replit User";
+          await storage.createLog({
+            deviceId: null,
+            site: "System",
+            type: "user_login",
+            message: `User ${email} logged in via Replit`
+          });
+        } catch (logErr) {
+          console.error("[log] Failed to log Replit login:", logErr);
+        }
+        res.redirect("/");
+      });
     })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
+    const user = req.user as any;
+    const email = user?.claims?.email || user?.claims?.sub || "Unknown";
+    
+    storage.createLog({
+      deviceId: null,
+      site: "System",
+      type: "user_logout",
+      message: `User ${email} logged out`
+    }).catch(err => console.error("[log] Failed to log Replit logout:", err));
+    
     req.logout(() => {
       if (req.session) {
         req.session.destroy((err) => {

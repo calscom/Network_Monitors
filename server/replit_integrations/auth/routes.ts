@@ -7,6 +7,7 @@ import { db } from "../../db";
 import { users, passwordResetTokens } from "@shared/models/auth";
 import { eq, and, gt, isNull } from "drizzle-orm";
 import { sendWelcomeEmail, sendPasswordResetEmail } from "../../email";
+import { storage } from "../../storage";
 
 const isReplitEnvironment = !!process.env.REPL_ID;
 
@@ -73,6 +74,13 @@ export function registerAuthRoutes(app: Express): void {
         
         req.session.userId = user.id;
         
+        storage.createLog({
+          deviceId: null,
+          site: "System",
+          type: "user_login",
+          message: `User ${user.email} logged in`
+        }).catch(err => console.error("[log] Failed to log login:", err));
+        
         res.json({
           id: user.id,
           email: user.email,
@@ -86,7 +94,19 @@ export function registerAuthRoutes(app: Express): void {
       }
     });
 
-    app.post("/api/auth/logout", (req: any, res) => {
+    app.post("/api/auth/logout", async (req: any, res) => {
+      const userId = req.session?.userId;
+      if (userId) {
+        const [user] = await db.select().from(users).where(eq(users.id, userId));
+        if (user) {
+          storage.createLog({
+            deviceId: null,
+            site: "System",
+            type: "user_logout",
+            message: `User ${user.email} logged out`
+          }).catch(err => console.error("[log] Failed to log logout:", err));
+        }
+      }
       req.session.destroy((err: any) => {
         if (err) {
           return res.status(500).json({ message: "Logout failed" });
@@ -130,6 +150,13 @@ export function registerAuthRoutes(app: Express): void {
         sendWelcomeEmail(email, firstName || "").catch(err => {
           console.error("[email] Background welcome email failed:", err);
         });
+        
+        storage.createLog({
+          deviceId: null,
+          site: "System",
+          type: "user_signup",
+          message: `New user ${email} signed up (role: viewer)`
+        }).catch(err => console.error("[log] Failed to log signup:", err));
         
         res.json({
           id: newUser.id,
@@ -188,6 +215,13 @@ export function registerAuthRoutes(app: Express): void {
         sendWelcomeEmail(email, firstName || "Admin").catch(err => {
           console.error("[email] Background welcome email failed:", err);
         });
+        
+        storage.createLog({
+          deviceId: null,
+          site: "System",
+          type: "admin_setup",
+          message: `Admin account ${email} created during initial setup`
+        }).catch(err => console.error("[log] Failed to log admin setup:", err));
         
         res.json({
           id: newUser.id,

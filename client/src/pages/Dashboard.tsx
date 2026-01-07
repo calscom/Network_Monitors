@@ -67,6 +67,16 @@ export default function Dashboard() {
         return { color: 'text-amber-400', bg: 'border-l-amber-500', icon: 'move' };
       case 'status_change':
         return { color: 'text-purple-400', bg: 'border-l-purple-500', icon: 'status' };
+      case 'user_login':
+        return { color: 'text-green-400', bg: 'border-l-green-500', icon: 'login' };
+      case 'user_logout':
+        return { color: 'text-slate-400', bg: 'border-l-slate-500', icon: 'logout' };
+      case 'user_signup':
+        return { color: 'text-cyan-400', bg: 'border-l-cyan-500', icon: 'signup' };
+      case 'admin_setup':
+        return { color: 'text-orange-400', bg: 'border-l-orange-500', icon: 'setup' };
+      case 'user_role_changed':
+        return { color: 'text-indigo-400', bg: 'border-l-indigo-500', icon: 'role' };
       default:
         return { color: 'text-primary/80', bg: 'border-l-primary/30', icon: 'system' };
     }
