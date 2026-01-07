@@ -8,7 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Loader2, Activity, Lock, Mail, User, Wifi, Shield, Users } from "lucide-react";
+import { Loader2, Activity, Lock, Mail, User, Wifi, Shield, Users, LogIn } from "lucide-react";
+
+const isReplitEnvironment = typeof window !== "undefined" && 
+  (window.location.hostname.includes("replit") || 
+   window.location.hostname.includes("repl.co") ||
+   !!import.meta.env.VITE_REPLIT_ENV);
 
 export default function Login() {
   const { toast } = useToast();
@@ -214,9 +219,16 @@ export default function Login() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {!showAuthForm && !isSetup && (
-              <Button onClick={() => setShowAuthForm(true)} data-testid="button-login">
-                Sign In
-              </Button>
+              isReplitEnvironment ? (
+                <Button onClick={() => window.location.href = "/api/login"} data-testid="button-login">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In with Replit
+                </Button>
+              ) : (
+                <Button onClick={() => setShowAuthForm(true)} data-testid="button-login">
+                  Sign In
+                </Button>
+              )
             )}
           </div>
         </div>
