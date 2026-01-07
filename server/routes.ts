@@ -9,7 +9,7 @@ import { promisify } from "util";
 import net from "net";
 import dns from "dns";
 import { insertDeviceSchema, type UserRole, insertNotificationSettingsSchema } from "@shared/schema";
-import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage } from "./replit_integrations/auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage, getSession } from "./replit_integrations/auth";
 import { testTelegramConnection, notifyDeviceOffline, notifyDeviceRecovery, notifyHighUtilization } from "./notifications";
 
 const dnsPromises = dns.promises;
@@ -96,7 +96,10 @@ export async function registerRoutes(
   if (isReplitEnvironment) {
     await setupAuth(app);
   } else {
-    console.log("[auth] Self-hosted mode: authentication disabled, all users have admin access");
+    // Self-hosted: Add session middleware for local authentication
+    app.set("trust proxy", 1);
+    app.use(getSession());
+    console.log("[auth] Self-hosted mode: using local username/password authentication");
   }
   
   // Always register auth routes (handles both Replit and self-hosted modes)

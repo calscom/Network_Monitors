@@ -27,6 +27,9 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  // Use secure cookies on Replit or production with HTTPS, allow non-secure for self-hosted HTTP
+  const isProduction = process.env.NODE_ENV === "production";
+  const isReplit = !!process.env.REPL_ID;
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -34,7 +37,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isReplit, // Only require HTTPS on Replit; self-hosted can use HTTP
+      sameSite: isReplit ? "lax" : "lax",
       maxAge: sessionTtl,
     },
   });
