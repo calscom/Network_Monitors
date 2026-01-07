@@ -154,9 +154,50 @@ export class DatabaseStorage implements IStorage {
     // Use custom range if provided, otherwise fall back to hoursBack
     const since = startDate || new Date(Date.now() - hoursBack * 60 * 60 * 1000);
     const until = endDate || new Date();
+    const rangeHours = (until.getTime() - since.getTime()) / (1000 * 60 * 60);
     
-    // Adjust limit based on time range to ensure enough data points
-    const limit = hoursBack <= 24 ? 500 : hoursBack <= 720 ? 1000 : 2000;
+    // For large time ranges, use time-based bucketing to sample data evenly
+    // This ensures charts show the full requested range, not just recent data
+    if (rangeHours > 168) { // More than 7 days
+      // Determine bucket interval based on range
+      let bucketInterval: string;
+      if (rangeHours > 720) { // >30 days: daily buckets
+        bucketInterval = '1 day';
+      } else { // 7-30 days: hourly buckets
+        bucketInterval = '1 hour';
+      }
+      
+      const bucketedData = await db.execute(sql`
+        SELECT 
+          MIN(id) as id,
+          ${deviceId} as device_id,
+          MIN(site) as site,
+          ROUND(AVG(utilization))::integer as utilization,
+          ROUND(AVG(CAST(bandwidth_mbps AS DECIMAL)), 2)::text as bandwidth_mbps,
+          ROUND(AVG(CAST(download_mbps AS DECIMAL)), 2)::text as download_mbps,
+          ROUND(AVG(CAST(upload_mbps AS DECIMAL)), 2)::text as upload_mbps,
+          date_trunc(${bucketInterval}, timestamp) as timestamp
+        FROM metrics_history
+        WHERE device_id = ${deviceId}
+          AND timestamp >= ${since}
+          AND timestamp <= ${until}
+        GROUP BY date_trunc(${bucketInterval}, timestamp)
+        ORDER BY timestamp ASC
+      `);
+      
+      return (bucketedData.rows as any[]).map(row => ({
+        id: row.id,
+        deviceId: row.device_id,
+        site: row.site || '',
+        utilization: row.utilization || 0,
+        bandwidthMBps: row.bandwidth_mbps || '0',
+        downloadMbps: row.download_mbps || '0',
+        uploadMbps: row.upload_mbps || '0',
+        timestamp: new Date(row.timestamp)
+      }));
+    }
+    
+    // For smaller ranges, return raw data ordered by time ascending
     return await db
       .select()
       .from(metricsHistory)
@@ -165,8 +206,8 @@ export class DatabaseStorage implements IStorage {
         gte(metricsHistory.timestamp, since),
         lte(metricsHistory.timestamp, until)
       ))
-      .orderBy(desc(metricsHistory.timestamp))
-      .limit(limit);
+      .orderBy(asc(metricsHistory.timestamp))
+      .limit(2000);
   }
 
   async getHistoricalAverages(deviceId: number, hoursBack: number = 24, startDate?: Date, endDate?: Date): Promise<{ avgUtilization: number; avgBandwidth: number }> {
@@ -320,10 +361,52 @@ export class DatabaseStorage implements IStorage {
     // Use custom range if provided, otherwise fall back to hoursBack
     const since = startDate || new Date(Date.now() - hoursBack * 60 * 60 * 1000);
     const until = endDate || new Date();
+    const rangeHours = (until.getTime() - since.getTime()) / (1000 * 60 * 60);
     
-    // Adjust limit based on time range to ensure enough data points
-    const limit = hoursBack <= 24 ? 500 : hoursBack <= 720 ? 1000 : 2000;
+    // For large time ranges, use time-based bucketing to sample data evenly
+    // This ensures charts show the full requested range, not just recent data
+    if (rangeHours > 168) { // More than 7 days
+      // Determine bucket interval based on range
+      let bucketInterval: string;
+      if (rangeHours > 720) { // >30 days: daily buckets
+        bucketInterval = '1 day';
+      } else { // 7-30 days: hourly buckets
+        bucketInterval = '1 hour';
+      }
+      
+      const bucketedData = await db.execute(sql`
+        SELECT 
+          MIN(id) as id,
+          ${interfaceId} as interface_id,
+          MIN(device_id) as device_id,
+          MIN(site) as site,
+          MIN(interface_name) as interface_name,
+          ROUND(AVG(utilization))::integer as utilization,
+          ROUND(AVG(CAST(download_mbps AS DECIMAL)), 2)::text as download_mbps,
+          ROUND(AVG(CAST(upload_mbps AS DECIMAL)), 2)::text as upload_mbps,
+          date_trunc(${bucketInterval}, timestamp) as timestamp
+        FROM interface_metrics_history
+        WHERE interface_id = ${interfaceId}
+          AND timestamp >= ${since}
+          AND timestamp <= ${until}
+        GROUP BY date_trunc(${bucketInterval}, timestamp)
+        ORDER BY timestamp ASC
+      `);
+      
+      return (bucketedData.rows as any[]).map(row => ({
+        id: row.id,
+        interfaceId: row.interface_id,
+        deviceId: row.device_id,
+        site: row.site || '',
+        interfaceName: row.interface_name || null,
+        utilization: row.utilization || 0,
+        downloadMbps: row.download_mbps || '0',
+        uploadMbps: row.upload_mbps || '0',
+        timestamp: new Date(row.timestamp)
+      }));
+    }
     
+    // For smaller ranges, return raw data ordered by time ascending
     const records = await db
       .select()
       .from(interfaceMetricsHistory)
@@ -334,8 +417,8 @@ export class DatabaseStorage implements IStorage {
           lte(interfaceMetricsHistory.timestamp, until)
         )
       )
-      .orderBy(desc(interfaceMetricsHistory.timestamp))
-      .limit(limit);
+      .orderBy(asc(interfaceMetricsHistory.timestamp))
+      .limit(2000);
     
     return records;
   }
