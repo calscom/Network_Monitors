@@ -3,12 +3,16 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 
+// Poll type determines how device is monitored
+export type PollType = 'ping_only' | 'snmp_only' | 'ping_and_snmp' | 'ping_or_snmp';
+
 export const devices = pgTable("devices", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   ip: text("ip").notNull(),
   community: text("community").default("public").notNull(),
   type: text("type").notNull(), // 'unifi', 'mikrotik', 'fortigate', 'dlink', 'cisco', 'iot', 'sunnyboy', 'victron', 'ipphone', 'generic'
+  pollType: text("poll_type").default("snmp_only").notNull(), // 'ping_only', 'snmp_only', 'ping_and_snmp', 'ping_or_snmp'
   status: text("status").default("unknown").notNull(), // 'green', 'red', 'blue'
   utilization: integer("utilization").default(0).notNull(), // 0-100 percentage
   bandwidthMBps: text("bandwidth_mbps").default("0").notNull(), // Actual value as string for precision

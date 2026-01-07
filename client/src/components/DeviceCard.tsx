@@ -53,16 +53,16 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   const secondaryInterfaces = monitoredInterfaces.filter(i => i.isPrimary !== 1);
   const hasSecondaryInterfaces = secondaryInterfaces.length > 0;
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: string, pollType?: string) => {
+    if (pollType === 'ping_only') return <Radio className="w-6 h-6 text-primary" />;
     switch (type.toLowerCase()) {
       case 'unifi': return <Router className="w-6 h-6 text-primary" />;
       case 'mikrotik': return <Server className="w-6 h-6 text-primary" />;
-      case 'ping': return <Radio className="w-6 h-6 text-primary" />;
       default: return <Network className="w-6 h-6 text-primary" />;
     }
   };
   
-  const isPingDevice = device.type === 'ping';
+  const isPingDevice = (device as any).pollType === 'ping_only';
 
   const lastChecked = device.lastCheck 
     ? formatDistanceToNow(new Date(device.lastCheck), { addSuffix: true })
@@ -93,7 +93,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
       <div className="flex justify-between items-start mb-4 sm:mb-6 gap-2">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="p-2 sm:p-2.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
-            {getIcon(device.type)}
+            {getIcon(device.type, (device as any).pollType)}
           </div>
           <div className="min-w-0">
             <h3 className="text-base sm:text-lg font-semibold text-foreground tracking-tight leading-none mb-1 sm:mb-1.5 truncate">

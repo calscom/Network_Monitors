@@ -106,7 +106,8 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
       name: device.name,
       ip: device.ip,
       community: device.community,
-      type: device.type,
+      type: device.type === 'ping' ? 'generic' : device.type,
+      pollType: (device as any).pollType || 'snmp_only',
       site: device.site,
       interfaceIndex: device.interfaceIndex || 1,
       interfaceName: device.interfaceName || null,
@@ -239,7 +240,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                 </FormItem>
               )}
             />
-            {form.watch("type") !== "ping" && (
+            {form.watch("pollType") !== "ping_only" && (
               <FormField
                 control={form.control}
                 name="community"
@@ -268,7 +269,6 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="ping">Ping Only</SelectItem>
                         <SelectItem value="unifi">Ubiquiti UniFi</SelectItem>
                         <SelectItem value="mikrotik">MikroTik RouterOS</SelectItem>
                         <SelectItem value="fortigate">Fortigate</SelectItem>
@@ -309,8 +309,32 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
               />
             </div>
             
-            {/* Interface Selection - Hidden for ping devices */}
-            {form.watch("type") !== "ping" && (
+            <FormField
+              control={form.control}
+              name="pollType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Poll Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value || "snmp_only"}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-edit-poll-type">
+                        <SelectValue placeholder="Select poll type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ping_only">Ping Only</SelectItem>
+                      <SelectItem value="snmp_only">SNMP Only</SelectItem>
+                      <SelectItem value="ping_and_snmp">Ping AND SNMP</SelectItem>
+                      <SelectItem value="ping_or_snmp">Ping OR SNMP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Interface Selection - Hidden for ping-only devices */}
+            {form.watch("pollType") !== "ping_only" && (
             <div className="border-t border-white/10 pt-4 mt-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">

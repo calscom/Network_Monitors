@@ -1414,20 +1414,129 @@ export async function registerRoutes(
     });
   };
 
+  // Helper: Check if ping succeeds (returns boolean)
+  const checkPing = async (ip: string): Promise<boolean> => {
+    try {
+      const { stdout } = await execAsync(`ping -c 1 -W 2 ${ip}`, { timeout: 5000 });
+      return stdout.includes('1 received') || stdout.includes('1 packets received') || stdout.includes('bytes from');
+    } catch {
+      return false;
+    }
+  };
+
+  // Helper: Check if SNMP succeeds (returns boolean)
+  const checkSnmp = (ip: string, community: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const session = snmp.createSession(ip, community, { timeout: 2000, retries: 1 });
+      session.get([`${OID_IF_IN_OCTETS_BASE}.1`], (error, varbinds) => {
+        session.close();
+        if (!error && varbinds.length > 0 && !snmp.isVarbindError(varbinds[0])) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    });
+  };
+
+  // Unified polling function that handles all poll types
+  const pollDeviceUnified = async (device: any, intervalSeconds: number): Promise<void> => {
+    const pollType = device.pollType || 'snmp_only';
+    let isOnline = false;
+    let pingSuccess = false;
+    let snmpSuccess = false;
+
+    // Determine which checks to run based on pollType
+    if (pollType === 'ping_only') {
+      pingSuccess = await checkPing(device.ip);
+      isOnline = pingSuccess;
+    } else if (pollType === 'snmp_only') {
+      // Use full SNMP polling with metrics
+      return pollDevice(device, intervalSeconds);
+    } else if (pollType === 'ping_and_snmp') {
+      // Both must succeed
+      [pingSuccess, snmpSuccess] = await Promise.all([
+        checkPing(device.ip),
+        checkSnmp(device.ip, device.community)
+      ]);
+      isOnline = pingSuccess && snmpSuccess;
+      
+      // If SNMP succeeded, also collect metrics
+      if (snmpSuccess) {
+        await pollDevice(device, intervalSeconds);
+        return;
+      }
+    } else if (pollType === 'ping_or_snmp') {
+      // Either can succeed
+      [pingSuccess, snmpSuccess] = await Promise.all([
+        checkPing(device.ip),
+        checkSnmp(device.ip, device.community)
+      ]);
+      isOnline = pingSuccess || snmpSuccess;
+      
+      // If SNMP succeeded, also collect metrics
+      if (snmpSuccess) {
+        await pollDevice(device, intervalSeconds);
+        return;
+      }
+    }
+
+    // For ping_only or when SNMP failed in hybrid modes, update status without metrics
+    let newStatus = isOnline ? (device.status === 'red' ? 'blue' : 'green') : 'red';
+    
+    console.log(`[poll] ${device.name} (${pollType}): ping=${pingSuccess}, snmp=${snmpSuccess}, status=${newStatus}`);
+    
+    // Log status change
+    if (device.status !== newStatus) {
+      const statusLabels: Record<string, string> = {
+        'green': 'Online', 'red': 'Offline', 'blue': 'Recovering', 'unknown': 'Unknown'
+      };
+      const oldLabel = statusLabels[device.status] || device.status;
+      const newLabel = statusLabels[newStatus] || newStatus;
+      
+      await storage.createLog({
+        deviceId: device.id,
+        site: device.site,
+        type: 'status_change',
+        message: `${device.name} status changed: ${oldLabel} → ${newLabel}`
+      });
+      
+      if (isOnline && device.status === 'red') {
+        notifyDeviceRecovery(device).catch(err => 
+          console.error('[notifications] Failed to send recovery notification:', err)
+        );
+      } else if (!isOnline && device.status !== 'red') {
+        notifyDeviceOffline(device).catch(err => 
+          console.error('[notifications] Failed to send offline notification:', err)
+        );
+      }
+    }
+    
+    // For ping-only and hybrid modes without SNMP data: preserve existing metrics, just update status and counters
+    // Only set metrics to zero for ping_only devices; hybrid modes should preserve last known SNMP values
+    const isPingOnlyMode = pollType === 'ping_only';
+    
+    await storage.updateDeviceMetrics(device.id, {
+      status: newStatus,
+      utilization: isPingOnlyMode ? 0 : device.utilization,
+      bandwidthMBps: isPingOnlyMode ? "0.00" : device.bandwidthMBps,
+      downloadMbps: isPingOnlyMode ? "0.00" : device.downloadMbps,
+      uploadMbps: isPingOnlyMode ? "0.00" : device.uploadMbps,
+      lastInCounter: isPingOnlyMode ? BigInt(0) : device.lastInCounter,
+      lastOutCounter: isPingOnlyMode ? BigInt(0) : device.lastOutCounter,
+      totalChecks: device.totalChecks + 1,
+      successfulChecks: isOnline ? device.successfulChecks + 1 : device.successfulChecks,
+      activeUsers: isPingOnlyMode ? 0 : device.activeUsers
+    });
+  };
+
   // Background polling service with dynamic interval
   const pollDevices = async () => {
     const devices = await storage.getDevices();
     const intervalSeconds = currentPollingInterval / 1000;
     
-    // Separate ping-only devices from SNMP devices
-    const pingDevices = devices.filter(d => d.type === 'ping');
-    const snmpDevices = devices.filter(d => d.type !== 'ping');
-    
-    // Poll all devices in parallel: ping devices use pingDevice, others use SNMP pollDevice
-    await Promise.all([
-      ...pingDevices.map(device => pingDevice(device)),
-      ...snmpDevices.map(device => pollDevice(device, intervalSeconds))
-    ]);
+    // Poll all devices using the unified polling function
+    await Promise.all(devices.map(device => pollDeviceUnified(device, intervalSeconds)));
     
     // Schedule next poll with current interval (only after all devices complete)
     pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);

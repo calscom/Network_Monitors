@@ -119,6 +119,7 @@ export function AddDeviceDialog() {
       ip: "",
       community: "public",
       type: "generic",
+      pollType: "snmp_only",
       interfaceIndex: 1,
       interfaceName: null,
     },
@@ -166,8 +167,12 @@ export function AddDeviceDialog() {
         <DialogHeader>
           <DialogTitle className="text-xl font-display">Add Network Device</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            {form.watch("type") === "ping" 
+            {form.watch("pollType") === "ping_only" 
               ? "Add a device to monitor via ICMP ping (online/offline status only)."
+              : form.watch("pollType") === "ping_and_snmp"
+              ? "Add a device that must respond to both ping AND SNMP to be online."
+              : form.watch("pollType") === "ping_or_snmp"
+              ? "Add a device that is online if either ping OR SNMP succeeds."
               : "Add a new device to monitor via SNMP v2."}
           </DialogDescription>
         </DialogHeader>
@@ -208,7 +213,7 @@ export function AddDeviceDialog() {
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type</FormLabel>
+                    <FormLabel>Device Type</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="bg-secondary/50 border-white/10 focus:border-primary/50">
@@ -216,7 +221,6 @@ export function AddDeviceDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="ping">Ping Only</SelectItem>
                         <SelectItem value="unifi">Ubiquiti UniFi</SelectItem>
                         <SelectItem value="mikrotik">MikroTik RouterOS</SelectItem>
                         <SelectItem value="fortigate">Fortigate</SelectItem>
@@ -234,6 +238,30 @@ export function AddDeviceDialog() {
                 )}
               />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="pollType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Poll Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value || "snmp_only"}>
+                    <FormControl>
+                      <SelectTrigger className="bg-secondary/50 border-white/10 focus:border-primary/50">
+                        <SelectValue placeholder="Select poll type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ping_only">Ping Only</SelectItem>
+                      <SelectItem value="snmp_only">SNMP Only</SelectItem>
+                      <SelectItem value="ping_and_snmp">Ping AND SNMP</SelectItem>
+                      <SelectItem value="ping_or_snmp">Ping OR SNMP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -258,7 +286,7 @@ export function AddDeviceDialog() {
               )}
             />
 
-            {form.watch("type") !== "ping" && (
+            {form.watch("pollType") !== "ping_only" && (
               <>
                 <FormField
                   control={form.control}
@@ -347,7 +375,7 @@ export function AddDeviceDialog() {
               </>
             )}
             
-            {form.watch("type") === "ping" && (
+            {form.watch("pollType") === "ping_only" && (
               <div className="text-sm text-muted-foreground bg-secondary/30 p-3 rounded-md border border-white/10">
                 <p>Ping-only devices are monitored for online/offline status using ICMP ping. No bandwidth or traffic metrics are collected.</p>
               </div>
