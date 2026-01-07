@@ -151,6 +151,40 @@ export const insertNotificationSettingsSchema = createInsertSchema(notificationS
   updatedAt: true,
 });
 
+// Monthly availability snapshots (reset at month end, stored for historical reporting)
+export const availabilityMonthly = pgTable("availability_monthly", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(), // 1-12
+  totalChecks: integer("total_checks").default(0).notNull(),
+  successfulChecks: integer("successful_checks").default(0).notNull(),
+  uptimePercentage: text("uptime_percentage").default("0.00").notNull(), // Stored as string for precision
+  snapshotTakenAt: timestamp("snapshot_taken_at").defaultNow().notNull(),
+});
+
+export const insertAvailabilityMonthlySchema = createInsertSchema(availabilityMonthly).omit({
+  id: true,
+  snapshotTakenAt: true,
+});
+
+// Annual availability aggregation (compiled from monthly snapshots)
+export const availabilityAnnual = pgTable("availability_annual", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  year: integer("year").notNull(),
+  totalChecks: integer("total_checks").default(0).notNull(),
+  successfulChecks: integer("successful_checks").default(0).notNull(),
+  uptimePercentage: text("uptime_percentage").default("0.00").notNull(),
+  monthsRecorded: integer("months_recorded").default(0).notNull(), // How many months have been compiled
+  compiledAt: timestamp("compiled_at").defaultNow().notNull(),
+});
+
+export const insertAvailabilityAnnualSchema = createInsertSchema(availabilityAnnual).omit({
+  id: true,
+  compiledAt: true,
+});
+
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Log = typeof logs.$inferSelect;
@@ -165,6 +199,10 @@ export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type InsertAppSettings = z.infer<typeof insertAppSettingsSchema>;
+export type AvailabilityMonthly = typeof availabilityMonthly.$inferSelect;
+export type InsertAvailabilityMonthly = z.infer<typeof insertAvailabilityMonthlySchema>;
+export type AvailabilityAnnual = typeof availabilityAnnual.$inferSelect;
+export type InsertAvailabilityAnnual = z.infer<typeof insertAvailabilityAnnualSchema>;
 
 // Export auth models
 export * from "./models/auth";
