@@ -18,6 +18,8 @@ export default function Login() {
   const [lastName, setLastName] = useState("");
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [showAuthForm, setShowAuthForm] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   
   const { data: setupStatus, isLoading: checkingSetup } = useQuery<{ needsSetup: boolean }>({
     queryKey: ["/api/auth/needs-setup"],
@@ -109,6 +111,36 @@ export default function Login() {
       });
     },
   });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Request failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Check Your Email",
+        description: "If an account exists with this email, you'll receive a password reset link.",
+      });
+      setShowForgotPassword(false);
+      setForgotEmail("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +155,11 @@ export default function Login() {
   const handleSetup = (e: React.FormEvent) => {
     e.preventDefault();
     setupMutation.mutate({ email, password, firstName, lastName });
+  };
+
+  const handleForgotPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    forgotPasswordMutation.mutate(forgotEmail);
   };
   
   const clearForm = () => {
@@ -278,6 +315,56 @@ export default function Login() {
                   </p>
                 </CardContent>
               </Card>
+            ) : showForgotPassword ? (
+              <Card>
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl">Reset Password</CardTitle>
+                  <CardDescription>
+                    Enter your email and we'll send you a reset link
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          className="pl-9"
+                          required
+                          data-testid="input-forgot-email"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={forgotPasswordMutation.isPending}
+                      data-testid="button-send-reset"
+                    >
+                      {forgotPasswordMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Send Reset Link
+                    </Button>
+
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => { setShowForgotPassword(false); setForgotEmail(""); }}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                        data-testid="button-back-to-login"
+                      >
+                        Back to Sign In
+                      </button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
             ) : (
               <Card>
                 <CardHeader className="text-center">
@@ -338,6 +425,17 @@ export default function Login() {
                           {loginMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                           Sign In
                         </Button>
+
+                        <div className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => setShowForgotPassword(true)}
+                            className="text-sm text-primary hover:underline"
+                            data-testid="button-forgot-password"
+                          >
+                            Forgot your password?
+                          </button>
+                        </div>
                       </form>
                     </TabsContent>
                     

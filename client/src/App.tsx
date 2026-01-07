@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/use-auth";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
+import ResetPassword from "@/pages/ResetPassword";
 import UserManagement from "@/pages/UserManagement";
 import NotificationSettings from "@/pages/NotificationSettings";
 import NotFound from "@/pages/not-found";
@@ -25,6 +26,10 @@ function AuthenticatedRoutes() {
 
 function AppContent() {
   const { isLoading, isAuthenticated, isReplitEnvironment } = useAuth();
+
+  if (window.location.pathname === "/reset-password") {
+    return <ResetPassword />;
+  }
 
   if (isLoading) {
     return (
