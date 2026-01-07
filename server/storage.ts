@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings } from "@shared/schema";
+import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, availabilityMonthly, availabilityAnnual, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings, type AvailabilityMonthly, type InsertAvailabilityMonthly, type AvailabilityAnnual, type InsertAvailabilityAnnual } from "@shared/schema";
 import { eq, desc, asc, sql, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -51,6 +51,15 @@ export interface IStorage {
   // App settings (polling interval persistence)
   getAppSettings(): Promise<AppSettings | null>;
   savePollingInterval(intervalMs: number): Promise<AppSettings>;
+  // Availability tracking (monthly/annual)
+  saveMonthlyAvailability(snapshot: InsertAvailabilityMonthly): Promise<AvailabilityMonthly>;
+  getMonthlyAvailability(deviceId: number, year: number): Promise<AvailabilityMonthly[]>;
+  getAllMonthlyAvailabilityForYear(year: number): Promise<AvailabilityMonthly[]>;
+  saveAnnualAvailability(data: InsertAvailabilityAnnual): Promise<AvailabilityAnnual>;
+  getAnnualAvailability(deviceId: number, year?: number): Promise<AvailabilityAnnual[]>;
+  getAllAnnualAvailability(year: number): Promise<AvailabilityAnnual[]>;
+  resetDeviceAvailabilityCounters(deviceId: number): Promise<void>;
+  monthlySnapshotExists(deviceId: number, year: number, month: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -437,6 +446,107 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // Availability tracking methods
+  async saveMonthlyAvailability(snapshot: InsertAvailabilityMonthly): Promise<AvailabilityMonthly> {
+    const [record] = await db.insert(availabilityMonthly).values(snapshot).returning();
+    return record;
+  }
+
+  async getMonthlyAvailability(deviceId: number, year: number): Promise<AvailabilityMonthly[]> {
+    return await db
+      .select()
+      .from(availabilityMonthly)
+      .where(and(
+        eq(availabilityMonthly.deviceId, deviceId),
+        eq(availabilityMonthly.year, year)
+      ))
+      .orderBy(asc(availabilityMonthly.month));
+  }
+
+  async getAllMonthlyAvailabilityForYear(year: number): Promise<AvailabilityMonthly[]> {
+    return await db
+      .select()
+      .from(availabilityMonthly)
+      .where(eq(availabilityMonthly.year, year))
+      .orderBy(asc(availabilityMonthly.deviceId), asc(availabilityMonthly.month));
+  }
+
+  async saveAnnualAvailability(data: InsertAvailabilityAnnual): Promise<AvailabilityAnnual> {
+    // Check if record exists for this device/year
+    const existing = await db
+      .select()
+      .from(availabilityAnnual)
+      .where(and(
+        eq(availabilityAnnual.deviceId, data.deviceId),
+        eq(availabilityAnnual.year, data.year)
+      ))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      // Update existing record
+      const [updated] = await db
+        .update(availabilityAnnual)
+        .set({
+          totalChecks: data.totalChecks,
+          successfulChecks: data.successfulChecks,
+          uptimePercentage: data.uptimePercentage,
+          monthsRecorded: data.monthsRecorded,
+          compiledAt: new Date()
+        })
+        .where(eq(availabilityAnnual.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [record] = await db.insert(availabilityAnnual).values(data).returning();
+      return record;
+    }
+  }
+
+  async getAnnualAvailability(deviceId: number, year?: number): Promise<AvailabilityAnnual[]> {
+    if (year) {
+      return await db
+        .select()
+        .from(availabilityAnnual)
+        .where(and(
+          eq(availabilityAnnual.deviceId, deviceId),
+          eq(availabilityAnnual.year, year)
+        ));
+    }
+    return await db
+      .select()
+      .from(availabilityAnnual)
+      .where(eq(availabilityAnnual.deviceId, deviceId))
+      .orderBy(desc(availabilityAnnual.year));
+  }
+
+  async getAllAnnualAvailability(year: number): Promise<AvailabilityAnnual[]> {
+    return await db
+      .select()
+      .from(availabilityAnnual)
+      .where(eq(availabilityAnnual.year, year))
+      .orderBy(asc(availabilityAnnual.deviceId));
+  }
+
+  async resetDeviceAvailabilityCounters(deviceId: number): Promise<void> {
+    await db
+      .update(devices)
+      .set({ totalChecks: 0, successfulChecks: 0 })
+      .where(eq(devices.id, deviceId));
+  }
+
+  async monthlySnapshotExists(deviceId: number, year: number, month: number): Promise<boolean> {
+    const existing = await db
+      .select()
+      .from(availabilityMonthly)
+      .where(and(
+        eq(availabilityMonthly.deviceId, deviceId),
+        eq(availabilityMonthly.year, year),
+        eq(availabilityMonthly.month, month)
+      ))
+      .limit(1);
+    return existing.length > 0;
   }
 }
 
