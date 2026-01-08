@@ -314,6 +314,24 @@ const doc = new Document({
         createBulletPoint("Status Indicators - Green (Online), Red (Offline), Blue (Recovering)"),
         createBulletPoint("Bandwidth Gauges - Visual representation of current utilization"),
         createBulletPoint("Availability Percentage - Uptime tracking for each device"),
+        createBulletPoint("Theme Toggle - Switch between light and dark modes using the sun/moon icon"),
+        createBulletPoint("Copy IP Address - Click any device IP to copy it to your clipboard"),
+
+        new Paragraph({
+          text: "2.4 New User Onboarding",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "First-time users are presented with an interactive onboarding tour that introduces key features:"
+        ),
+        createBulletPoint("Progress bar shows your journey through the tour steps"),
+        createBulletPoint("Navigate using Next/Back buttons or click the step dots"),
+        createBulletPoint("Skip the tour at any time using the X button"),
+        createBulletPoint("Restart the tour from the main menu under 'Restart Tour'"),
+        createNote(
+          "The onboarding tour covers device management, notifications, Network Map, and user roles."
+        ),
 
         new Paragraph({
           children: [new PageBreak()],

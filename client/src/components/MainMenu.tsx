@@ -60,7 +60,8 @@ import {
   Eye,
   Timer,
   RefreshCw,
-  Terminal
+  Terminal,
+  HelpCircle
 } from "lucide-react";
 import { UtilityDialog } from "./UtilityDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -590,6 +591,17 @@ export function MainMenu({
           >
             <Terminal className="w-4 h-4 mr-2" />
             Network Utilities
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onClick={() => {
+              localStorage.removeItem("network_monitor_onboarding_complete");
+              window.location.reload();
+            }}
+            data-testid="menu-restart-tour"
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            Restart Tour
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

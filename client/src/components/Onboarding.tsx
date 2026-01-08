@@ -114,6 +114,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 variant="ghost"
                 className="absolute top-2 right-2"
                 onClick={handleSkip}
+                aria-label="Skip onboarding tour"
+                title="Skip tour"
                 data-testid="button-skip-onboarding"
               >
                 <X className="w-4 h-4" />
@@ -183,8 +185,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   Back
                 </Button>
                 
-                <div className="flex gap-1">
-                  {steps.map((_, index) => (
+                <div className="flex gap-1" role="tablist" aria-label="Onboarding steps">
+                  {steps.map((step, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentStep(index)}
@@ -195,6 +197,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                             ? 'bg-primary/50' 
                             : 'bg-muted-foreground/30'
                       }`}
+                      aria-label={`Go to step ${index + 1}: ${step.title}`}
+                      aria-selected={index === currentStep}
+                      role="tab"
                       data-testid={`button-onboarding-dot-${index}`}
                     />
                   ))}
