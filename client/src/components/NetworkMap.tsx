@@ -9,6 +9,7 @@ interface NetworkMapProps {
   devices: Device[];
   sites: string[];
   onSiteClick?: (site: string) => void;
+  kioskMode?: boolean;
 }
 
 interface SiteColumn {
@@ -99,10 +100,11 @@ function DeviceNode({ device, index }: { device: Device; index: number }) {
   );
 }
 
-function SiteColumnComponent({ column, index, onSiteClick }: { 
+function SiteColumnComponent({ column, index, onSiteClick, compact }: { 
   column: SiteColumn; 
   index: number;
   onSiteClick?: (site: string) => void;
+  compact?: boolean;
 }) {
   const getSiteStatusColor = () => {
     if (column.status === "up") return "border-t-green-500 bg-green-500/5";
@@ -115,8 +117,8 @@ function SiteColumnComponent({ column, index, onSiteClick }: {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className={`flex flex-col min-w-[140px] max-w-[180px] lg:max-w-none lg:w-full border border-border/50 rounded-lg overflow-hidden ${getSiteStatusColor()} border-t-4 hover-elevate cursor-pointer`}
+      transition={{ delay: index * 0.05 }}
+      className={`flex flex-col min-w-[120px] flex-1 border border-border/50 rounded-lg overflow-hidden ${getSiteStatusColor()} border-t-4 hover-elevate cursor-pointer`}
       onClick={() => onSiteClick?.(column.site)}
       data-testid={`site-column-${index}`}
     >
@@ -131,7 +133,7 @@ function SiteColumnComponent({ column, index, onSiteClick }: {
         </div>
       </div>
 
-      <div className="flex-1 p-2 space-y-2 min-h-[200px] max-h-[400px] overflow-y-auto">
+      <div className="flex-1 p-2 space-y-2 min-h-[100px] max-h-[60vh] overflow-y-auto">
         {column.devices.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground/50 text-[10px] italic">
             No devices
@@ -169,7 +171,7 @@ function SiteColumnComponent({ column, index, onSiteClick }: {
   );
 }
 
-export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
+export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: NetworkMapProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [layoutMode, setLayoutMode] = useState<"grid" | "horizontal">(() => {
     const saved = localStorage.getItem("networkMapLayout");
@@ -220,16 +222,23 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
     return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
   };
 
-  const totalOnline = devices.filter(d => d.status === "green").length;
-  const totalOffline = devices.filter(d => d.status === "red" || d.status === "blue").length;
-  const totalRecovering = devices.filter(d => d.status === "yellow" || d.status === "blue").length;
   const totalActiveUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
 
+  const getResponsiveGridCols = () => {
+    const siteCount = sites.length;
+    if (siteCount <= 3) return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
+    if (siteCount <= 4) return "grid-cols-2 md:grid-cols-4";
+    if (siteCount <= 6) return "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
+    if (siteCount <= 8) return "grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8";
+    if (siteCount <= 12) return "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6";
+    return "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
+  };
+
   return (
-    <div className="glass rounded-xl overflow-hidden" data-testid="network-map-container">
-      <div className="p-4 border-b border-border/30 flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-foreground">Network Topology Map</h2>
-        <div className="flex items-center gap-4">
+    <div className={`glass rounded-xl overflow-hidden flex flex-col ${kioskMode ? 'h-full' : ''}`} data-testid="network-map-container">
+      <div className="p-3 border-b border-border/30 flex flex-wrap items-center justify-between gap-2">
+        <h2 className={`font-semibold text-foreground ${kioskMode ? 'text-base' : 'text-lg'}`}>Network Topology Map</h2>
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">Sites:</span>
             <span className="font-mono font-semibold">{sites.length}</span>
@@ -237,6 +246,10 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">Devices:</span>
             <span className="font-mono font-semibold">{devices.length}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <Users className="w-3 h-3 text-blue-400" />
+            <span className="font-mono font-semibold text-blue-400">{totalActiveUsers}</span>
           </div>
           <div className="flex items-center border border-border/50 rounded-md">
             <Button
@@ -261,10 +274,10 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
         </div>
       </div>
 
-      <div className={`p-4 ${layoutMode === "horizontal" ? "overflow-x-auto" : "overflow-x-auto lg:overflow-x-visible"}`}>
+      <div className={`flex-1 p-3 overflow-auto ${kioskMode ? 'min-h-0' : ''}`}>
         <div className={layoutMode === "horizontal" 
-          ? "flex gap-3 min-w-max" 
-          : "flex gap-3 min-w-max lg:min-w-0 lg:grid lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 lg:gap-3"
+          ? "flex gap-2 min-w-max h-full" 
+          : `grid gap-2 auto-rows-fr ${getResponsiveGridCols()}`
         }>
           {columns.map((column, index) => (
             <SiteColumnComponent 
@@ -272,25 +285,26 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
               column={column} 
               index={index}
               onSiteClick={onSiteClick}
+              compact={kioskMode}
             />
           ))}
         </div>
       </div>
 
-      <div className="p-4 border-t border-border/30 bg-card/30">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="p-2 border-t border-border/30 bg-card/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1">
-            <div className="w-24 h-3 rounded overflow-hidden flex">
+            <div className="w-20 h-2 rounded overflow-hidden flex">
               <div className="w-1/4 bg-green-500" title="0-25%" />
               <div className="w-1/4 bg-yellow-500" title="25-50%" />
               <div className="w-1/4 bg-orange-500" title="50-75%" />
               <div className="w-1/4 bg-red-500" title="75-100%" />
             </div>
-            <span className="text-[10px] text-muted-foreground ml-2">Traffic Load</span>
+            <span className="text-[9px] text-muted-foreground ml-1">Load</span>
           </div>
 
           <motion.div 
-            className="text-2xl font-mono font-bold text-foreground tracking-wider"
+            className={`font-mono font-bold text-foreground tracking-wider ${kioskMode ? 'text-xl' : 'text-lg'}`}
             key={currentTime.getSeconds()}
             initial={{ opacity: 0.7 }}
             animate={{ opacity: 1 }}
@@ -299,45 +313,25 @@ export function NetworkMap({ devices, sites, onSiteClick }: NetworkMapProps) {
             {formatDate(currentTime)} {formatTime(currentTime)}
           </motion.div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] font-semibold text-muted-foreground">Node Status</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[9px] text-muted-foreground">Status:</span>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-500 rounded-sm" />
-              <span className="text-[9px] text-muted-foreground">disabled</span>
+              <div className="w-2 h-2 bg-green-500 rounded-sm" />
+              <span className="text-[8px] text-muted-foreground">up</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded-sm" />
-              <span className="text-[9px] text-muted-foreground">down</span>
+              <div className="w-2 h-2 bg-red-500 rounded-sm" />
+              <span className="text-[8px] text-muted-foreground">down</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-blue-500 rounded-sm" />
-              <span className="text-[9px] text-muted-foreground">recovering</span>
+              <div className="w-2 h-2 bg-blue-500 rounded-sm" />
+              <span className="text-[8px] text-muted-foreground">recovering</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded-sm" />
-              <span className="text-[9px] text-muted-foreground">up</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
-              <span className="text-[9px] text-muted-foreground">unknown</span>
+              <div className="w-2 h-2 bg-yellow-500 rounded-sm" />
+              <span className="text-[8px] text-muted-foreground">unknown</span>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center justify-center gap-6 mt-3 pt-3 border-t border-border/20">
-          <Badge variant="outline" className="text-green-500 border-green-500/30 bg-green-500/10">
-            {totalOnline} Online
-          </Badge>
-          <Badge variant="outline" className="text-red-500 border-red-500/30 bg-red-500/10">
-            {totalOffline} Offline
-          </Badge>
-          <Badge variant="outline" className="text-blue-500 border-blue-500/30 bg-blue-500/10">
-            {totalRecovering} Recovering
-          </Badge>
-          <Badge variant="outline" className="text-purple-500 border-purple-500/30 bg-purple-500/10">
-            <Users className="w-3 h-3 mr-1" />
-            {totalActiveUsers} Hotspot Users
-          </Badge>
         </div>
       </div>
     </div>

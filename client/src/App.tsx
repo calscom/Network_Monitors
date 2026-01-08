@@ -11,6 +11,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import UserManagement from "@/pages/UserManagement";
 import NotificationSettings from "@/pages/NotificationSettings";
 import ActivityLog from "@/pages/ActivityLog";
+import KioskMap from "@/pages/KioskMap";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -31,6 +32,10 @@ function AppContent() {
 
   if (window.location.pathname === "/reset-password") {
     return <ResetPassword />;
+  }
+
+  if (window.location.pathname === "/kiosk") {
+    return <KioskMap />;
   }
 
   if (isLoading) {
