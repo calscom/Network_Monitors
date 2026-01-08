@@ -28,6 +28,7 @@ export const devices = pgTable("devices", {
   interfaceIndex: integer("interface_index").default(1).notNull(), // SNMP interface index to monitor
   interfaceName: text("interface_name"), // Human-readable interface name
   activeUsers: integer("active_users").default(0).notNull(), // Active hotspot/usermanager users (Mikrotik only)
+  maxBandwidth: integer("max_bandwidth").default(100).notNull(), // Maximum bandwidth in Mbps for utilization calculation
 });
 
 export const insertDeviceSchema = createInsertSchema(devices).omit({

@@ -122,6 +122,7 @@ export function AddDeviceDialog() {
       pollType: "snmp_only",
       interfaceIndex: 1,
       interfaceName: null,
+      maxBandwidth: 100,
     },
   });
 
@@ -298,6 +299,31 @@ export function AddDeviceDialog() {
                         <Input placeholder="public" {...field} className="bg-secondary/50 border-white/10 focus:border-primary/50" />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="maxBandwidth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max Bandwidth (Mbps)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="100" 
+                          {...field}
+                          value={field.value || 100}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 100)}
+                          className="bg-secondary/50 border-white/10 focus:border-primary/50" 
+                          data-testid="input-max-bandwidth-add"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">
+                        Used to calculate bandwidth utilization percentage
+                      </p>
                     </FormItem>
                   )}
                 />

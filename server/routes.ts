@@ -1370,8 +1370,9 @@ export async function registerRoutes(
           const totalMbps = parseFloat(downloadMbps) + parseFloat(uploadMbps);
           bandwidthMBps = totalMbps.toFixed(2);
           
-          // Utilization based on total throughput vs 1Gbps link
-          newUtilization = Math.min(100, Math.floor((totalMbps / 1000) * 100));
+          // Utilization based on total throughput vs device's max bandwidth setting
+          const maxBw = device.maxBandwidth || 100;
+          newUtilization = Math.min(100, Math.floor((totalMbps / maxBw) * 100));
 
           lastInCounter = currentInCounter;
           lastOutCounter = currentOutCounter;

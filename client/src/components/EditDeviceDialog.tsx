@@ -111,6 +111,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
       site: device.site,
       interfaceIndex: device.interfaceIndex || 1,
       interfaceName: device.interfaceName || null,
+      maxBandwidth: (device as any).maxBandwidth || 100,
     },
   });
 
@@ -332,6 +333,32 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                 </FormItem>
               )}
             />
+            
+            {form.watch("pollType") !== "ping_only" && (
+              <FormField
+                control={form.control}
+                name="maxBandwidth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Bandwidth (Mbps)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="100" 
+                        {...field}
+                        value={field.value || 100}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 100)}
+                        data-testid="input-max-bandwidth-edit"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">
+                      Used to calculate bandwidth utilization percentage
+                    </p>
+                  </FormItem>
+                )}
+              />
+            )}
             
             {/* Interface Selection - Hidden for ping-only devices */}
             {form.watch("pollType") !== "ping_only" && (
