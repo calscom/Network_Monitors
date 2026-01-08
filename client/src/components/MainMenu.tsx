@@ -348,6 +348,9 @@ export function MainMenu({
           const community = row.community || row.Community || row.COMMUNITY || 'public';
           const type = row.type || row.Type || row.TYPE || 'generic';
           const site = row.site || row.Site || row.SITE || 'Default Site';
+          const pollType = row.poll_type || row.pollType || row.poll_Type || row.PollType || 'snmp_only';
+          const maxBandwidthRaw = row.max_bandwidth || row.maxBandwidth || row.Max_Bandwidth || row.MaxBandwidth || '100';
+          const maxBandwidth = parseInt(String(maxBandwidthRaw), 10) || 100;
 
           if (!name || !ip) {
             errorCount++;
@@ -358,7 +361,7 @@ export function MainMenu({
             const res = await fetch('/api/devices', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name, ip, community, type, site }),
+              body: JSON.stringify({ name, ip, community, type, site, pollType, maxBandwidth }),
             });
             if (res.ok) {
               successCount++;
@@ -411,7 +414,7 @@ export function MainMenu({
   };
 
   const downloadDeviceTemplate = () => {
-    const templateContent = "name,ip,community,type,site\nCore Router,192.168.1.1,public,mikrotik,01 Cloud\nOffice WiFi,192.168.1.5,public,unifi,01 Cloud\nBackup Server,10.0.0.10,private,generic,02-Maiduguri";
+    const templateContent = "name,ip,community,type,site,poll_type,max_bandwidth\nCore Router,192.168.1.1,public,mikrotik,01 Cloud,snmp_only,1000\nOffice WiFi,192.168.1.5,public,unifi,01 Cloud,ping_and_snmp,100\nBackup Server,10.0.0.10,private,generic,02-Maiduguri,ping_only,100\nRadio Link,10.0.1.1,public,radio,03-Gwoza,ping_or_snmp,500";
     const blob = new Blob([templateContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -421,7 +424,7 @@ export function MainMenu({
     URL.revokeObjectURL(url);
     toast({
       title: "Template downloaded",
-      description: "Devices template CSV has been downloaded.",
+      description: "Devices template CSV has been downloaded. Columns: name, ip, community, type, site, poll_type (ping_only/snmp_only/ping_and_snmp/ping_or_snmp), max_bandwidth (Mbps).",
     });
   };
 

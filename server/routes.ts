@@ -1164,7 +1164,7 @@ export async function registerRoutes(
 
   app.get("/api/devices/template", conditionalAuth, async (req, res) => {
     const devices = await storage.getDevices();
-    const headers = ["name", "ip", "community", "type", "site"];
+    const headers = ["name", "ip", "community", "type", "site", "poll_type", "max_bandwidth"];
     
     let csvContent = headers.join(",") + "\n";
     
@@ -1172,15 +1172,19 @@ export async function registerRoutes(
       const row = [
         `"${device.name}"`,
         `"${device.ip}"`,
-        `"public"`,
+        `"${device.community || 'public'}"`,
         `"${device.type}"`,
-        `"${device.site}"`
+        `"${device.site}"`,
+        `"${device.pollType || 'snmp_only'}"`,
+        `${device.maxBandwidth || 100}`
       ];
       csvContent += row.join(",") + "\n";
     }
     
     if (devices.length === 0) {
-      csvContent += '"Example Device","192.168.1.1","public","mikrotik","01 Cloud"\n';
+      csvContent += '"Example Router","192.168.1.1","public","mikrotik","01 Cloud","snmp_only",1000\n';
+      csvContent += '"Example AP","192.168.1.5","public","unifi","01 Cloud","ping_and_snmp",100\n';
+      csvContent += '"Example Radio","10.0.1.1","public","radio","02-Maiduguri","ping_or_snmp",500\n';
     }
     
     res.setHeader("Content-Type", "text/csv");
