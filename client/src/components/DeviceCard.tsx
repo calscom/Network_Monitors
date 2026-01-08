@@ -36,36 +36,61 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   const [showInterfaces, setShowInterfaces] = useState(false);
   const [copiedIp, setCopiedIp] = useState(false);
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      // Try modern clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        // Fallback for older browsers or non-secure contexts
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
+  const copyToClipboard = (e: React.MouseEvent, text: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const fallbackCopy = (str: string): boolean => {
+      const textArea = document.createElement('textarea');
+      textArea.value = str;
+      textArea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        const result = document.execCommand('copy');
         document.body.removeChild(textArea);
+        return result;
+      } catch {
+        document.body.removeChild(textArea);
+        return false;
       }
+    };
+
+    const showSuccess = () => {
       setCopiedIp(true);
       toast({
-        title: "Copied to clipboard",
-        description: `IP address ${text} copied`,
+        title: "Copied",
+        description: `${text} copied to clipboard`,
       });
       setTimeout(() => setCopiedIp(false), 2000);
-    } catch {
+    };
+
+    const showError = () => {
       toast({
         title: "Copy failed",
         description: "Could not copy to clipboard",
         variant: "destructive",
       });
+    };
+
+    // Try modern API first, then fallback
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text)
+        .then(showSuccess)
+        .catch(() => {
+          if (fallbackCopy(text)) {
+            showSuccess();
+          } else {
+            showError();
+          }
+        });
+    } else {
+      if (fallbackCopy(text)) {
+        showSuccess();
+      } else {
+        showError();
+      }
     }
   };
 
@@ -137,7 +162,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
             </h3>
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <button
-                onClick={() => copyToClipboard(device.ip)}
+                onClick={(e) => copyToClipboard(e, device.ip)}
                 className="text-[10px] sm:text-xs font-mono text-muted-foreground bg-secondary/50 px-1 sm:px-1.5 py-0.5 rounded border border-white/5 flex items-center gap-1 hover:bg-secondary/80 transition-colors cursor-pointer"
                 title="Click to copy IP address"
                 data-testid={`button-copy-ip-${device.id}`}
