@@ -222,6 +222,9 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
     return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
   };
 
+  const totalOnline = devices.filter(d => d.status === "green").length;
+  const totalOffline = devices.filter(d => d.status === "red").length;
+  const totalRecovering = devices.filter(d => d.status === "yellow" || d.status === "blue").length;
   const totalActiveUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
 
   const getResponsiveGridCols = () => {
@@ -332,6 +335,22 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
               <span className="text-[8px] text-muted-foreground">unknown</span>
             </div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-4 mt-2 pt-2 border-t border-border/20">
+          <Badge variant="outline" className="text-green-500 border-green-500/30 bg-green-500/10">
+            {totalOnline} Online
+          </Badge>
+          <Badge variant="outline" className="text-red-500 border-red-500/30 bg-red-500/10">
+            {totalOffline} Offline
+          </Badge>
+          <Badge variant="outline" className="text-blue-500 border-blue-500/30 bg-blue-500/10">
+            {totalRecovering} Recovering
+          </Badge>
+          <Badge variant="outline" className="text-purple-500 border-purple-500/30 bg-purple-500/10">
+            <Users className="w-3 h-3 mr-1" />
+            {totalActiveUsers} Hotspot Users
+          </Badge>
         </div>
       </div>
     </div>

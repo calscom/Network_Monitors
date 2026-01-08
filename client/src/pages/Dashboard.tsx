@@ -257,41 +257,6 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Global Status List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-          <div className="glass rounded-xl p-4 sm:p-6 space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 border-b border-white/5 pb-3 sm:pb-4 text-[hsl(var(--status-green))]">
-              <ArrowUpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-              <h2 className="text-base sm:text-lg font-semibold">Online Devices</h2>
-            </div>
-            <div className="space-y-2 max-h-[200px] sm:max-h-[300px] overflow-y-auto pr-2">
-              {upDevices.map(device => (
-                <div key={device.id} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5 gap-2">
-                  <span className="font-medium text-xs sm:text-sm truncate">{device.name}</span>
-                  <Badge variant="outline" className="text-[9px] sm:text-[10px] uppercase shrink-0">{device.site}</Badge>
-                </div>
-              ))}
-              {upDevices.length === 0 && <p className="text-muted-foreground text-sm italic py-4 text-center">No devices online</p>}
-            </div>
-          </div>
-
-          <div className="glass rounded-xl p-4 sm:p-6 space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 border-b border-white/5 pb-3 sm:pb-4 text-[hsl(var(--status-red))]">
-              <ArrowDownCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-              <h2 className="text-base sm:text-lg font-semibold">Critical Devices</h2>
-            </div>
-            <div className="space-y-2 max-h-[200px] sm:max-h-[300px] overflow-y-auto pr-2">
-              {downDevices.map(device => (
-                <div key={device.id} className="flex items-center justify-between p-2 rounded bg-destructive/10 border border-destructive/20 gap-2">
-                  <span className="font-medium text-xs sm:text-sm truncate">{device.name}</span>
-                  <Badge variant="destructive" className="text-[9px] sm:text-[10px] uppercase shrink-0">{device.site}</Badge>
-                </div>
-              ))}
-              {downDevices.length === 0 && <p className="text-muted-foreground text-sm italic py-4 text-center">No devices critical</p>}
-            </div>
-          </div>
-        </div>
-
         {/* Network Map View */}
         {viewMode === "map" && devices && (
           <NetworkMap 
