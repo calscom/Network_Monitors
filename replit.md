@@ -35,6 +35,14 @@ Preferred communication style: Simple, everyday language.
 - Historical interface metrics for graphing
 - Notification settings for alerts (email, Telegram) on offline, recovery, or high utilization events
 - Period-over-period comparison data for performance analysis
+- Network Map with kiosk mode (/kiosk) for wall-mounted NOC displays
+- Email test functionality for SMTP verification
+- CSV/Excel import/export with poll_type and max_bandwidth columns
+
+### Documentation
+- **Operational Manual**: `Network_Monitor_Operational_Manual.docx` - Comprehensive user guide
+- **Manual Generation**: Run `npx tsx scripts/generate-manual.ts` to regenerate after feature changes
+- **Important**: Always update the manual when editing features by modifying `scripts/generate-manual.ts` and regenerating
 
 ## External Dependencies
 

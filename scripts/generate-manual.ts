@@ -441,9 +441,10 @@ const doc = new Document({
         createBulletPoint("name - Device name"),
         createBulletPoint("ip - IP address"),
         createBulletPoint("site - Site name"),
-        createBulletPoint("type - Device type"),
-        createBulletPoint("community - SNMP community string"),
-        createBulletPoint("maxBandwidth - Maximum bandwidth in Mbps"),
+        createBulletPoint("type - Device type (mikrotik, unifi, radio, generic, etc.)"),
+        createBulletPoint("community - SNMP community string (default: public)"),
+        createBulletPoint("poll_type - Polling method (ping_only, snmp_only, ping_and_snmp, ping_or_snmp)"),
+        createBulletPoint("max_bandwidth - Maximum bandwidth in Mbps for utilization calculation"),
 
         new Paragraph({
           children: [new PageBreak()],
@@ -566,7 +567,13 @@ const doc = new Document({
         createBulletPoint("Device Recovery - When an offline device comes back online", 1),
         createBulletPoint("High Utilization - When bandwidth exceeds threshold", 1),
         createNumberedItem("Set the utilization threshold percentage (default: 90%)"),
+        createNumberedItem("To test email configuration:"),
+        createBulletPoint("Enter a test email address in the 'Test Email Configuration' field", 1),
+        createBulletPoint("Click 'Send Test' to verify SMTP is working correctly", 1),
         createNumberedItem("Click 'Save Settings'"),
+        createNote(
+          "SMTP must be configured with SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM_EMAIL environment variables."
+        ),
 
         new Paragraph({
           text: "6.2 Telegram Notifications",
@@ -661,16 +668,41 @@ const doc = new Document({
           heading: HeadingLevel.HEADING_1,
           spacing: { after: 300 },
         }),
+        
+        new Paragraph({
+          text: "8.1 Network Map View",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { after: 200 },
+        }),
         createParagraph(
-          "The Network Topology view provides a visual map of your network infrastructure:"
+          "The Network Map provides a visual overview of all sites and devices:"
         ),
-        createBulletPoint("Drag and drop devices to arrange the layout"),
-        createBulletPoint("Connect devices to show network relationships"),
-        createBulletPoint("Color-coded status indicators on each node"),
-        createBulletPoint("Click a device to view details or edit"),
-        createBulletPoint("Use the toolbar to add connections or export the diagram"),
+        createBulletPoint("Sites displayed as columns with device status counts"),
+        createBulletPoint("Color-coded status indicators (green=online, red=offline, blue=recovering)"),
+        createBulletPoint("Real-time bandwidth utilization bars on each device"),
+        createBulletPoint("Click a site column to navigate to that site's device list"),
+        createBulletPoint("Toggle between Grid and Horizontal layout modes"),
+        createBulletPoint("Bottom status bar shows total Online/Offline/Recovering/Hotspot Users counts"),
+        createBulletPoint("Live clock displays current date and time"),
+
+        new Paragraph({
+          text: "8.2 Kiosk Mode",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "Kiosk mode provides a full-screen Network Map display ideal for wall-mounted monitors and NOC displays:"
+        ),
+        createNumberedItem("Access kiosk mode by navigating to /kiosk in your browser"),
+        createNumberedItem("The view fills the entire screen without sidebar or header"),
+        createNumberedItem("No authentication required for kiosk access"),
+        createNumberedItem("Automatically refreshes device data every 2 seconds"),
+        createParagraph("Browser Kiosk Mode Setup:"),
+        createBulletPoint("Chrome: Press F11 for full-screen, or launch with --kiosk flag"),
+        createBulletPoint("Firefox: Press F11 for full-screen mode"),
+        createBulletPoint("Edge: Press F11 or use Settings > Full Screen"),
         createNote(
-          "Topology layouts are saved per user and persist across sessions."
+          "For dedicated kiosk displays, configure your browser to auto-start in kiosk mode pointing to /kiosk URL."
         ),
 
         new Paragraph({
