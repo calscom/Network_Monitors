@@ -3,8 +3,9 @@ import { StatusBadge } from "./StatusBadge";
 import { UtilizationGauge } from "./UtilizationGauge";
 import { PerformanceChart } from "./PerformanceChart";
 import { InterfaceChart } from "./InterfaceChart";
-import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity, Layers, Radio } from "lucide-react";
+import { Router, Server, Trash2, Clock, Network, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Activity, Layers, Radio, Copy, Check } from "lucide-react";
 import { Button } from "./ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,9 +30,29 @@ interface DeviceCardProps {
 
 export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   const deleteMutation = useDeleteDevice();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
   const [showInterfaces, setShowInterfaces] = useState(false);
+  const [copiedIp, setCopiedIp] = useState(false);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIp(true);
+      toast({
+        title: "Copied to clipboard",
+        description: `IP address ${text} copied`,
+      });
+      setTimeout(() => setCopiedIp(false), 2000);
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch monitored interfaces for this device
   const { data: monitoredInterfaces = [] } = useQuery<DeviceInterface[]>({
@@ -100,9 +121,19 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
               {device.name}
             </h3>
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="text-[10px] sm:text-xs font-mono text-muted-foreground bg-secondary/50 px-1 sm:px-1.5 py-0.5 rounded border border-white/5">
+              <button
+                onClick={() => copyToClipboard(device.ip)}
+                className="text-[10px] sm:text-xs font-mono text-muted-foreground bg-secondary/50 px-1 sm:px-1.5 py-0.5 rounded border border-white/5 flex items-center gap-1 hover:bg-secondary/80 transition-colors cursor-pointer"
+                title="Click to copy IP address"
+                data-testid={`button-copy-ip-${device.id}`}
+              >
                 {device.ip}
-              </span>
+                {copiedIp ? (
+                  <Check className="w-2.5 h-2.5 text-green-500" />
+                ) : (
+                  <Copy className="w-2.5 h-2.5 opacity-50" />
+                )}
+              </button>
               <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
                 {device.type}
               </span>

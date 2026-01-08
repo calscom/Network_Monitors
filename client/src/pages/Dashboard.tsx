@@ -5,6 +5,7 @@ import { NetworkMap } from "@/components/NetworkMap";
 import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Onboarding } from "@/components/Onboarding";
 import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X } from "lucide-react";
 import { motion, Reorder } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
@@ -43,6 +44,15 @@ export default function Dashboard() {
     const saved = localStorage.getItem("device_order");
     return saved ? JSON.parse(saved) : {};
   });
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const hasSeenOnboarding = localStorage.getItem("network_monitor_onboarding_complete");
+    return !hasSeenOnboarding;
+  });
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem("network_monitor_onboarding_complete", "true");
+    setShowOnboarding(false);
+  };
 
   const { data: logs } = useQuery<Log[]>({
     queryKey: ["/api/logs"],
@@ -178,6 +188,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4 md:p-8 lg:p-12">
+      {showOnboarding && (
+        <Onboarding onComplete={handleOnboardingComplete} />
+      )}
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 md:space-y-10">
         
         {/* Header Section */}
