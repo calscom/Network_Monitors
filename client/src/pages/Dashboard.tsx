@@ -6,9 +6,26 @@ import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Onboarding } from "@/components/Onboarding";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X } from "lucide-react";
-import { motion, Reorder } from "framer-motion";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X, GripVertical } from "lucide-react";
+import { motion } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Device } from "@shared/schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -24,6 +41,44 @@ const DEFAULT_SITES = [
   "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
   "11-Damboa", "12-Gubio"
 ];
+
+// Sortable wrapper for device cards
+function SortableDeviceCard({ device, canManage }: { device: Device; canManage: boolean }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: device.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className="relative"
+      data-testid={`sortable-device-${device.id}`}
+    >
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-background/80 hover:bg-background transition-colors"
+        aria-label={`Drag to reorder ${device.name}`}
+      >
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <DeviceCard device={device} canManage={canManage} />
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -174,16 +229,36 @@ export default function Dashboard() {
   const upDevices = devices?.filter(d => d.status === 'green') || [];
   const downDevices = devices?.filter(d => d.status === 'red' || d.status === 'blue') || [];
 
-  // Handle device reorder
-  const handleReorder = (reorderedDevices: Device[]) => {
-    // Update displayed devices immediately for visual feedback
-    setDisplayedDevices(reorderedDevices);
-    // Persist the order
-    const newOrder = reorderedDevices.map(d => d.id);
-    setDeviceOrder(prev => ({
-      ...prev,
-      [activeSite]: newOrder
-    }));
+  // DndKit sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle device reorder with DndKit
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = displayedDevices.findIndex(d => d.id === active.id);
+      const newIndex = displayedDevices.findIndex(d => d.id === over.id);
+      
+      const reorderedDevices = arrayMove(displayedDevices, oldIndex, newIndex);
+      setDisplayedDevices(reorderedDevices);
+      
+      // Persist the order
+      const newOrder = reorderedDevices.map(d => d.id);
+      setDeviceOrder(prev => ({
+        ...prev,
+        [activeSite]: newOrder
+      }));
+    }
   };
 
   return (
@@ -419,25 +494,29 @@ export default function Dashboard() {
                     {canManageDevices && <AddDeviceDialog />}
                   </div>
                 ) : (
-                  <Reorder.Group 
-                    axis="y" 
-                    values={displayedDevices} 
-                    onReorder={handleReorder}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6"
-                    data-testid="device-reorder-group"
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
                   >
-                    {displayedDevices.map((device) => (
-                      <Reorder.Item
-                        key={device.id}
-                        value={device}
-                        className="cursor-grab active:cursor-grabbing"
-                        whileDrag={{ scale: 1.02, boxShadow: "0 8px 20px rgba(0,0,0,0.3)" }}
-                        data-testid={`reorder-item-${device.id}`}
+                    <SortableContext
+                      items={displayedDevices.map(d => d.id)}
+                      strategy={rectSortingStrategy}
+                    >
+                      <div 
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6"
+                        data-testid="device-reorder-group"
                       >
-                        <DeviceCard device={device} canManage={canManageDevices} />
-                      </Reorder.Item>
-                    ))}
-                  </Reorder.Group>
+                        {displayedDevices.map((device) => (
+                          <SortableDeviceCard 
+                            key={device.id} 
+                            device={device} 
+                            canManage={canManageDevices} 
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </div>
 
