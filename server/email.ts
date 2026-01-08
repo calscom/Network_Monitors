@@ -140,3 +140,44 @@ export async function testEmailConnection(): Promise<{ success: boolean; message
     return { success: false, message: error.message || "SMTP connection failed" };
   }
 }
+
+export async function sendTestEmail(to: string): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+      return { success: false, message: "SMTP not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS environment variables." };
+    }
+
+    await transporter.sendMail({
+      from: `"Network Monitor" <${fromEmail}>`,
+      to,
+      subject: "Test Email - Network Monitor SMTP Configuration",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #22c55e;">SMTP Configuration Test Successful</h1>
+          <p>This is a test email from your Network Monitor Dashboard.</p>
+          <div style="margin: 30px 0; padding: 20px; background-color: #dcfce7; border-radius: 8px; border-left: 4px solid #22c55e;">
+            <p style="margin: 0; color: #166534;">
+              <strong>Your email notifications are working correctly!</strong>
+            </p>
+          </div>
+          <p>You will receive alerts for:</p>
+          <ul>
+            <li>Device offline events</li>
+            <li>Device recovery events</li>
+            <li>High bandwidth utilization warnings</li>
+          </ul>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+            Sent at: ${new Date().toLocaleString()}
+          </p>
+          <p style="color: #6b7280; font-size: 14px;">This is an automated test message from Network Monitor Dashboard.</p>
+        </div>
+      `,
+    });
+
+    console.log(`[email] Test email sent successfully to ${to}`);
+    return { success: true, message: `Test email sent successfully to ${to}` };
+  } catch (error: any) {
+    console.error(`[email] Failed to send test email to ${to}:`, error.message);
+    return { success: false, message: error.message || "Failed to send test email" };
+  }
+}

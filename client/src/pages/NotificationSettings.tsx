@@ -29,6 +29,8 @@ interface NotificationSettings {
 export default function NotificationSettings() {
   const { toast } = useToast();
   const [testingTelegram, setTestingTelegram] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailAddress, setTestEmailAddress] = useState("");
   
   const { data: settings, isLoading } = useQuery<NotificationSettings>({
     queryKey: ["/api/settings/notifications"],
@@ -131,6 +133,50 @@ export default function NotificationSettings() {
     setTestingTelegram(true);
     testTelegramMutation.mutate({ botToken, chatId }, {
       onSettled: () => setTestingTelegram(false)
+    });
+  };
+
+  const testEmailMutation = useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const res = await apiRequest("POST", "/api/settings/notifications/test-email", { email });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Test email sent",
+          description: data.message || "Check your inbox for the test email.",
+        });
+      } else {
+        toast({
+          title: "Failed to send test email",
+          description: data.message || "Check SMTP configuration",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Email test failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTestEmail = () => {
+    if (!testEmailAddress) {
+      toast({
+        title: "Email required",
+        description: "Please enter an email address to send the test to",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setTestingEmail(true);
+    testEmailMutation.mutate({ email: testEmailAddress }, {
+      onSettled: () => setTestingEmail(false)
     });
   };
 
@@ -306,7 +352,7 @@ export default function NotificationSettings() {
             <Mail className="h-5 w-5" />
             Email Notifications
           </CardTitle>
-          <CardDescription>Send alerts via email (requires SendGrid)</CardDescription>
+          <CardDescription>Send alerts via email (SMTP)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -334,12 +380,45 @@ export default function NotificationSettings() {
               </div>
               
               <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                <p className="font-medium mb-1">Email Configuration Required</p>
-                <p>Set the following environment variables:</p>
+                <p className="font-medium mb-1">SMTP Configuration Required</p>
+                <p>Set the following environment variables (Secrets):</p>
                 <ul className="list-disc list-inside mt-1">
-                  <li>SENDGRID_API_KEY - Your SendGrid API key</li>
-                  <li>SENDGRID_FROM_EMAIL - Verified sender email</li>
+                  <li>SMTP_HOST - SMTP server address</li>
+                  <li>SMTP_PORT - SMTP port (587 for TLS, 465 for SSL)</li>
+                  <li>SMTP_USER - SMTP username/email</li>
+                  <li>SMTP_PASS - SMTP password</li>
+                  <li>SMTP_FROM_EMAIL - Sender email address</li>
                 </ul>
+              </div>
+              
+              <div className="border-t pt-4 space-y-3">
+                <Label>Test Email Configuration</Label>
+                <div className="flex gap-2">
+                  <Input
+                    data-testid="input-test-email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={testEmailAddress}
+                    onChange={(e) => setTestEmailAddress(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    data-testid="button-test-email"
+                    variant="outline"
+                    onClick={handleTestEmail}
+                    disabled={testingEmail}
+                  >
+                    {testingEmail ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="mr-2 h-4 w-4" />
+                    )}
+                    Send Test
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter an email address and click Send Test to verify your SMTP configuration is working
+                </p>
               </div>
             </div>
           )}

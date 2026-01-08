@@ -914,6 +914,25 @@ export async function registerRoutes(
     }
   });
 
+  // Test email configuration by sending a test email
+  app.post("/api/settings/notifications/test-email", conditionalAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Email address is required' });
+      }
+      
+      // Import sendTestEmail function
+      const { sendTestEmail } = await import('./email.js');
+      const result = await sendTestEmail(email);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Error testing email:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
   // ============= UTILITY ROUTES (Ping & Traceroute) =============
   
   // Helper: TCP-based ping for environments without raw socket access
