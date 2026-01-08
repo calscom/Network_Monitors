@@ -67,14 +67,16 @@ function SortableDeviceCard({ device, canManage }: { device: Device; canManage: 
       className="relative"
       data-testid={`sortable-device-${device.id}`}
     >
-      <div 
+      <button 
+        type="button"
         {...attributes} 
         {...listeners}
-        className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-background/80 hover:bg-background transition-colors"
+        className="absolute top-3 left-3 z-20 cursor-grab active:cursor-grabbing p-1.5 rounded-md bg-secondary/90 hover:bg-secondary border border-border/50 transition-colors touch-none select-none"
         aria-label={`Drag to reorder ${device.name}`}
+        data-testid={`drag-handle-${device.id}`}
       >
-        <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </div>
+        <GripVertical className="w-4 h-4 text-muted-foreground pointer-events-none" />
+      </button>
       <DeviceCard device={device} canManage={canManage} />
     </div>
   );
@@ -233,7 +235,7 @@ export default function Dashboard() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3,
       },
     }),
     useSensor(KeyboardSensor, {
