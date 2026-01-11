@@ -205,5 +205,21 @@ export type InsertAvailabilityMonthly = z.infer<typeof insertAvailabilityMonthly
 export type AvailabilityAnnual = typeof availabilityAnnual.$inferSelect;
 export type InsertAvailabilityAnnual = z.infer<typeof insertAvailabilityAnnualSchema>;
 
+// Sites table for persistent site configuration
+export const sites = pgTable("sites", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  displayOrder: integer("display_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSiteSchema = createInsertSchema(sites).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Site = typeof sites.$inferSelect;
+export type InsertSite = z.infer<typeof insertSiteSchema>;
+
 // Export auth models
 export * from "./models/auth";

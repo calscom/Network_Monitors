@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, availabilityMonthly, availabilityAnnual, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings, type AvailabilityMonthly, type InsertAvailabilityMonthly, type AvailabilityAnnual, type InsertAvailabilityAnnual } from "@shared/schema";
+import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, availabilityMonthly, availabilityAnnual, sites, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings, type AvailabilityMonthly, type InsertAvailabilityMonthly, type AvailabilityAnnual, type InsertAvailabilityAnnual, type Site, type InsertSite } from "@shared/schema";
 import { eq, desc, asc, sql, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -60,6 +60,13 @@ export interface IStorage {
   getAllAnnualAvailability(year: number): Promise<AvailabilityAnnual[]>;
   resetDeviceAvailabilityCounters(deviceId: number): Promise<void>;
   monthlySnapshotExists(deviceId: number, year: number, month: number): Promise<boolean>;
+  // Sites management
+  getSites(): Promise<Site[]>;
+  createSite(site: InsertSite): Promise<Site>;
+  updateSite(id: number, name: string): Promise<Site>;
+  deleteSite(id: number): Promise<void>;
+  reorderSites(siteIds: number[]): Promise<void>;
+  initializeDefaultSites(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -547,6 +554,72 @@ export class DatabaseStorage implements IStorage {
       ))
       .limit(1);
     return existing.length > 0;
+  }
+
+  // Sites management methods
+  async getSites(): Promise<Site[]> {
+    return await db.select().from(sites).orderBy(asc(sites.displayOrder), asc(sites.id));
+  }
+
+  async createSite(site: InsertSite): Promise<Site> {
+    const [newSite] = await db.insert(sites).values(site).returning();
+    return newSite;
+  }
+
+  async updateSite(id: number, name: string): Promise<Site> {
+    const [updated] = await db
+      .update(sites)
+      .set({ name })
+      .where(eq(sites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSite(id: number): Promise<void> {
+    await db.delete(sites).where(eq(sites.id, id));
+  }
+
+  async reorderSites(siteIds: number[]): Promise<void> {
+    // Update display order for each site
+    for (let i = 0; i < siteIds.length; i++) {
+      await db
+        .update(sites)
+        .set({ displayOrder: i })
+        .where(eq(sites.id, siteIds[i]));
+    }
+  }
+
+  async initializeDefaultSites(): Promise<void> {
+    // Check if sites table is empty
+    const existingSites = await db.select().from(sites).limit(1);
+    if (existingSites.length > 0) {
+      return; // Sites already exist, don't reinitialize
+    }
+
+    // Default sites list
+    const defaultSiteNames = [
+      "01 Cloud",
+      "02-Maiduguri", 
+      "03 Biu",
+      "04 Damaturu",
+      "05 Gombe",
+      "06 Bauchi",
+      "07 Jos",
+      "08 Jalingo",
+      "09 Yola",
+      "10 Numan",
+      "11 Abuja",
+      "12 Makurdi"
+    ];
+
+    // Insert default sites with display order
+    for (let i = 0; i < defaultSiteNames.length; i++) {
+      await db.insert(sites).values({
+        name: defaultSiteNames[i],
+        displayOrder: i
+      });
+    }
+    console.log("[storage] Initialized default sites");
   }
 }
 
