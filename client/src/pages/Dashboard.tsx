@@ -26,21 +26,16 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Device } from "@shared/schema";
+import { Device, type Site } from "@shared/schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Log, type UserRole } from "@shared/schema";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-
-const DEFAULT_SITES = [
-  "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
-  "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
-  "11-Damboa", "12-Gubio"
-];
 
 // Sortable wrapper for device cards
 function SortableDeviceCard({ device, canManage }: { device: Device; canManage: boolean }) {
@@ -88,11 +83,18 @@ export default function Dashboard() {
   const userRole = (user?.role as UserRole) || 'viewer';
   const canManageDevices = userRole === 'admin' || userRole === 'operator';
   
-  const [sites, setSites] = useState<string[]>(() => {
-    const saved = localStorage.getItem("monitor_sites");
-    return saved ? JSON.parse(saved) : DEFAULT_SITES;
+  // Fetch sites from API
+  const { data: sitesData } = useQuery<Site[]>({
+    queryKey: ["/api/sites"],
+    staleTime: 30000,
   });
-  const [activeSite, setActiveSite] = useState(sites[0]);
+  
+  // Extract site names from API response
+  const sites = useMemo(() => {
+    return sitesData?.map(s => s.name) || [];
+  }, [sitesData]);
+  
+  const [activeSite, setActiveSite] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -104,6 +106,27 @@ export default function Dashboard() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const hasSeenOnboarding = localStorage.getItem("network_monitor_onboarding_complete");
     return !hasSeenOnboarding;
+  });
+  
+  // Set initial active site when sites load
+  useEffect(() => {
+    if (sites.length > 0 && !activeSite) {
+      setActiveSite(sites[0]);
+    } else if (sites.length > 0 && !sites.includes(activeSite)) {
+      setActiveSite(sites[0]);
+    }
+  }, [sites, activeSite]);
+
+  // Mutation to rename a site
+  const renameSiteMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await apiRequest("PATCH", `/api/sites/${id}`, { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
+      window.dispatchEvent(new CustomEvent('sitesUpdated'));
+    }
   });
 
   const handleOnboardingComplete = () => {
@@ -152,30 +175,22 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    localStorage.setItem("monitor_sites", JSON.stringify(sites));
-  }, [sites]);
-
-  useEffect(() => {
     localStorage.setItem("device_order", JSON.stringify(deviceOrder));
   }, [deviceOrder]);
 
-  const handleRenameSite = () => {
+  const handleRenameSite = async () => {
     if (!editName.trim()) return;
-    const newSites = sites.map(s => s === activeSite ? editName.trim() : s);
-    setSites(newSites);
-    setActiveSite(editName.trim());
+    const siteToRename = sitesData?.find(s => s.name === activeSite);
+    if (siteToRename) {
+      await renameSiteMutation.mutateAsync({ id: siteToRename.id, name: editName.trim() });
+      setActiveSite(editName.trim());
+    }
     setIsEditing(false);
-    // Dispatch custom event to notify other components (like AddDeviceDialog)
-    window.dispatchEvent(new CustomEvent('sitesUpdated'));
   };
 
-  const handleSitesChange = (newSites: string[]) => {
-    setSites(newSites);
-    // If active site was deleted, switch to first available
-    if (!newSites.includes(activeSite) && newSites.length > 0) {
-      setActiveSite(newSites[0]);
-    }
-    // Dispatch custom event to notify other components
+  const handleSitesChange = () => {
+    // Refetch sites from API and handle active site change
+    queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
     window.dispatchEvent(new CustomEvent('sitesUpdated'));
   };
 
@@ -283,8 +298,6 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 sm:gap-3">
                 <ThemeToggle />
                 <MainMenu 
-                  sites={sites} 
-                  onSitesChange={handleSitesChange} 
                   devices={devices}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}

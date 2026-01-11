@@ -64,6 +64,8 @@ export interface IStorage {
   getSites(): Promise<Site[]>;
   createSite(site: InsertSite): Promise<Site>;
   updateSite(id: number, name: string): Promise<Site>;
+  renameSiteWithDevices(id: number, oldName: string, newName: string): Promise<Site>;
+  bulkImportSites(siteNames: string[], replaceAll?: boolean): Promise<Site[]>;
   deleteSite(id: number): Promise<void>;
   reorderSites(siteIds: number[]): Promise<void>;
   initializeDefaultSites(): Promise<void>;
@@ -573,6 +575,64 @@ export class DatabaseStorage implements IStorage {
       .where(eq(sites.id, id))
       .returning();
     return updated;
+  }
+
+  async renameSiteWithDevices(id: number, oldName: string, newName: string): Promise<Site> {
+    // Update site name
+    const [updated] = await db
+      .update(sites)
+      .set({ name: newName })
+      .where(eq(sites.id, id))
+      .returning();
+    
+    // Update all devices with the old site name to the new name
+    await db
+      .update(devices)
+      .set({ site: newName })
+      .where(eq(devices.site, oldName));
+    
+    return updated;
+  }
+
+  async bulkImportSites(siteNames: string[], replaceAll: boolean = false): Promise<Site[]> {
+    const existingSites = await this.getSites();
+    const existingNames = new Set(existingSites.map(s => s.name));
+    
+    if (replaceAll) {
+      // Only delete sites that are not in the import list AND have no devices
+      const devicesData = await db.select().from(devices);
+      const siteNamesSet = new Set(siteNames);
+      
+      for (const site of existingSites) {
+        if (!siteNamesSet.has(site.name)) {
+          // Check if any devices use this site
+          const hasDevices = devicesData.some(d => d.site === site.name);
+          if (!hasDevices) {
+            await db.delete(sites).where(eq(sites.id, site.id));
+          }
+          // If has devices, keep the site to avoid orphaning
+        }
+      }
+    }
+    
+    // Add new sites that don't exist yet
+    const maxOrder = existingSites.length > 0 
+      ? Math.max(...existingSites.map(s => s.displayOrder)) + 1 
+      : 0;
+    
+    let orderOffset = 0;
+    for (const name of siteNames) {
+      if (!existingNames.has(name)) {
+        await db.insert(sites).values({
+          name: name,
+          displayOrder: maxOrder + orderOffset
+        });
+        orderOffset++;
+      }
+    }
+    
+    // Return updated list
+    return await this.getSites();
   }
 
   async deleteSite(id: number): Promise<void> {

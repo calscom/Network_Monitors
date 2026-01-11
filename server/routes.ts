@@ -242,6 +242,67 @@ export async function registerRoutes(
     }
   });
 
+  // POST bulk import sites - operators and admins only
+  app.post("/api/sites/bulk-import", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const { siteNames, replaceAll } = req.body;
+      if (!Array.isArray(siteNames) || siteNames.length === 0) {
+        return res.status(400).json({ message: "Site names array is required" });
+      }
+      // Filter and clean site names
+      const cleanedNames = siteNames
+        .filter(n => typeof n === 'string' && n.trim())
+        .map(n => n.trim());
+      
+      if (cleanedNames.length === 0) {
+        return res.status(400).json({ message: "No valid site names provided" });
+      }
+      
+      const sites = await storage.bulkImportSites(cleanedNames, replaceAll === true);
+      await storage.createLog({
+        deviceId: null,
+        site: "System",
+        type: 'sites_imported',
+        message: `Imported ${cleanedNames.length} sites`
+      });
+      res.json(sites);
+    } catch (err: any) {
+      console.error("Error importing sites:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // PATCH rename site with cascade to devices - operators and admins only
+  app.patch("/api/sites/:id/rename", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid site ID" });
+      }
+      const { oldName, newName } = req.body;
+      if (!newName || typeof newName !== 'string' || newName.trim().length === 0) {
+        return res.status(400).json({ message: "New site name is required" });
+      }
+      if (!oldName || typeof oldName !== 'string') {
+        return res.status(400).json({ message: "Old site name is required" });
+      }
+      const site = await storage.renameSiteWithDevices(id, oldName, newName.trim());
+      await storage.createLog({
+        deviceId: null,
+        site: "System",
+        type: 'site_renamed',
+        message: `Site "${oldName}" renamed to "${newName.trim()}"`
+      });
+      res.json(site);
+    } catch (err: any) {
+      console.error("Error renaming site with devices:", err);
+      if (err.code === '23505') {
+        return res.status(400).json({ message: "A site with this name already exists" });
+      }
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   // Read-only routes - any authenticated user can access
   app.get(api.devices.list.path, conditionalAuth, async (req, res) => {
     const devices = await storage.getDevices();

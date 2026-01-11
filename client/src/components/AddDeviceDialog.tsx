@@ -7,6 +7,7 @@ import { insertDeviceSchema, type InsertDevice } from "@shared/schema";
 import { Plus, Loader2, Network, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
+import { useSites } from "@/hooks/use-sites";
 
 interface DiscoveredInterface {
   index: number;
@@ -40,20 +41,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const DEFAULT_SITES = [
-  "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
-  "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
-  "11-Damboa", "12-Gubio"
-];
-
 export function AddDeviceDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const createMutation = useCreateDevice();
-  const [sites, setSites] = useState<string[]>(() => {
-    const saved = localStorage.getItem("monitor_sites");
-    return saved ? JSON.parse(saved) : DEFAULT_SITES;
-  });
+  const { siteNames: sites, refetch: refetchSites } = useSites();
   const [discoveredInterfaces, setDiscoveredInterfaces] = useState<DiscoveredInterface[]>([]);
   const [selectedInterface, setSelectedInterface] = useState<number>(1);
   const [selectedInterfaceName, setSelectedInterfaceName] = useState<string | null>(null);
@@ -90,19 +82,14 @@ export function AddDeviceDialog() {
   });
 
   useEffect(() => {
-    const handleStorageChange = () => {
-      const saved = localStorage.getItem("monitor_sites");
-      if (saved) setSites(JSON.parse(saved));
+    const handleSitesUpdated = () => {
+      refetchSites();
     };
-    window.addEventListener('storage', handleStorageChange);
-    // @ts-ignore
-    window.addEventListener('sitesUpdated', handleStorageChange);
+    window.addEventListener('sitesUpdated', handleSitesUpdated);
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      // @ts-ignore
-      window.removeEventListener('sitesUpdated', handleStorageChange);
+      window.removeEventListener('sitesUpdated', handleSitesUpdated);
     };
-  }, []);
+  }, [refetchSites]);
 
   // Reset state when dialog closes
   useEffect(() => {

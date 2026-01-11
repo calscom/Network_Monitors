@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -68,12 +68,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Device } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { useSites } from "@/hooks/use-sites";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
 interface MainMenuProps {
-  sites: string[];
-  onSitesChange: (sites: string[]) => void;
   devices?: Device[];
   viewMode: "list" | "map";
   onViewModeChange: (mode: "list" | "map") => void;
@@ -81,13 +80,12 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ 
-  sites, 
-  onSitesChange, 
   devices = [], 
   viewMode, 
   onViewModeChange,
   canManage = false
 }: MainMenuProps) {
+  const { sites, siteNames, createSite, renameSite, deleteSite, reorderSites, bulkImportSites } = useSites();
   const [siteManagerOpen, setSiteManagerOpen] = useState(false);
   const [utilityOpen, setUtilityOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<string | null>(null);
@@ -173,7 +171,7 @@ export function MainMenu({
     if (!editName.trim() || !editingSite) return;
     
     const newName = editName.trim();
-    if (newName !== editingSite && sites.includes(newName)) {
+    if (newName !== editingSite && siteNames.includes(newName)) {
       toast({
         title: "Site exists",
         description: "A site with that name already exists.",
@@ -182,28 +180,24 @@ export function MainMenu({
       return;
     }
 
-    const deviceCount = getDeviceCount(editingSite);
-    if (deviceCount > 0 && newName !== editingSite) {
-      try {
-        await reassignMutation.mutateAsync({ fromSite: editingSite, toSite: newName });
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to update devices with new site name.",
-          variant: "destructive",
-        });
-        return;
+    try {
+      const siteObj = sites.find(s => s.name === editingSite);
+      if (siteObj) {
+        await renameSite({ id: siteObj.id, oldName: editingSite, newName });
       }
+      setEditingSite(null);
+      setEditName("");
+      toast({
+        title: "Site renamed",
+        description: `"${editingSite}" has been renamed to "${newName}".`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to rename site.",
+        variant: "destructive",
+      });
     }
-
-    const newSites = sites.map(s => s === editingSite ? newName : s);
-    onSitesChange(newSites);
-    setEditingSite(null);
-    setEditName("");
-    toast({
-      title: "Site renamed",
-      description: `"${editingSite}" has been renamed to "${newName}".`,
-    });
   };
 
   const handleCancelEdit = () => {
@@ -211,9 +205,9 @@ export function MainMenu({
     setEditName("");
   };
 
-  const handleAddSite = () => {
+  const handleAddSite = async () => {
     if (!newSiteName.trim()) return;
-    if (sites.includes(newSiteName.trim())) {
+    if (siteNames.includes(newSiteName.trim())) {
       toast({
         title: "Site exists",
         description: "A site with that name already exists.",
@@ -221,12 +215,20 @@ export function MainMenu({
       });
       return;
     }
-    onSitesChange([...sites, newSiteName.trim()]);
-    setNewSiteName("");
-    toast({
-      title: "Site added",
-      description: `"${newSiteName.trim()}" has been added.`,
-    });
+    try {
+      await createSite({ name: newSiteName.trim(), displayOrder: sites.length });
+      setNewSiteName("");
+      toast({
+        title: "Site added",
+        description: `"${newSiteName.trim()}" has been added.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to add site.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteSite = async (site: string) => {
@@ -254,23 +256,42 @@ export function MainMenu({
       }
     }
 
-    const newSites = sites.filter(s => s !== site);
-    onSitesChange(newSites);
-    setDeleteConfirm(null);
-    setReassignTo("");
-    toast({
-      title: "Site deleted",
-      description: `"${site}" has been removed.`,
-    });
+    try {
+      const siteObj = sites.find(s => s.name === site);
+      if (siteObj) {
+        await deleteSite(siteObj.id);
+      }
+      setDeleteConfirm(null);
+      setReassignTo("");
+      toast({
+        title: "Site deleted",
+        description: `"${site}" has been removed.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete site.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const moveSite = (index: number, direction: "up" | "down") => {
+  const moveSite = async (index: number, direction: "up" | "down") => {
     const newIndex = direction === "up" ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= sites.length) return;
     
-    const newSites = [...sites];
-    [newSites[index], newSites[newIndex]] = [newSites[newIndex], newSites[index]];
-    onSitesChange(newSites);
+    const reorderedSites = [...sites];
+    [reorderedSites[index], reorderedSites[newIndex]] = [reorderedSites[newIndex], reorderedSites[index]];
+    
+    try {
+      await reorderSites(reorderedSites.map(s => s.id));
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to reorder sites.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSiteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,7 +299,7 @@ export function MainMenu({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       const content = evt.target?.result;
       let newSitesList: string[] = [];
 
@@ -296,16 +317,16 @@ export function MainMenu({
 
         if (newSitesList.length > 0) {
           const uniqueSites = Array.from(new Set([...newSitesList]));
-          onSitesChange(uniqueSites);
+          await bulkImportSites(uniqueSites);
           toast({
             title: "Sites imported",
             description: `Imported ${uniqueSites.length} sites successfully.`,
           });
         }
-      } catch (err) {
+      } catch (err: any) {
         toast({
           title: "Import Error",
-          description: "Failed to parse file. Please ensure it's a valid CSV or Excel file.",
+          description: err.message || "Failed to parse file. Please ensure it's a valid CSV or Excel file.",
           variant: "destructive"
         });
       }
@@ -637,10 +658,10 @@ export function MainMenu({
 
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {sites.map((site, index) => {
-                const deviceCount = getDeviceCount(site);
+                const deviceCount = getDeviceCount(site.name);
                 return (
                   <div 
-                    key={site} 
+                    key={site.id} 
                     className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-white/5"
                   >
                     <div className="flex flex-col gap-1">
@@ -667,7 +688,7 @@ export function MainMenu({
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      {editingSite === site ? (
+                      {editingSite === site.name ? (
                         <div className="flex items-center gap-2">
                           <Input
                             value={editName}
@@ -689,7 +710,7 @@ export function MainMenu({
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{site}</span>
+                          <span className="font-medium truncate">{site.name}</span>
                           {deviceCount > 0 && (
                             <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
                               {deviceCount} device{deviceCount !== 1 ? 's' : ''}
@@ -699,12 +720,12 @@ export function MainMenu({
                       )}
                     </div>
 
-                    {editingSite !== site && (
+                    {editingSite !== site.name && (
                       <div className="flex items-center gap-1">
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => handleStartEdit(site)}
+                          onClick={() => handleStartEdit(site.name)}
                           data-testid={`button-edit-site-${index}`}
                         >
                           <Pencil className="w-4 h-4" />
@@ -713,9 +734,9 @@ export function MainMenu({
                           size="icon"
                           variant="ghost"
                           onClick={() => {
-                            setDeleteConfirm(site);
+                            setDeleteConfirm(site.name);
                             if (deviceCount > 0) {
-                              const otherSites = sites.filter(s => s !== site);
+                              const otherSites = siteNames.filter(s => s !== site.name);
                               setReassignTo(otherSites[0] || "");
                             }
                           }}
@@ -756,9 +777,9 @@ export function MainMenu({
                       <SelectValue placeholder="Select target site" />
                     </SelectTrigger>
                     <SelectContent>
-                      {sites.filter(s => s !== deleteConfirm).map(site => (
-                        <SelectItem key={site} value={site}>
-                          {site}
+                      {siteNames.filter(s => s !== deleteConfirm).map(siteName => (
+                        <SelectItem key={siteName} value={siteName}>
+                          {siteName}
                         </SelectItem>
                       ))}
                     </SelectContent>

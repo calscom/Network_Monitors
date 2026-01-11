@@ -1,22 +1,13 @@
 import { useDevices } from "@/hooks/use-devices";
 import { NetworkMap } from "@/components/NetworkMap";
 import { Loader2, Activity, AlertCircle } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
-
-const DEFAULT_SITES = [
-  "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
-  "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
-  "11-Damboa", "12-Gubio"
-];
+import { useSites } from "@/hooks/use-sites";
 
 export default function KioskMap() {
   const { data: devices = [], isLoading } = useDevices();
-  
-  const [sites] = useState<string[]>(() => {
-    const saved = localStorage.getItem("monitor_sites");
-    return saved ? JSON.parse(saved) : DEFAULT_SITES;
-  });
+  const { siteNames: sites, isLoading: sitesLoading } = useSites();
 
   const stats = useMemo(() => {
     const total = devices.length;
