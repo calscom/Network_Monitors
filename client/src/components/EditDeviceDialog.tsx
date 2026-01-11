@@ -32,6 +32,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Edit2, Loader2, RefreshCw, Network, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useSites } from "@/hooks/use-sites";
 
 interface DiscoveredInterface {
   index: number;
@@ -42,12 +43,6 @@ interface DiscoveredInterface {
   operStatus: number;
 }
 
-const SITES = [
-  "01 Cloud", "02-Maiduguri", "03-Gwoza", "04-Mafa", "05-Dikwa",
-  "06-Ngala", "07-Monguno", "08-Bama", "09-Banki", "10-Pulka",
-  "11-Damboa", "12-Gubio"
-];
-
 interface EditDeviceDialogProps {
   device: Device;
 }
@@ -55,17 +50,10 @@ interface EditDeviceDialogProps {
 export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const [availableSites, setAvailableSites] = useState<string[]>(SITES);
+  const { siteNames: availableSites } = useSites();
   const [selectedInterface, setSelectedInterface] = useState<number>(device.interfaceIndex || 1);
   const [discoverEnabled, setDiscoverEnabled] = useState(false);
   const [additionalInterfaces, setAdditionalInterfaces] = useState<number[]>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("monitor_sites");
-    if (saved) {
-      setAvailableSites(JSON.parse(saved));
-    }
-  }, [open]);
 
   // Fetch currently monitored interfaces
   const { data: monitoredInterfaces = [] } = useQuery<DeviceInterface[]>({

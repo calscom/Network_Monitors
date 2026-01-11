@@ -26,16 +26,16 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Device, type Site } from "@shared/schema";
+import { Device } from "@shared/schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { Log, type UserRole } from "@shared/schema";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useSites } from "@/hooks/use-sites";
 
 // Sortable wrapper for device cards
 function SortableDeviceCard({ device, canManage }: { device: Device; canManage: boolean }) {
@@ -83,16 +83,8 @@ export default function Dashboard() {
   const userRole = (user?.role as UserRole) || 'viewer';
   const canManageDevices = userRole === 'admin' || userRole === 'operator';
   
-  // Fetch sites from API
-  const { data: sitesData } = useQuery<Site[]>({
-    queryKey: ["/api/sites"],
-    staleTime: 30000,
-  });
-  
-  // Extract site names from API response
-  const sites = useMemo(() => {
-    return sitesData?.map(s => s.name) || [];
-  }, [sitesData]);
+  // Fetch sites from centralized hook
+  const { sites: sitesData, siteNames: sites, renameSite } = useSites();
   
   const [activeSite, setActiveSite] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -117,17 +109,6 @@ export default function Dashboard() {
     }
   }, [sites, activeSite]);
 
-  // Mutation to rename a site
-  const renameSiteMutation = useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
-      const res = await apiRequest("PATCH", `/api/sites/${id}`, { name });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
-      window.dispatchEvent(new CustomEvent('sitesUpdated'));
-    }
-  });
 
   const handleOnboardingComplete = () => {
     localStorage.setItem("network_monitor_onboarding_complete", "true");
@@ -182,16 +163,10 @@ export default function Dashboard() {
     if (!editName.trim()) return;
     const siteToRename = sitesData?.find(s => s.name === activeSite);
     if (siteToRename) {
-      await renameSiteMutation.mutateAsync({ id: siteToRename.id, name: editName.trim() });
+      await renameSite({ id: siteToRename.id, oldName: activeSite, newName: editName.trim() });
       setActiveSite(editName.trim());
     }
     setIsEditing(false);
-  };
-
-  const handleSitesChange = () => {
-    // Refetch sites from API and handle active site change
-    queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
-    window.dispatchEvent(new CustomEvent('sitesUpdated'));
   };
 
   // Stats calculation
