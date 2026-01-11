@@ -128,12 +128,12 @@ Time: ${timestamp}`;
         <tr><td style="padding: 8px;"><strong>Time:</strong></td><td style="padding: 8px;">${timestamp}</td></tr>
       </table>
       <p style="color: #666; font-size: 12px; margin-top: 20px;">
-        Network Monitor Dashboard
+        SceptView Network Monitor
       </p>
     </div>
   `;
   
-  const subject = `[Network Monitor] ${status}: ${device.name} (${device.site})`;
+  const subject = `[SceptView] ${status}: ${device.name} (${device.site})`;
   
   return { text, html, subject };
 }
@@ -214,7 +214,7 @@ export async function testTelegramConnection(botToken: string, chatId: string): 
     const success = await sendTelegramMessage(
       botToken,
       chatId,
-      '✅ <b>Network Monitor</b>\n\nTelegram notifications configured successfully!'
+      '✅ <b>SceptView Network Monitor</b>\n\nTelegram notifications configured successfully!'
     );
     
     if (success) {

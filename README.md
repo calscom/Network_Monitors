@@ -1,4 +1,4 @@
-# Network Monitor Dashboard
+# SceptView Network Monitor
 
 A real-time SNMP network monitoring dashboard that tracks device status and bandwidth utilization across multiple sites.
 
@@ -109,7 +109,7 @@ npm run db:push
 ```bash
 cat > /etc/systemd/system/networkmonitor.service << 'EOF'
 [Unit]
-Description=Network Monitor Dashboard
+Description=SceptView Network Monitor
 After=network.target postgresql.service
 
 [Service]

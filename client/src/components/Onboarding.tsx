@@ -24,7 +24,7 @@ interface OnboardingStep {
 
 const steps: OnboardingStep[] = [
   {
-    title: "Welcome to Network Monitor",
+    title: "Welcome to SceptView Network Monitor",
     description: "Monitor your network devices in real-time with SNMP polling, bandwidth tracking, and instant alerts.",
     icon: <LayoutDashboard className="w-12 h-12 text-primary" />,
     highlight: "Let's take a quick tour of the main features."

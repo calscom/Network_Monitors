@@ -87,7 +87,7 @@ export default function ResetPassword() {
           <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Activity className="w-6 h-6 text-primary" />
-              <h1 className="text-xl font-bold">Network Monitor</h1>
+              <h1 className="text-xl font-bold">SceptView Network Monitor</h1>
             </div>
             <ThemeToggle />
           </div>
@@ -132,7 +132,7 @@ export default function ResetPassword() {
           <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Activity className="w-6 h-6 text-primary" />
-              <h1 className="text-xl font-bold">Network Monitor</h1>
+              <h1 className="text-xl font-bold">SceptView Network Monitor</h1>
             </div>
             <ThemeToggle />
           </div>
@@ -169,7 +169,7 @@ export default function ResetPassword() {
           <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Activity className="w-6 h-6 text-primary" />
-              <h1 className="text-xl font-bold">Network Monitor</h1>
+              <h1 className="text-xl font-bold">SceptView Network Monitor</h1>
             </div>
             <ThemeToggle />
           </div>

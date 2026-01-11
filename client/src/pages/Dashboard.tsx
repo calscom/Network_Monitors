@@ -276,7 +276,7 @@ export default function Dashboard() {
               <div className="space-y-1">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-display text-foreground flex items-center gap-2 sm:gap-3">
                   <LayoutDashboard className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
-                  Network Monitor
+                  SceptView Network Monitor
                 </h1>
                 <p className="text-muted-foreground text-sm sm:text-base md:text-lg">Real-time SNMP status & utilization dashboard</p>
               </div>

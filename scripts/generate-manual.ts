@@ -79,7 +79,7 @@ const doc = new Document({
         new Paragraph({
           children: [
             new TextRun({
-              text: "Network Monitor Dashboard",
+              text: "SceptView Network Monitor",
               bold: true,
               size: 56,
             }),
@@ -155,7 +155,7 @@ const doc = new Document({
           spacing: { after: 200 },
         }),
         createParagraph(
-          "The Network Monitor Dashboard is a real-time SNMP network monitoring solution designed to track device status and bandwidth utilization across multiple sites. It provides comprehensive visibility into network health through live status indicators, bandwidth gauges, and historical performance data."
+          "SceptView Network Monitor is a real-time SNMP network monitoring solution designed to track device status and bandwidth utilization across multiple sites. It provides comprehensive visibility into network health through live status indicators, bandwidth gauges, and historical performance data."
         ),
         createParagraph("Key capabilities include:"),
         createBulletPoint("Real-time device status monitoring (Online/Offline/Recovering)"),

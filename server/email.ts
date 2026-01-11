@@ -20,12 +20,12 @@ export async function sendWelcomeEmail(to: string, firstName: string): Promise<b
     }
 
     await transporter.sendMail({
-      from: `"Network Monitor" <${fromEmail}>`,
+      from: `"SceptView Network Monitor" <${fromEmail}>`,
       to,
-      subject: "Welcome to Network Monitor Dashboard",
+      subject: "Welcome to SceptView Network Monitor",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">Welcome to Network Monitor!</h1>
+          <h1 style="color: #2563eb;">Welcome to SceptView Network Monitor!</h1>
           <p>Hello ${firstName || "there"},</p>
           <p>Your account has been created successfully. You can now sign in to access the network monitoring dashboard.</p>
           <p>As a new user, you have <strong>viewer</strong> access by default. Contact an administrator if you need additional permissions.</p>
@@ -37,7 +37,7 @@ export async function sendWelcomeEmail(to: string, firstName: string): Promise<b
               <li>Access activity logs and performance history</li>
             </ul>
           </div>
-          <p style="color: #6b7280; font-size: 14px;">This is an automated message from Network Monitor Dashboard.</p>
+          <p style="color: #6b7280; font-size: 14px;">This is an automated message from SceptView Network Monitor.</p>
         </div>
       `,
     });
@@ -60,9 +60,9 @@ export async function sendPasswordResetEmail(to: string, resetToken: string, bas
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
-      from: `"Network Monitor" <${fromEmail}>`,
+      from: `"SceptView Network Monitor" <${fromEmail}>`,
       to,
-      subject: "Reset Your Password - Network Monitor",
+      subject: "Reset Your Password - SceptView Network Monitor",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #2563eb;">Password Reset Request</h1>
@@ -101,21 +101,21 @@ export async function sendAccountDeletionEmail(to: string, firstName: string): P
     }
 
     await transporter.sendMail({
-      from: `"Network Monitor" <${fromEmail}>`,
+      from: `"SceptView Network Monitor" <${fromEmail}>`,
       to,
-      subject: "Account Deleted - Network Monitor",
+      subject: "Account Deleted - SceptView Network Monitor",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #dc2626;">Account Deleted</h1>
           <p>Hello ${firstName || "there"},</p>
-          <p>Your Network Monitor account has been successfully deleted. All your data has been removed from our system.</p>
+          <p>Your SceptView Network Monitor account has been successfully deleted. All your data has been removed from our system.</p>
           <div style="margin: 30px 0; padding: 20px; background-color: #fef2f2; border-radius: 8px;">
             <p style="margin: 0; color: #991b1b;">
               If you did not request this deletion, please contact the system administrator immediately.
             </p>
           </div>
-          <p>If you wish to use Network Monitor again in the future, you can create a new account.</p>
-          <p style="color: #6b7280; font-size: 14px;">This is an automated message from Network Monitor Dashboard.</p>
+          <p>If you wish to use SceptView Network Monitor again in the future, you can create a new account.</p>
+          <p style="color: #6b7280; font-size: 14px;">This is an automated message from SceptView Network Monitor.</p>
         </div>
       `,
     });
@@ -148,13 +148,13 @@ export async function sendTestEmail(to: string): Promise<{ success: boolean; mes
     }
 
     await transporter.sendMail({
-      from: `"Network Monitor" <${fromEmail}>`,
+      from: `"SceptView Network Monitor" <${fromEmail}>`,
       to,
-      subject: "Test Email - Network Monitor SMTP Configuration",
+      subject: "Test Email - SceptView Network Monitor SMTP Configuration",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #22c55e;">SMTP Configuration Test Successful</h1>
-          <p>This is a test email from your Network Monitor Dashboard.</p>
+          <p>This is a test email from your SceptView Network Monitor.</p>
           <div style="margin: 30px 0; padding: 20px; background-color: #dcfce7; border-radius: 8px; border-left: 4px solid #22c55e;">
             <p style="margin: 0; color: #166534;">
               <strong>Your email notifications are working correctly!</strong>

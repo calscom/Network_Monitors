@@ -1,4 +1,4 @@
-# Network Monitor Dashboard
+# SceptView Network Monitor Dashboard
 
 ## Overview
 This project is a real-time SNMP network monitoring dashboard designed to track device status and bandwidth utilization across multiple sites. It polls network devices via SNMP to display live status indicators (online/offline/recovering) and bandwidth utilization gauges. Devices are organized by site location, accessible through a tabbed interface. The application aims to provide a clear, concise overview of network health and performance.

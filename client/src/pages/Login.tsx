@@ -214,7 +214,7 @@ export default function Login() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Activity className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-bold">Network Monitor</h1>
+            <h1 className="text-xl font-bold">SceptView Network Monitor</h1>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -549,7 +549,7 @@ export default function Login() {
         ) : (
           <>
             <div className="max-w-4xl mx-auto text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">Real-Time Network Monitoring</h2>
+              <h2 className="text-4xl font-bold mb-4">SceptView Real-Time Network Monitoring</h2>
               <p className="text-xl text-muted-foreground mb-8">
                 Monitor your network devices across multiple sites with live SNMP polling,
                 bandwidth tracking, and comprehensive activity logs.
@@ -577,7 +577,7 @@ export default function Login() {
       </main>
 
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        Network Monitor Dashboard - Secure SNMP Monitoring
+        SceptView Network Monitor - Secure SNMP Monitoring
       </footer>
     </div>
   );
