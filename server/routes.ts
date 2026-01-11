@@ -135,6 +135,113 @@ export async function registerRoutes(
     res.json(updatedUser);
   });
 
+  // Sites management endpoints
+  // GET sites - no auth required (needed for kiosk mode)
+  app.get("/api/sites", async (req, res) => {
+    try {
+      // Initialize default sites if none exist
+      await storage.initializeDefaultSites();
+      const sites = await storage.getSites();
+      res.json(sites);
+    } catch (err: any) {
+      console.error("Error getting sites:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // POST create site - operators and admins only
+  app.post("/api/sites", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const { name, displayOrder } = req.body;
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ message: "Site name is required" });
+      }
+      const site = await storage.createSite({ name: name.trim(), displayOrder: displayOrder || 0 });
+      await storage.createLog({
+        deviceId: null,
+        site: "System",
+        type: 'site_added',
+        message: `Site "${site.name}" was added`
+      });
+      res.status(201).json(site);
+    } catch (err: any) {
+      console.error("Error creating site:", err);
+      if (err.code === '23505') {
+        return res.status(400).json({ message: "A site with this name already exists" });
+      }
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // PATCH update site - operators and admins only
+  app.patch("/api/sites/:id", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid site ID" });
+      }
+      const { name } = req.body;
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ message: "Site name is required" });
+      }
+      const site = await storage.updateSite(id, name.trim());
+      await storage.createLog({
+        deviceId: null,
+        site: "System",
+        type: 'site_renamed',
+        message: `Site renamed to "${site.name}"`
+      });
+      res.json(site);
+    } catch (err: any) {
+      console.error("Error updating site:", err);
+      if (err.code === '23505') {
+        return res.status(400).json({ message: "A site with this name already exists" });
+      }
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // DELETE site - operators and admins only
+  app.delete("/api/sites/:id", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid site ID" });
+      }
+      const sites = await storage.getSites();
+      const siteToDelete = sites.find(s => s.id === id);
+      await storage.deleteSite(id);
+      if (siteToDelete) {
+        await storage.createLog({
+          deviceId: null,
+          site: "System",
+          type: 'site_removed',
+          message: `Site "${siteToDelete.name}" was deleted`
+        });
+      }
+      res.status(204).send();
+    } catch (err: any) {
+      console.error("Error deleting site:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
+  // POST reorder sites - operators and admins only
+  app.post("/api/sites/reorder", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const { siteIds } = req.body;
+      if (!Array.isArray(siteIds) || siteIds.length === 0) {
+        return res.status(400).json({ message: "Site IDs array is required" });
+      }
+      await storage.reorderSites(siteIds);
+      const sites = await storage.getSites();
+      res.json(sites);
+    } catch (err: any) {
+      console.error("Error reordering sites:", err);
+      res.status(500).json({ message: err.message || "Internal server error" });
+    }
+  });
+
   // Read-only routes - any authenticated user can access
   app.get(api.devices.list.path, conditionalAuth, async (req, res) => {
     const devices = await storage.getDevices();
