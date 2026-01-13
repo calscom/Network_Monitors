@@ -4,6 +4,7 @@ import { eq, desc, asc, sql, and, gte, lte, or } from "drizzle-orm";
 
 export interface IStorage {
   getDevices(): Promise<Device[]>;
+  getDevice(id: number): Promise<Device | null>;
   createDevice(device: InsertDevice): Promise<Device>;
   deleteDevice(id: number): Promise<void>;
   updateDeviceMetrics(id: number, metrics: { 
@@ -93,6 +94,11 @@ export class DatabaseStorage implements IStorage {
   async getDevices(): Promise<Device[]> {
     // Sort by site then by id for stable ordering (prevents card position changes on status updates)
     return await db.select().from(devices).orderBy(asc(devices.site), asc(devices.id));
+  }
+
+  async getDevice(id: number): Promise<Device | null> {
+    const [device] = await db.select().from(devices).where(eq(devices.id, id));
+    return device || null;
   }
 
   async createDevice(insertDevice: InsertDevice): Promise<Device> {
