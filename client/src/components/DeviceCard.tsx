@@ -151,12 +151,12 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   return (
     <div className="glass rounded-xl p-3 sm:p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border border-white/5 relative group">
       {/* Header */}
-      <div className="flex justify-between items-start mb-4 sm:mb-6 gap-2">
+      <div className="flex flex-col gap-2 mb-4 sm:mb-6">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="p-2 sm:p-2.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
             {getIcon(device.type, (device as any).pollType)}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="text-base sm:text-lg font-semibold text-foreground tracking-tight leading-none mb-1 sm:mb-1.5 truncate">
               {device.name}
             </h3>
@@ -191,7 +191,9 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
           </div>
         </div>
         
-        <StatusBadge status={device.status} showLabel />
+        <div className="flex justify-center">
+          <StatusBadge status={device.status} showLabel />
+        </div>
       </div>
 
       {/* Metrics */}

@@ -677,9 +677,9 @@ export default function Dashboard() {
                         data-testid="device-reorder-group"
                       >
                         {displayedDevices.map((device) => (
-                          <div key={device.id} className="relative">
+                          <div key={device.id} className="relative group">
                             {bulkActionsEnabled && (
-                              <div className="absolute top-5 right-14 z-30">
+                              <div className={`absolute top-3 right-3 z-30 transition-opacity ${selectedDevices.has(device.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                 <Checkbox
                                   checked={selectedDevices.has(device.id)}
                                   onCheckedChange={() => toggleDeviceSelection(device.id)}
@@ -830,10 +830,10 @@ export default function Dashboard() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.03 }}
-                    className="relative"
+                    className="relative group"
                   >
                     {bulkActionsEnabled && (
-                      <div className="absolute top-5 right-14 z-30">
+                      <div className={`absolute top-3 right-3 z-30 transition-opacity ${selectedDevices.has(device.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                         <Checkbox
                           checked={selectedDevices.has(device.id)}
                           onCheckedChange={() => toggleDeviceSelection(device.id)}
