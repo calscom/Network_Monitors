@@ -71,14 +71,14 @@ function SortableDeviceCard({ device, canManage }: { device: Device; canManage: 
     <div 
       ref={setNodeRef} 
       style={style} 
-      className="relative"
+      className="relative group pt-2"
       data-testid={`sortable-device-${device.id}`}
     >
       <button 
         type="button"
         {...attributes} 
         {...listeners}
-        className="absolute top-3 left-3 z-20 cursor-grab active:cursor-grabbing p-1.5 rounded-md bg-secondary/90 hover:bg-secondary border border-border/50 transition-colors touch-none select-none"
+        className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing p-1 rounded-md bg-secondary/90 hover:bg-secondary border border-border/50 transition-colors touch-none select-none opacity-0 group-hover:opacity-100"
         aria-label={`Drag to reorder ${device.name}`}
         data-testid={`drag-handle-${device.id}`}
       >
@@ -679,12 +679,12 @@ export default function Dashboard() {
                         {displayedDevices.map((device) => (
                           <div key={device.id} className="relative">
                             {bulkActionsEnabled && (
-                              <div className="absolute top-3 right-3 z-30">
+                              <div className="absolute top-5 right-14 z-30">
                                 <Checkbox
                                   checked={selectedDevices.has(device.id)}
                                   onCheckedChange={() => toggleDeviceSelection(device.id)}
                                   data-testid={`checkbox-device-${device.id}`}
-                                  className="bg-background/80 border-2"
+                                  className="bg-background/90 border-2 h-5 w-5"
                                 />
                               </div>
                             )}
@@ -833,12 +833,12 @@ export default function Dashboard() {
                     className="relative"
                   >
                     {bulkActionsEnabled && (
-                      <div className="absolute top-3 right-3 z-30">
+                      <div className="absolute top-5 right-14 z-30">
                         <Checkbox
                           checked={selectedDevices.has(device.id)}
                           onCheckedChange={() => toggleDeviceSelection(device.id)}
                           data-testid={`checkbox-search-device-${device.id}`}
-                          className="bg-background/80 border-2"
+                          className="bg-background/90 border-2 h-5 w-5"
                         />
                       </div>
                     )}
