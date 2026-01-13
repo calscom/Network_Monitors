@@ -728,6 +728,73 @@ const doc = new Document({
         ),
 
         new Paragraph({
+          text: "8.3 Device Links and Connections",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "Device Links allow you to visualize network connections between devices:"
+        ),
+        createBulletPoint("Links show real-time traffic flow between connected devices"),
+        createBulletPoint("Color-coded status: green (online), red (offline), blue (recovering), orange (degraded)"),
+        createBulletPoint("Animated indicators show current traffic utilization"),
+        createBulletPoint("Traffic displayed in Mbps with utilization percentage"),
+        
+        createParagraph("Managing Device Links:"),
+        createNumberedItem("Navigate to Network Map from the sidebar"),
+        createNumberedItem("Click 'Manage Links' button to open link management"),
+        createNumberedItem("To create a link:"),
+        createBulletPoint("Select the source device from the dropdown", 1),
+        createBulletPoint("Select the target device from the dropdown", 1),
+        createBulletPoint("Optionally enter a label (e.g., 'Fiber Uplink')", 1),
+        createBulletPoint("Set the bandwidth capacity in Mbps", 1),
+        createBulletPoint("Click 'Create Link'", 1),
+        
+        createParagraph("Auto-Discovery Feature:"),
+        createBulletPoint("Click 'Auto-Discover' to automatically detect device connections"),
+        createBulletPoint("Uses network topology heuristics (routers, switches, APs hierarchy)"),
+        createBulletPoint("Supports LLDP/CDP discovery when available on devices"),
+        createNote(
+          "Auto-discovery creates links based on device types and network topology. Review and adjust the discovered links as needed."
+        ),
+
+        new Paragraph({
+          text: "8.4 Interface Availability Tracking",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "Interface-level availability tracking provides detailed uptime metrics for individual device interfaces:"
+        ),
+        createBulletPoint("Each monitored interface tracks its own availability separately"),
+        createBulletPoint("Availability calculated as (successful checks / total checks) * 100"),
+        createBulletPoint("Monthly and annual availability snapshots stored for historical analysis"),
+        createBulletPoint("Interface availability independent of device-level availability"),
+        
+        createParagraph("Viewing Interface Availability:"),
+        createNumberedItem("Click on a device to view its details"),
+        createNumberedItem("Navigate to the 'Interfaces' section"),
+        createNumberedItem("Each interface displays its current availability percentage"),
+        createNumberedItem("Historical data available in Performance History"),
+        createNote(
+          "Interface availability resets at month-end along with device availability. Monthly snapshots preserve historical data."
+        ),
+
+        new Paragraph({
+          text: "8.5 Responsive Grid Layout",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "The Network Map uses a responsive auto-fill grid that adapts to your browser window:"
+        ),
+        createBulletPoint("Sites automatically fill available space based on browser width"),
+        createBulletPoint("Grid uses CSS Grid auto-fit with minimum 180px column width"),
+        createBulletPoint("Columns automatically adjust when resizing the browser window"),
+        createBulletPoint("Optimal viewing on screens from mobile devices to large NOC displays"),
+        createBulletPoint("Site cards maintain consistent spacing and alignment"),
+
+        new Paragraph({
           children: [new PageBreak()],
         }),
 

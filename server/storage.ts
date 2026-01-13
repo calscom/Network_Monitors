@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, availabilityMonthly, availabilityAnnual, sites, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings, type AvailabilityMonthly, type InsertAvailabilityMonthly, type AvailabilityAnnual, type InsertAvailabilityAnnual, type Site, type InsertSite } from "@shared/schema";
-import { eq, desc, asc, sql, and, gte, lte } from "drizzle-orm";
+import { devices, logs, metricsHistory, users, deviceInterfaces, notificationSettings, interfaceMetricsHistory, appSettings, availabilityMonthly, availabilityAnnual, sites, interfaceAvailabilityMonthly, interfaceAvailabilityAnnual, deviceLinks, type Device, type InsertDevice, type Log, type InsertLog, type MetricsHistory, type InsertMetricsHistory, type User, type DeviceInterface, type InsertDeviceInterface, type NotificationSettings, type InsertNotificationSettings, type InterfaceMetricsHistory, type InsertInterfaceMetricsHistory, type AppSettings, type AvailabilityMonthly, type InsertAvailabilityMonthly, type AvailabilityAnnual, type InsertAvailabilityAnnual, type Site, type InsertSite, type InterfaceAvailabilityMonthly, type InsertInterfaceAvailabilityMonthly, type InterfaceAvailabilityAnnual, type InsertInterfaceAvailabilityAnnual, type DeviceLink, type InsertDeviceLink } from "@shared/schema";
+import { eq, desc, asc, sql, and, gte, lte, or } from "drizzle-orm";
 
 export interface IStorage {
   getDevices(): Promise<Device[]>;
@@ -69,6 +69,24 @@ export interface IStorage {
   deleteSite(id: number): Promise<void>;
   reorderSites(siteIds: number[]): Promise<void>;
   initializeDefaultSites(): Promise<void>;
+  // Interface availability tracking
+  saveInterfaceMonthlyAvailability(snapshot: InsertInterfaceAvailabilityMonthly): Promise<InterfaceAvailabilityMonthly>;
+  getInterfaceMonthlyAvailability(interfaceId: number, year: number): Promise<InterfaceAvailabilityMonthly[]>;
+  getAllInterfaceMonthlyAvailabilityForYear(year: number): Promise<InterfaceAvailabilityMonthly[]>;
+  saveInterfaceAnnualAvailability(data: InsertInterfaceAvailabilityAnnual): Promise<InterfaceAvailabilityAnnual>;
+  getInterfaceAnnualAvailability(interfaceId: number, year?: number): Promise<InterfaceAvailabilityAnnual[]>;
+  getAllInterfaceAnnualAvailability(year: number): Promise<InterfaceAvailabilityAnnual[]>;
+  resetInterfaceAvailabilityCounters(interfaceId: number): Promise<void>;
+  interfaceMonthlySnapshotExists(interfaceId: number, year: number, month: number): Promise<boolean>;
+  updateInterfaceAvailabilityMetrics(id: number, totalChecks: number, successfulChecks: number): Promise<DeviceInterface>;
+  // Device links management
+  getDeviceLinks(): Promise<DeviceLink[]>;
+  getDeviceLinksByDevice(deviceId: number): Promise<DeviceLink[]>;
+  createDeviceLink(link: InsertDeviceLink): Promise<DeviceLink>;
+  updateDeviceLink(id: number, updates: Partial<InsertDeviceLink>): Promise<DeviceLink>;
+  updateDeviceLinkTraffic(id: number, trafficMbps: string, status: string): Promise<DeviceLink>;
+  deleteDeviceLink(id: number): Promise<void>;
+  autoDiscoverLinks(): Promise<DeviceLink[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -680,6 +698,235 @@ export class DatabaseStorage implements IStorage {
       });
     }
     console.log("[storage] Initialized default sites");
+  }
+
+  // Interface availability tracking methods
+  async saveInterfaceMonthlyAvailability(snapshot: InsertInterfaceAvailabilityMonthly): Promise<InterfaceAvailabilityMonthly> {
+    const [record] = await db.insert(interfaceAvailabilityMonthly).values(snapshot).returning();
+    return record;
+  }
+
+  async getInterfaceMonthlyAvailability(interfaceId: number, year: number): Promise<InterfaceAvailabilityMonthly[]> {
+    return await db
+      .select()
+      .from(interfaceAvailabilityMonthly)
+      .where(and(
+        eq(interfaceAvailabilityMonthly.interfaceId, interfaceId),
+        eq(interfaceAvailabilityMonthly.year, year)
+      ))
+      .orderBy(asc(interfaceAvailabilityMonthly.month));
+  }
+
+  async getAllInterfaceMonthlyAvailabilityForYear(year: number): Promise<InterfaceAvailabilityMonthly[]> {
+    return await db
+      .select()
+      .from(interfaceAvailabilityMonthly)
+      .where(eq(interfaceAvailabilityMonthly.year, year))
+      .orderBy(asc(interfaceAvailabilityMonthly.interfaceId), asc(interfaceAvailabilityMonthly.month));
+  }
+
+  async saveInterfaceAnnualAvailability(data: InsertInterfaceAvailabilityAnnual): Promise<InterfaceAvailabilityAnnual> {
+    const existing = await db
+      .select()
+      .from(interfaceAvailabilityAnnual)
+      .where(and(
+        eq(interfaceAvailabilityAnnual.interfaceId, data.interfaceId),
+        eq(interfaceAvailabilityAnnual.year, data.year)
+      ))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(interfaceAvailabilityAnnual)
+        .set({
+          totalChecks: data.totalChecks,
+          successfulChecks: data.successfulChecks,
+          uptimePercentage: data.uptimePercentage,
+          monthsRecorded: data.monthsRecorded,
+          compiledAt: new Date()
+        })
+        .where(eq(interfaceAvailabilityAnnual.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [record] = await db.insert(interfaceAvailabilityAnnual).values(data).returning();
+      return record;
+    }
+  }
+
+  async getInterfaceAnnualAvailability(interfaceId: number, year?: number): Promise<InterfaceAvailabilityAnnual[]> {
+    if (year) {
+      return await db
+        .select()
+        .from(interfaceAvailabilityAnnual)
+        .where(and(
+          eq(interfaceAvailabilityAnnual.interfaceId, interfaceId),
+          eq(interfaceAvailabilityAnnual.year, year)
+        ));
+    }
+    return await db
+      .select()
+      .from(interfaceAvailabilityAnnual)
+      .where(eq(interfaceAvailabilityAnnual.interfaceId, interfaceId))
+      .orderBy(desc(interfaceAvailabilityAnnual.year));
+  }
+
+  async getAllInterfaceAnnualAvailability(year: number): Promise<InterfaceAvailabilityAnnual[]> {
+    return await db
+      .select()
+      .from(interfaceAvailabilityAnnual)
+      .where(eq(interfaceAvailabilityAnnual.year, year))
+      .orderBy(asc(interfaceAvailabilityAnnual.interfaceId));
+  }
+
+  async resetInterfaceAvailabilityCounters(interfaceId: number): Promise<void> {
+    await db
+      .update(deviceInterfaces)
+      .set({ totalChecks: 0, successfulChecks: 0 })
+      .where(eq(deviceInterfaces.id, interfaceId));
+  }
+
+  async interfaceMonthlySnapshotExists(interfaceId: number, year: number, month: number): Promise<boolean> {
+    const existing = await db
+      .select()
+      .from(interfaceAvailabilityMonthly)
+      .where(and(
+        eq(interfaceAvailabilityMonthly.interfaceId, interfaceId),
+        eq(interfaceAvailabilityMonthly.year, year),
+        eq(interfaceAvailabilityMonthly.month, month)
+      ))
+      .limit(1);
+    return existing.length > 0;
+  }
+
+  async updateInterfaceAvailabilityMetrics(id: number, totalChecks: number, successfulChecks: number): Promise<DeviceInterface> {
+    const [result] = await db
+      .update(deviceInterfaces)
+      .set({ totalChecks, successfulChecks })
+      .where(eq(deviceInterfaces.id, id))
+      .returning();
+    return result;
+  }
+
+  // Device links management methods
+  async getDeviceLinks(): Promise<DeviceLink[]> {
+    return await db.select().from(deviceLinks).orderBy(asc(deviceLinks.id));
+  }
+
+  async getDeviceLinksByDevice(deviceId: number): Promise<DeviceLink[]> {
+    return await db
+      .select()
+      .from(deviceLinks)
+      .where(or(
+        eq(deviceLinks.sourceDeviceId, deviceId),
+        eq(deviceLinks.targetDeviceId, deviceId)
+      ))
+      .orderBy(asc(deviceLinks.id));
+  }
+
+  async createDeviceLink(link: InsertDeviceLink): Promise<DeviceLink> {
+    const [newLink] = await db.insert(deviceLinks).values(link).returning();
+    return newLink;
+  }
+
+  async updateDeviceLink(id: number, updates: Partial<InsertDeviceLink>): Promise<DeviceLink> {
+    const [updated] = await db
+      .update(deviceLinks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(deviceLinks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateDeviceLinkTraffic(id: number, trafficMbps: string, status: string): Promise<DeviceLink> {
+    const [updated] = await db
+      .update(deviceLinks)
+      .set({ 
+        currentTrafficMbps: trafficMbps, 
+        status, 
+        lastCheck: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(deviceLinks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDeviceLink(id: number): Promise<void> {
+    await db.delete(deviceLinks).where(eq(deviceLinks.id, id));
+  }
+
+  async autoDiscoverLinks(): Promise<DeviceLink[]> {
+    // Auto-discovery based on same site + adjacent interface indices
+    // This is a simple heuristic - in practice, LLDP/CDP would be used
+    const allDevices = await this.getDevices();
+    const allInterfaces = await db.select().from(deviceInterfaces);
+    const existingLinks = await this.getDeviceLinks();
+    
+    const newLinks: DeviceLink[] = [];
+    
+    // Group devices by site
+    const devicesBySite: Record<string, Device[]> = {};
+    for (const device of allDevices) {
+      if (!devicesBySite[device.site]) {
+        devicesBySite[device.site] = [];
+      }
+      devicesBySite[device.site].push(device);
+    }
+    
+    // For each site, create potential links between devices
+    for (const site of Object.keys(devicesBySite)) {
+      const siteDevices = devicesBySite[site];
+      if (siteDevices.length < 2) continue;
+      
+      // Simple heuristic: connect devices that likely form a chain
+      // (e.g., router -> switch -> access points)
+      const routers = siteDevices.filter(d => d.type === 'mikrotik' || d.type === 'router' || d.type === 'cisco');
+      const switches = siteDevices.filter(d => d.type === 'switch' || d.type === 'dlink');
+      const aps = siteDevices.filter(d => d.type === 'unifi' || d.type === 'ap');
+      
+      // Connect routers to switches
+      for (const router of routers) {
+        for (const sw of switches) {
+          const linkExists = existingLinks.some(l => 
+            (l.sourceDeviceId === router.id && l.targetDeviceId === sw.id) ||
+            (l.sourceDeviceId === sw.id && l.targetDeviceId === router.id)
+          );
+          if (!linkExists) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: router.id,
+              targetDeviceId: sw.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${router.name} <-> ${sw.name}`,
+              bandwidthMbps: 1000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // Connect switches to APs
+      for (const sw of switches) {
+        for (const ap of aps) {
+          const linkExists = existingLinks.some(l => 
+            (l.sourceDeviceId === sw.id && l.targetDeviceId === ap.id) ||
+            (l.sourceDeviceId === ap.id && l.targetDeviceId === sw.id)
+          );
+          if (!linkExists) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: sw.id,
+              targetDeviceId: ap.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${sw.name} <-> ${ap.name}`,
+              bandwidthMbps: 1000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+    }
+    
+    return newLinks;
   }
 }
 

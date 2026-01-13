@@ -1101,6 +1101,169 @@ export async function registerRoutes(
     }
   });
 
+  // ============= DEVICE LINKS ROUTES =============
+  
+  // Get all device links
+  app.get("/api/device-links", async (req, res) => {
+    try {
+      const links = await storage.getDeviceLinks();
+      res.json(links);
+    } catch (err: any) {
+      console.error('Error fetching device links:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Get links for a specific device
+  app.get("/api/device-links/device/:deviceId", conditionalAuth, async (req, res) => {
+    try {
+      const deviceId = Number(req.params.deviceId);
+      if (isNaN(deviceId)) {
+        return res.status(400).json({ message: "Invalid device ID" });
+      }
+      const links = await storage.getDeviceLinksByDevice(deviceId);
+      res.json(links);
+    } catch (err: any) {
+      console.error('Error fetching device links:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Create a new device link
+  app.post("/api/device-links", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const { sourceDeviceId, targetDeviceId, sourceInterfaceId, targetInterfaceId, linkType, linkLabel, bandwidthMbps } = req.body;
+      
+      if (!sourceDeviceId || !targetDeviceId) {
+        return res.status(400).json({ message: "Source and target device IDs are required" });
+      }
+      
+      const link = await storage.createDeviceLink({
+        sourceDeviceId,
+        targetDeviceId,
+        sourceInterfaceId: sourceInterfaceId || null,
+        targetInterfaceId: targetInterfaceId || null,
+        linkType: linkType || 'manual',
+        linkLabel: linkLabel || null,
+        bandwidthMbps: bandwidthMbps || 1000
+      });
+      
+      await storage.createLog({
+        deviceId: sourceDeviceId,
+        site: "System",
+        type: 'link_created',
+        message: `Device link created: ${link.linkLabel || `Device ${sourceDeviceId} <-> Device ${targetDeviceId}`}`
+      });
+      
+      res.status(201).json(link);
+    } catch (err: any) {
+      console.error('Error creating device link:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Update a device link
+  app.patch("/api/device-links/:id", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid link ID" });
+      }
+      
+      const { sourceDeviceId, targetDeviceId, sourceInterfaceId, targetInterfaceId, linkType, linkLabel, bandwidthMbps } = req.body;
+      
+      const updates: any = {};
+      if (sourceDeviceId !== undefined) updates.sourceDeviceId = sourceDeviceId;
+      if (targetDeviceId !== undefined) updates.targetDeviceId = targetDeviceId;
+      if (sourceInterfaceId !== undefined) updates.sourceInterfaceId = sourceInterfaceId;
+      if (targetInterfaceId !== undefined) updates.targetInterfaceId = targetInterfaceId;
+      if (linkType !== undefined) updates.linkType = linkType;
+      if (linkLabel !== undefined) updates.linkLabel = linkLabel;
+      if (bandwidthMbps !== undefined) updates.bandwidthMbps = bandwidthMbps;
+      
+      const link = await storage.updateDeviceLink(id, updates);
+      res.json(link);
+    } catch (err: any) {
+      console.error('Error updating device link:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Delete a device link
+  app.delete("/api/device-links/:id", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid link ID" });
+      }
+      
+      await storage.deleteDeviceLink(id);
+      res.status(204).send();
+    } catch (err: any) {
+      console.error('Error deleting device link:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Auto-discover device links based on network topology heuristics
+  app.post("/api/device-links/auto-discover", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      const newLinks = await storage.autoDiscoverLinks();
+      
+      if (newLinks.length > 0) {
+        await storage.createLog({
+          deviceId: null,
+          site: "System",
+          type: 'links_discovered',
+          message: `Auto-discovered ${newLinks.length} device link(s)`
+        });
+      }
+      
+      res.json({ discovered: newLinks.length, links: newLinks });
+    } catch (err: any) {
+      console.error('Error auto-discovering links:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ============= INTERFACE AVAILABILITY ROUTES =============
+  
+  // Get interface monthly availability
+  app.get("/api/interfaces/:id/availability/monthly", conditionalAuth, async (req, res) => {
+    try {
+      const interfaceId = Number(req.params.id);
+      const year = Number(req.query.year) || new Date().getFullYear();
+      
+      if (isNaN(interfaceId)) {
+        return res.status(400).json({ message: "Invalid interface ID" });
+      }
+      
+      const availability = await storage.getInterfaceMonthlyAvailability(interfaceId, year);
+      res.json(availability);
+    } catch (err: any) {
+      console.error('Error fetching interface availability:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Get interface annual availability
+  app.get("/api/interfaces/:id/availability/annual", conditionalAuth, async (req, res) => {
+    try {
+      const interfaceId = Number(req.params.id);
+      const year = req.query.year ? Number(req.query.year) : undefined;
+      
+      if (isNaN(interfaceId)) {
+        return res.status(400).json({ message: "Invalid interface ID" });
+      }
+      
+      const availability = await storage.getInterfaceAnnualAvailability(interfaceId, year);
+      res.json(availability);
+    } catch (err: any) {
+      console.error('Error fetching interface availability:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ============= UTILITY ROUTES (Ping & Traceroute) =============
   
   // Helper: TCP-based ping for environments without raw socket access
@@ -1737,6 +1900,20 @@ export async function registerRoutes(
           lastOutCounter: ifaceLastOut,
         });
 
+        // Track interface availability (increment totalChecks always, successfulChecks only when online)
+        // Fetch fresh interface data to get current counter values
+        try {
+          const freshInterfaces = await storage.getDeviceInterfaces(device.id);
+          const freshIface = freshInterfaces.find(i => i.id === iface.id);
+          if (freshIface) {
+            const newTotalChecks = (freshIface.totalChecks || 0) + 1;
+            const newSuccessfulChecks = (freshIface.successfulChecks || 0) + (ifaceStatus === 'green' ? 1 : 0);
+            await storage.updateInterfaceAvailabilityMetrics(iface.id, newTotalChecks, newSuccessfulChecks);
+          }
+        } catch (availErr) {
+          console.error(`[snmp] Error updating interface availability for ${iface.id}:`, availErr);
+        }
+
         // Save interface metrics snapshot for historical graphing
         try {
           await storage.saveInterfaceMetricsSnapshot({
@@ -1899,6 +2076,41 @@ export async function registerRoutes(
     
     // Poll all devices using the unified polling function
     await Promise.all(devices.map(device => pollDeviceUnified(device, intervalSeconds)));
+    
+    // Poll device links to calculate real-time traffic based on connected device interfaces
+    try {
+      const allLinks = await storage.getAllDeviceLinks();
+      const devicesMap = new Map(devices.map(d => [d.id, d]));
+      
+      for (const link of allLinks) {
+        const sourceDevice = devicesMap.get(link.sourceDeviceId);
+        const targetDevice = devicesMap.get(link.targetDeviceId);
+        
+        // Determine link status based on device statuses
+        // Use 'up', 'down', 'degraded' to match UI expectations
+        let linkStatus = 'down';
+        if (sourceDevice && targetDevice) {
+          if (sourceDevice.status === 'green' && targetDevice.status === 'green') {
+            linkStatus = 'up';
+          } else if (sourceDevice.status === 'blue' || targetDevice.status === 'blue') {
+            linkStatus = 'degraded';
+          } else if (sourceDevice.status !== 'red' && targetDevice.status !== 'red') {
+            linkStatus = 'degraded';
+          }
+        }
+        
+        // Calculate traffic from source device's primary interface (approximation)
+        let trafficMbps = "0.00";
+        if (sourceDevice) {
+          const totalMbps = parseFloat(sourceDevice.downloadMbps || "0") + parseFloat(sourceDevice.uploadMbps || "0");
+          trafficMbps = totalMbps.toFixed(2);
+        }
+        
+        await storage.updateDeviceLinkTraffic(link.id, trafficMbps, linkStatus);
+      }
+    } catch (linkErr) {
+      console.error('[poll] Error updating device link traffic:', linkErr);
+    }
     
     // Schedule next poll with current interval (only after all devices complete)
     pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);

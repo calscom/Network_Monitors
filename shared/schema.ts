@@ -85,6 +85,9 @@ export const deviceInterfaces = pgTable("device_interfaces", {
   lastInCounter: bigint("last_in_counter", { mode: "bigint" }).default(sql`0`).notNull(),
   lastOutCounter: bigint("last_out_counter", { mode: "bigint" }).default(sql`0`).notNull(),
   lastCheck: timestamp("last_check"),
+  totalChecks: integer("total_checks").default(0).notNull(), // Total poll attempts for availability
+  successfulChecks: integer("successful_checks").default(0).notNull(), // Successful poll responses
+  maxBandwidth: integer("max_bandwidth").default(100).notNull(), // Max bandwidth in Mbps for utilization calculation
 });
 
 export const insertDeviceInterfaceSchema = createInsertSchema(deviceInterfaces).omit({
@@ -220,6 +223,76 @@ export const insertSiteSchema = createInsertSchema(sites).omit({
 
 export type Site = typeof sites.$inferSelect;
 export type InsertSite = z.infer<typeof insertSiteSchema>;
+
+// Interface availability tracking (monthly snapshots)
+export const interfaceAvailabilityMonthly = pgTable("interface_availability_monthly", {
+  id: serial("id").primaryKey(),
+  interfaceId: integer("interface_id").references(() => deviceInterfaces.id).notNull(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(), // 1-12
+  totalChecks: integer("total_checks").default(0).notNull(),
+  successfulChecks: integer("successful_checks").default(0).notNull(),
+  uptimePercentage: text("uptime_percentage").default("0.00").notNull(),
+  snapshotTakenAt: timestamp("snapshot_taken_at").defaultNow().notNull(),
+});
+
+export const insertInterfaceAvailabilityMonthlySchema = createInsertSchema(interfaceAvailabilityMonthly).omit({
+  id: true,
+  snapshotTakenAt: true,
+});
+
+// Interface availability tracking (annual aggregation)
+export const interfaceAvailabilityAnnual = pgTable("interface_availability_annual", {
+  id: serial("id").primaryKey(),
+  interfaceId: integer("interface_id").references(() => deviceInterfaces.id).notNull(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  year: integer("year").notNull(),
+  totalChecks: integer("total_checks").default(0).notNull(),
+  successfulChecks: integer("successful_checks").default(0).notNull(),
+  uptimePercentage: text("uptime_percentage").default("0.00").notNull(),
+  monthsRecorded: integer("months_recorded").default(0).notNull(),
+  compiledAt: timestamp("compiled_at").defaultNow().notNull(),
+});
+
+export const insertInterfaceAvailabilityAnnualSchema = createInsertSchema(interfaceAvailabilityAnnual).omit({
+  id: true,
+  compiledAt: true,
+});
+
+// Device links for network topology interconnections
+export const deviceLinks = pgTable("device_links", {
+  id: serial("id").primaryKey(),
+  sourceDeviceId: integer("source_device_id").references(() => devices.id).notNull(),
+  sourceInterfaceId: integer("source_interface_id").references(() => deviceInterfaces.id),
+  targetDeviceId: integer("target_device_id").references(() => devices.id).notNull(),
+  targetInterfaceId: integer("target_interface_id").references(() => deviceInterfaces.id),
+  linkType: text("link_type").default("manual").notNull(), // 'manual', 'auto-discovered', 'lldp', 'cdp'
+  linkLabel: text("link_label"), // Optional label for the link
+  bandwidthMbps: integer("bandwidth_mbps").default(1000).notNull(), // Link capacity in Mbps
+  currentTrafficMbps: text("current_traffic_mbps").default("0").notNull(), // Current traffic
+  status: text("status").default("unknown").notNull(), // 'up', 'down', 'degraded', 'unknown'
+  lastCheck: timestamp("last_check"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDeviceLinkSchema = createInsertSchema(deviceLinks).omit({
+  id: true,
+  currentTrafficMbps: true,
+  status: true,
+  lastCheck: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Add totalChecks and successfulChecks to device_interfaces for availability tracking
+export type InterfaceAvailabilityMonthly = typeof interfaceAvailabilityMonthly.$inferSelect;
+export type InsertInterfaceAvailabilityMonthly = z.infer<typeof insertInterfaceAvailabilityMonthlySchema>;
+export type InterfaceAvailabilityAnnual = typeof interfaceAvailabilityAnnual.$inferSelect;
+export type InsertInterfaceAvailabilityAnnual = z.infer<typeof insertInterfaceAvailabilityAnnualSchema>;
+export type DeviceLink = typeof deviceLinks.$inferSelect;
+export type InsertDeviceLink = z.infer<typeof insertDeviceLinkSchema>;
 
 // Export auth models
 export * from "./models/auth";
