@@ -2079,7 +2079,7 @@ export async function registerRoutes(
     
     // Poll device links to calculate real-time traffic based on connected device interfaces
     try {
-      const allLinks = await storage.getAllDeviceLinks();
+      const allLinks = await storage.getDeviceLinks();
       const devicesMap = new Map(devices.map(d => [d.id, d]));
       
       for (const link of allLinks) {

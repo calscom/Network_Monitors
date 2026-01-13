@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Device, DeviceLink } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Server, Router, Wifi, Radio, Users, MonitorSmartphone, LayoutGrid, GalleryHorizontal, Link2, Zap } from "lucide-react";
+import { Server, Router, Wifi, Radio, Users, MonitorSmartphone, LayoutGrid, GalleryHorizontal, Link2, Zap, Settings2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { LinkManagement } from "./LinkManagement";
 
 interface NetworkMapProps {
   devices: Device[];
@@ -411,6 +412,9 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
               <GalleryHorizontal className="w-4 h-4" />
             </Button>
           </div>
+          {!kioskMode && (
+            <LinkManagement devices={devices} />
+          )}
         </div>
       </div>
 
