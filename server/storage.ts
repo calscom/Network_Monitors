@@ -101,34 +101,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDevice(id: number): Promise<void> {
-    // Get interface IDs first for cascading deletes
-    const interfaces = await db.select({ id: deviceInterfaces.id })
-      .from(deviceInterfaces)
-      .where(eq(deviceInterfaces.deviceId, id));
-    const interfaceIds = interfaces.map(i => i.id);
+    // Use raw SQL for reliable cascading delete - handles all foreign key constraints
+    // Delete interface-related records using subquery
+    await db.execute(sql`
+      DELETE FROM interface_metrics_history 
+      WHERE interface_id IN (SELECT id FROM device_interfaces WHERE device_id = ${id})
+    `);
+    await db.execute(sql`
+      DELETE FROM interface_availability_monthly 
+      WHERE interface_id IN (SELECT id FROM device_interfaces WHERE device_id = ${id})
+    `);
+    await db.execute(sql`
+      DELETE FROM interface_availability_annual 
+      WHERE interface_id IN (SELECT id FROM device_interfaces WHERE device_id = ${id})
+    `);
     
-    // Delete interface-related records first
-    if (interfaceIds.length > 0) {
-      for (const ifaceId of interfaceIds) {
-        await db.delete(interfaceMetricsHistory).where(eq(interfaceMetricsHistory.interfaceId, ifaceId));
-        await db.delete(interfaceAvailabilityMonthly).where(eq(interfaceAvailabilityMonthly.interfaceId, ifaceId));
-        await db.delete(interfaceAvailabilityAnnual).where(eq(interfaceAvailabilityAnnual.interfaceId, ifaceId));
-      }
-    }
+    // Delete device interfaces
+    await db.execute(sql`DELETE FROM device_interfaces WHERE device_id = ${id}`);
     
-    // Delete device-related records (foreign key constraints)
-    await db.delete(deviceInterfaces).where(eq(deviceInterfaces.deviceId, id));
-    await db.delete(metricsHistory).where(eq(metricsHistory.deviceId, id));
-    await db.delete(logs).where(eq(logs.deviceId, id));
-    // Delete device links where this device is source or target
-    await db.delete(deviceLinks).where(
-      or(eq(deviceLinks.sourceDeviceId, id), eq(deviceLinks.targetDeviceId, id))
-    );
+    // Delete metrics history
+    await db.execute(sql`DELETE FROM metrics_history WHERE device_id = ${id}`);
+    
+    // Delete logs referencing this device
+    await db.execute(sql`DELETE FROM logs WHERE device_id = ${id}`);
+    
+    // Delete device links (source or target)
+    await db.execute(sql`DELETE FROM device_links WHERE source_device_id = ${id} OR target_device_id = ${id}`);
+    
     // Delete availability records
-    await db.delete(availabilityMonthly).where(eq(availabilityMonthly.deviceId, id));
-    await db.delete(availabilityAnnual).where(eq(availabilityAnnual.deviceId, id));
-    // Now delete the device
-    await db.delete(devices).where(eq(devices.id, id));
+    await db.execute(sql`DELETE FROM availability_monthly WHERE device_id = ${id}`);
+    await db.execute(sql`DELETE FROM availability_annual WHERE device_id = ${id}`);
+    
+    // Finally delete the device
+    await db.execute(sql`DELETE FROM devices WHERE id = ${id}`);
   }
 
   async updateDeviceMetrics(id: number, metrics: { 
