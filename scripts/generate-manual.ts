@@ -995,6 +995,98 @@ const doc = new Document({
           children: [new PageBreak()],
         }),
 
+        // Chapter 10: Database Migrations (Self-Hosted)
+        new Paragraph({
+          text: "10. Database Migrations (Self-Hosted)",
+          heading: HeadingLevel.HEADING_1,
+          spacing: { after: 300 },
+        }),
+        createParagraph(
+          "Self-hosted deployments (AWS EC2, Vultr VPS) require manual database migrations when upgrading to new versions. This section covers the required steps."
+        ),
+
+        new Paragraph({
+          text: "10.1 Device Links Table Migration",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "The Device Links feature (Network Map connections) requires the device_links table. Run this migration if you see the error 'relation device_links does not exist':"
+        ),
+        createNumberedItem("SSH into your server"),
+        createNumberedItem("Navigate to the application directory"),
+        createNumberedItem("Run the migration script:"),
+        createParagraph("    psql $DATABASE_URL -f scripts/create-device-links.sql"),
+        createNumberedItem("Restart the application:"),
+        createParagraph("    pm2 restart all  (or your process manager command)"),
+        createNote(
+          "Always backup your database before running migrations. The script uses CREATE TABLE IF NOT EXISTS, so it's safe to run multiple times."
+        ),
+
+        new Paragraph({
+          text: "10.2 Verifying Migrations",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "After running a migration, verify the table was created:"
+        ),
+        createParagraph("    psql $DATABASE_URL -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';\""),
+        createParagraph(
+          "You should see device_links in the list of tables."
+        ),
+
+        new Paragraph({
+          text: "10.3 Migration Scripts Reference",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [createParagraph("Script", true)],
+                  width: { size: 40, type: WidthType.PERCENTAGE },
+                }),
+                new TableCell({
+                  children: [createParagraph("Purpose", true)],
+                  width: { size: 60, type: WidthType.PERCENTAGE },
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [createParagraph("scripts/create-device-links.sql")] }),
+                new TableCell({
+                  children: [
+                    createParagraph(
+                      "Creates the device_links table for Network Map connections"
+                    ),
+                  ],
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [createParagraph("scripts/migrate-sites.sql")] }),
+                new TableCell({
+                  children: [
+                    createParagraph(
+                      "Migrates sites data if upgrading from older versions"
+                    ),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+
+        new Paragraph({
+          children: [new PageBreak()],
+        }),
+
         // Appendix
         new Paragraph({
           text: "Appendix A: Keyboard Shortcuts",
