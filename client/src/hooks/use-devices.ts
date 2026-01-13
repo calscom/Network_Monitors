@@ -64,6 +64,7 @@ export function useBulkDeleteDevices() {
       const res = await fetch("/api/devices/bulk-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ ids }),
       });
       
