@@ -101,10 +101,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDevice(id: number): Promise<void> {
-    // Delete related records first (foreign key constraints)
+    // Get interface IDs first for cascading deletes
+    const interfaces = await db.select({ id: deviceInterfaces.id })
+      .from(deviceInterfaces)
+      .where(eq(deviceInterfaces.deviceId, id));
+    const interfaceIds = interfaces.map(i => i.id);
+    
+    // Delete interface-related records first
+    if (interfaceIds.length > 0) {
+      for (const ifaceId of interfaceIds) {
+        await db.delete(interfaceMetricsHistory).where(eq(interfaceMetricsHistory.interfaceId, ifaceId));
+        await db.delete(interfaceAvailabilityMonthly).where(eq(interfaceAvailabilityMonthly.interfaceId, ifaceId));
+        await db.delete(interfaceAvailabilityAnnual).where(eq(interfaceAvailabilityAnnual.interfaceId, ifaceId));
+      }
+    }
+    
+    // Delete device-related records (foreign key constraints)
     await db.delete(deviceInterfaces).where(eq(deviceInterfaces.deviceId, id));
     await db.delete(metricsHistory).where(eq(metricsHistory.deviceId, id));
     await db.delete(logs).where(eq(logs.deviceId, id));
+    // Delete device links where this device is source or target
+    await db.delete(deviceLinks).where(
+      or(eq(deviceLinks.sourceDeviceId, id), eq(deviceLinks.targetDeviceId, id))
+    );
+    // Delete availability records
+    await db.delete(availabilityMonthly).where(eq(availabilityMonthly.deviceId, id));
+    await db.delete(availabilityAnnual).where(eq(availabilityAnnual.deviceId, id));
     // Now delete the device
     await db.delete(devices).where(eq(devices.id, id));
   }
