@@ -149,7 +149,12 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   };
 
   return (
-    <div className="glass rounded-xl p-3 sm:p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border border-white/5 relative group">
+    <div className="glass rounded-xl p-3 sm:p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border border-white/5 relative group pt-6 sm:pt-8">
+      {/* Status Badge - Middle Top */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+        <StatusBadge status={device.status} showLabel />
+      </div>
+      
       {/* Header */}
       <div className="flex flex-col gap-2 mb-4 sm:mb-6">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -189,10 +194,6 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
               )}
             </div>
           </div>
-        </div>
-        
-        <div className="flex justify-center">
-          <StatusBadge status={device.status} showLabel />
         </div>
       </div>
 
