@@ -1,4 +1,4 @@
-import { useDevices } from "@/hooks/use-devices";
+import { useDevices, useBulkDeleteDevices } from "@/hooks/use-devices";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
@@ -6,9 +6,21 @@ import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Onboarding } from "@/components/Onboarding";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X, GripVertical } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X, GripVertical, CheckSquare, Square, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { motion } from "framer-motion";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -82,6 +94,8 @@ export default function Dashboard() {
   const { data: devices, isLoading, error } = useDevices();
   const userRole = (user?.role as UserRole) || 'viewer';
   const canManageDevices = userRole === 'admin' || userRole === 'operator';
+  const { toast } = useToast();
+  const bulkDeleteMutation = useBulkDeleteDevices();
   
   // Fetch sites from centralized hook
   const { sites: sitesData, siteNames: sites, renameSite } = useSites();
@@ -99,6 +113,47 @@ export default function Dashboard() {
     const hasSeenOnboarding = localStorage.getItem("network_monitor_onboarding_complete");
     return !hasSeenOnboarding;
   });
+  
+  // Bulk selection state
+  const [selectedDevices, setSelectedDevices] = useState<Set<number>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Track previous search state to detect view mode changes
+  const wasSearching = useRef(!!searchQuery);
+  
+  // Clear selection when site changes or when entering/exiting search mode
+  useEffect(() => {
+    setSelectedDevices(new Set());
+  }, [activeSite]);
+  
+  // Clear selection when transitioning between search and site view
+  useEffect(() => {
+    const isSearching = !!searchQuery;
+    if (wasSearching.current !== isSearching) {
+      setSelectedDevices(new Set());
+      wasSearching.current = isSearching;
+    }
+  }, [searchQuery]);
+  
+  const toggleDeviceSelection = (id: number) => {
+    setSelectedDevices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+  
+  
+  const deselectAllDevices = () => {
+    setSelectedDevices(new Set());
+  };
+  
+  // Allow bulk actions for admin/operator roles
+  const bulkActionsEnabled = canManageDevices;
   
   // Set initial active site when sites load
   useEffect(() => {
@@ -220,6 +275,89 @@ export default function Dashboard() {
     : displayedDevices;
   const upDevices = devices?.filter(d => d.status === 'green') || [];
   const downDevices = devices?.filter(d => d.status === 'red' || d.status === 'blue') || [];
+
+  // Get current selectable devices based on view mode (must be after displayedDevices and filteredDevices are defined)
+  const getSelectableDevices = () => {
+    if (searchQuery) {
+      return filteredDevices;
+    }
+    return displayedDevices;
+  };
+  
+  // Get the set of visible device IDs for reconciliation
+  const visibleDeviceIds = useMemo(() => {
+    const selectableDevices = searchQuery ? filteredDevices : displayedDevices;
+    return new Set(selectableDevices.map(d => d.id));
+  }, [searchQuery, filteredDevices, displayedDevices]);
+
+  // Reconcile selectedDevices whenever visible devices change - remove any hidden selections
+  useEffect(() => {
+    setSelectedDevices(prev => {
+      const validIds = Array.from(prev).filter(id => visibleDeviceIds.has(id));
+      if (validIds.length !== prev.size) {
+        return new Set(validIds);
+      }
+      return prev;
+    });
+  }, [visibleDeviceIds]);
+
+  // Filter selectedDevices to only include IDs that are currently visible
+  const visibleSelectedCount = useMemo(() => {
+    return Array.from(selectedDevices).filter(id => visibleDeviceIds.has(id)).length;
+  }, [selectedDevices, visibleDeviceIds]);
+
+  const selectAllDevices = () => {
+    const selectableDevices = getSelectableDevices();
+    const currentDeviceIds = selectableDevices.map(d => d.id);
+    setSelectedDevices(new Set(currentDeviceIds));
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      // Only delete devices that are currently visible
+      const selectableDevices = getSelectableDevices();
+      const selectableIds = new Set(selectableDevices.map(d => d.id));
+      const idsToDelete = Array.from(selectedDevices).filter(id => selectableIds.has(id));
+      
+      if (idsToDelete.length === 0) {
+        toast({
+          title: "No devices to delete",
+          description: "No visible devices are selected",
+          variant: "default",
+        });
+        return;
+      }
+      
+      const result = await bulkDeleteMutation.mutateAsync(idsToDelete);
+      const deleted = (result as { deleted: number; notFound?: number; failed?: number }).deleted;
+      const notFound = (result as { deleted: number; notFound?: number; failed?: number }).notFound;
+      const failed = (result as { deleted: number; notFound?: number; failed?: number }).failed;
+      
+      if ((failed && failed > 0) || (notFound && notFound > 0)) {
+        let description = `Deleted ${deleted} device(s)`;
+        if (notFound && notFound > 0) description += `, ${notFound} not found`;
+        if (failed && failed > 0) description += `, ${failed} failed`;
+        toast({
+          title: "Partial deletion",
+          description,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Devices deleted",
+          description: `Successfully deleted ${deleted} device(s)`,
+        });
+      }
+      setSelectedDevices(new Set());
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Failed to delete devices",
+        variant: "destructive",
+      });
+    }
+  };
 
   // DndKit sensors for drag and drop
   const sensors = useSensors(
@@ -458,6 +596,47 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {/* Bulk Actions Bar */}
+                {bulkActionsEnabled && displayedDevices.length > 0 && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/5">
+                    <Checkbox
+                      id="select-all"
+                      checked={visibleSelectedCount === displayedDevices.length && displayedDevices.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          selectAllDevices();
+                        } else {
+                          deselectAllDevices();
+                        }
+                      }}
+                      data-testid="checkbox-select-all"
+                    />
+                    <label htmlFor="select-all" className="text-sm text-muted-foreground cursor-pointer">
+                      {visibleSelectedCount === displayedDevices.length && displayedDevices.length > 0
+                        ? "Deselect All"
+                        : "Select All"}
+                    </label>
+                    
+                    {visibleSelectedCount > 0 && (
+                      <>
+                        <span className="text-sm text-muted-foreground">
+                          ({visibleSelectedCount} selected)
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setShowDeleteConfirm(true)}
+                          disabled={bulkDeleteMutation.isPending}
+                          data-testid="button-bulk-delete"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete Selected
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {isLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6 animate-pulse">
                     {[1, 2].map((i) => (
@@ -498,11 +677,22 @@ export default function Dashboard() {
                         data-testid="device-reorder-group"
                       >
                         {displayedDevices.map((device) => (
-                          <SortableDeviceCard 
-                            key={device.id} 
-                            device={device} 
-                            canManage={canManageDevices} 
-                          />
+                          <div key={device.id} className="relative">
+                            {bulkActionsEnabled && (
+                              <div className="absolute top-3 right-3 z-30">
+                                <Checkbox
+                                  checked={selectedDevices.has(device.id)}
+                                  onCheckedChange={() => toggleDeviceSelection(device.id)}
+                                  data-testid={`checkbox-device-${device.id}`}
+                                  className="bg-background/80 border-2"
+                                />
+                              </div>
+                            )}
+                            <SortableDeviceCard 
+                              device={device} 
+                              canManage={canManageDevices} 
+                            />
+                          </div>
                         ))}
                       </div>
                     </SortableContext>
@@ -581,6 +771,47 @@ export default function Dashboard() {
               </Button>
             </div>
             
+            {/* Bulk Actions Bar for Search Results */}
+            {bulkActionsEnabled && filteredDevices.length > 0 && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/5">
+                <Checkbox
+                  id="select-all-search"
+                  checked={visibleSelectedCount === filteredDevices.length && filteredDevices.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      selectAllDevices();
+                    } else {
+                      deselectAllDevices();
+                    }
+                  }}
+                  data-testid="checkbox-select-all-search"
+                />
+                <label htmlFor="select-all-search" className="text-sm text-muted-foreground cursor-pointer">
+                  {visibleSelectedCount === filteredDevices.length && filteredDevices.length > 0
+                    ? "Deselect All"
+                    : "Select All"}
+                </label>
+                
+                {visibleSelectedCount > 0 && (
+                  <>
+                    <span className="text-sm text-muted-foreground">
+                      ({visibleSelectedCount} selected)
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={bulkDeleteMutation.isPending}
+                      data-testid="button-bulk-delete-search"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete Selected
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+
             {filteredDevices.length === 0 ? (
               <div className="text-center py-12 sm:py-20 rounded-xl glass border-dashed border-2 border-white/10">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
@@ -599,7 +830,18 @@ export default function Dashboard() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.03 }}
+                    className="relative"
                   >
+                    {bulkActionsEnabled && (
+                      <div className="absolute top-3 right-3 z-30">
+                        <Checkbox
+                          checked={selectedDevices.has(device.id)}
+                          onCheckedChange={() => toggleDeviceSelection(device.id)}
+                          data-testid={`checkbox-search-device-${device.id}`}
+                          className="bg-background/80 border-2"
+                        />
+                      </div>
+                    )}
                     <DeviceCard device={device} canManage={canManageDevices} />
                   </motion.div>
                 ))}
@@ -608,6 +850,30 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {visibleSelectedCount} device(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected devices
+              and remove all their monitoring data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteMutation.isPending}
+              data-testid="button-confirm-bulk-delete"
+            >
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

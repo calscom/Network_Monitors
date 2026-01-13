@@ -56,3 +56,27 @@ export function useDeleteDevice() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.devices.list.path] }),
   });
 }
+
+export function useBulkDeleteDevices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const res = await fetch("/api/devices/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete devices");
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.devices.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logs"] });
+    },
+  });
+}

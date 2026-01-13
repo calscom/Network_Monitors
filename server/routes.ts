@@ -361,6 +361,97 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // Bulk delete devices
+  app.post("/api/devices/bulk-delete", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    try {
+      // Validate input with Zod
+      const bulkDeleteSchema = z.object({
+        ids: z.array(z.number().int().positive()).min(1, "At least one device ID required")
+      });
+      
+      const parseResult = bulkDeleteSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: parseResult.error.errors[0]?.message || "Invalid request body" 
+        });
+      }
+      
+      const { ids } = parseResult.data;
+      
+      // Track results
+      const deletedIds: number[] = [];
+      const deletedDevices: Array<{ id: number; site: string }> = [];
+      const notFoundIds: number[] = [];
+      
+      // Track errors
+      const errorIds: number[] = [];
+      
+      // Process each ID individually to handle concurrent modifications
+      for (const id of ids) {
+        try {
+          // Check if device exists before deleting
+          const device = await storage.getDevice(id);
+          if (!device) {
+            notFoundIds.push(id);
+            continue;
+          }
+          
+          await storage.deleteDevice(id);
+          deletedIds.push(id);
+          deletedDevices.push({ id: device.id, site: device.site });
+        } catch (err) {
+          console.error(`Failed to delete device ${id}:`, err);
+          errorIds.push(id);
+        }
+      }
+      
+      // Return 404 if all IDs were not found
+      if (deletedIds.length === 0 && notFoundIds.length === ids.length) {
+        return res.status(404).json({ message: "No valid device IDs found" });
+      }
+      
+      // Return 500 if all deletions failed (excluding not found)
+      if (deletedIds.length === 0 && errorIds.length > 0) {
+        return res.status(500).json({ 
+          message: "All deletions failed",
+          failed: errorIds.length,
+          notFound: notFoundIds.length
+        });
+      }
+      
+      // Only log successful deletions
+      if (deletedDevices.length > 0) {
+        const siteGroups = deletedDevices.reduce((acc, d) => {
+          acc[d.site] = (acc[d.site] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        for (const [site, count] of Object.entries(siteGroups)) {
+          await storage.createLog({
+            deviceId: null,
+            site,
+            type: 'device_removed',
+            message: `Bulk deleted ${count} device(s) from ${site}`
+          });
+        }
+      }
+      
+      // Return results with details on not found and failed
+      const response: { deleted: number; notFound?: number; failed?: number } = { deleted: deletedIds.length };
+      if (notFoundIds.length > 0) {
+        response.notFound = notFoundIds.length;
+      }
+      if (errorIds.length > 0) {
+        response.failed = errorIds.length;
+      }
+      
+      res.json(response);
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+      res.status(500).json({ message: "Failed to delete devices" });
+    }
+  });
+
   app.patch("/api/devices/:id", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
     try {
       const id = Number(req.params.id);
