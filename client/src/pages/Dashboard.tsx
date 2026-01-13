@@ -319,6 +319,10 @@ export default function Dashboard() {
       const selectableIds = new Set(selectableDevices.map(d => d.id));
       const idsToDelete = Array.from(selectedDevices).filter(id => selectableIds.has(id));
       
+      console.log('[BulkDelete] Selected devices:', Array.from(selectedDevices));
+      console.log('[BulkDelete] Visible IDs:', Array.from(selectableIds));
+      console.log('[BulkDelete] IDs to delete:', idsToDelete);
+      
       if (idsToDelete.length === 0) {
         toast({
           title: "No devices to delete",
@@ -328,7 +332,9 @@ export default function Dashboard() {
         return;
       }
       
+      console.log('[BulkDelete] Sending request with IDs:', idsToDelete);
       const result = await bulkDeleteMutation.mutateAsync(idsToDelete);
+      console.log('[BulkDelete] Result:', result);
       const deleted = (result as { deleted: number; notFound?: number; failed?: number }).deleted;
       const notFound = (result as { deleted: number; notFound?: number; failed?: number }).notFound;
       const failed = (result as { deleted: number; notFound?: number; failed?: number }).failed;
