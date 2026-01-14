@@ -28,8 +28,9 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: fetchUser,
     retry: false,
-    staleTime: 0,
+    staleTime: 5000, // Prevent rapid re-fetches that cause render loops
     refetchOnMount: true,
+    refetchOnWindowFocus: false, // Prevent re-fetch loops on focus
   });
 
   const logoutMutation = useMutation({
