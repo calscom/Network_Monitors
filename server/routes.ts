@@ -2135,8 +2135,8 @@ export async function registerRoutes(
     const isPingOnlyMode = pollType === 'ping_only';
     
     // Re-fetch current device state to get latest counter values (avoids race with reset)
-    const freshDevices = await storage.getDevices();
-    const freshDevice = freshDevices.find(d => d.id === device.id);
+    // Use getDevice(id) instead of getDevices() to avoid O(n²) queries with 169+ devices
+    const freshDevice = await storage.getDevice(device.id);
     if (!freshDevice) return;
     
     await storage.updateDeviceMetrics(device.id, {
@@ -2153,6 +2153,18 @@ export async function registerRoutes(
     });
   };
 
+  // Helper function to process items in batches with concurrency limit
+  const processBatched = async <T>(
+    items: T[],
+    processor: (item: T) => Promise<void>,
+    batchSize: number = 20
+  ): Promise<void> => {
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      await Promise.all(batch.map(processor));
+    }
+  };
+
   // Background polling service with dynamic interval
   const pollDevices = async () => {
     // Skip polling if availability reset is in progress
@@ -2165,8 +2177,9 @@ export async function registerRoutes(
     const devices = await storage.getDevices();
     const intervalSeconds = currentPollingInterval / 1000;
     
-    // Poll all devices using the unified polling function
-    await Promise.all(devices.map(device => pollDeviceUnified(device, intervalSeconds)));
+    // Poll devices in batches to prevent overwhelming the server/network
+    // Use batch size of 20 for optimal balance between speed and resource usage
+    await processBatched(devices, (device) => pollDeviceUnified(device, intervalSeconds), 20);
     
     // Poll device links to calculate real-time traffic based on connected device interfaces
     try {

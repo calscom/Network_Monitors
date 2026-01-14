@@ -183,7 +183,7 @@ export default function ActivityLog() {
       if (!res.ok) throw new Error("Failed to fetch logs");
       return res.json();
     },
-    refetchInterval: 2000,
+    refetchInterval: 5000, // Optimized for performance
   });
 
   const sites = useMemo(() => {

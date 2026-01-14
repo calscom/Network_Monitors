@@ -177,7 +177,7 @@ export default function Dashboard() {
       if (!res.ok) throw new Error("Failed to fetch logs");
       return res.json();
     },
-    refetchInterval: 2000, // Poll every 2 seconds for real-time feel
+    refetchInterval: 5000, // Optimized: poll every 5 seconds for better performance
   });
 
   // Helper function to get log type styling

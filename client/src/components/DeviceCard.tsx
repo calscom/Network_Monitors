@@ -107,7 +107,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
       return res.json();
     },
     enabled: showInterfaces, // Only fetch when expanded
-    refetchInterval: 2000, // Refresh with main polling
+    refetchInterval: 5000, // Optimized: sync with main polling interval
   });
 
   // Filter to show only secondary interfaces (non-primary)
