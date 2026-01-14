@@ -95,7 +95,7 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
   };
 
   // Fetch monitored interfaces for this device
-  const { data: monitoredInterfaces = [] } = useQuery<DeviceInterface[]>({
+  const { data: monitoredInterfaces = [], isLoading: isLoadingInterfaces, isFetched: interfacesFetched } = useQuery<DeviceInterface[]>({
     queryKey: ['/api/devices', device.id, 'monitored-interfaces'],
     queryFn: async () => {
       const res = await fetch(`/api/devices/${device.id}/monitored-interfaces`, {
@@ -235,34 +235,44 @@ export function DeviceCard({ device, canManage = false }: DeviceCardProps) {
         )}
 
         {/* Secondary Interfaces Expandable Section - Hidden for ping devices */}
-        {!isPingDevice && showInterfaces && hasSecondaryInterfaces && (
+        {!isPingDevice && showInterfaces && (
           <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1">
               <Layers className="w-3 h-3" />
               Additional Interfaces
             </div>
-            {secondaryInterfaces.map((iface) => (
-              <div
-                key={iface.id}
-                className="p-2 rounded-lg bg-secondary/30 border border-white/5"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium">{iface.interfaceName || `Interface ${iface.interfaceIndex}`}</span>
-                  <StatusBadge status={iface.status || 'unknown'} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-1">
-                    <ArrowDown className="w-3 h-3 text-[hsl(var(--status-green))]" />
-                    <span className="text-[10px] font-mono">{iface.downloadMbps || '0.00'} Mbps</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <ArrowUp className="w-3 h-3 text-[hsl(var(--status-blue))]" />
-                    <span className="text-[10px] font-mono">{iface.uploadMbps || '0.00'} Mbps</span>
-                  </div>
-                </div>
-                <InterfaceChart interfaceData={iface} />
+            {isLoadingInterfaces ? (
+              <div className="text-xs text-muted-foreground text-center py-2">
+                Loading interfaces...
               </div>
-            ))}
+            ) : !hasSecondaryInterfaces ? (
+              <div className="text-xs text-muted-foreground text-center py-2">
+                No additional interfaces configured. Edit device to add interfaces.
+              </div>
+            ) : (
+              secondaryInterfaces.map((iface) => (
+                <div
+                  key={iface.id}
+                  className="p-2 rounded-lg bg-secondary/30 border border-white/5"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium">{iface.interfaceName || `Interface ${iface.interfaceIndex}`}</span>
+                    <StatusBadge status={iface.status || 'unknown'} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1">
+                      <ArrowDown className="w-3 h-3 text-[hsl(var(--status-green))]" />
+                      <span className="text-[10px] font-mono">{iface.downloadMbps || '0.00'} Mbps</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <ArrowUp className="w-3 h-3 text-[hsl(var(--status-blue))]" />
+                      <span className="text-[10px] font-mono">{iface.uploadMbps || '0.00'} Mbps</span>
+                    </div>
+                  </div>
+                  <InterfaceChart interfaceData={iface} />
+                </div>
+              ))
+            )}
           </div>
         )}
         
