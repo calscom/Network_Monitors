@@ -890,13 +890,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async autoDiscoverLinks(): Promise<DeviceLink[]> {
-    // Auto-discovery based on same site + adjacent interface indices
-    // This is a simple heuristic - in practice, LLDP/CDP would be used
+    // Enhanced auto-discovery based on device naming hierarchy patterns:
+    // ISP-PE → ISP-CE → FW-01 → RTR-01 → DST-01 → ACC-01-09 → UniFi APs
     const allDevices = await this.getDevices();
-    const allInterfaces = await db.select().from(deviceInterfaces);
     const existingLinks = await this.getDeviceLinks();
     
     const newLinks: DeviceLink[] = [];
+    
+    // Helper to check if device name matches a pattern
+    const matchesPattern = (name: string, patterns: string[]): boolean => {
+      const upperName = name.toUpperCase();
+      return patterns.some(p => upperName.includes(p) || upperName.startsWith(p));
+    };
+    
+    // Helper to check if link already exists
+    const linkExists = (sourceId: number, targetId: number): boolean => {
+      return existingLinks.some(l => 
+        (l.sourceDeviceId === sourceId && l.targetDeviceId === targetId) ||
+        (l.sourceDeviceId === targetId && l.targetDeviceId === sourceId)
+      ) || newLinks.some(l =>
+        (l.sourceDeviceId === sourceId && l.targetDeviceId === targetId) ||
+        (l.sourceDeviceId === targetId && l.targetDeviceId === sourceId)
+      );
+    };
     
     // Group devices by site
     const devicesBySite: Record<string, Device[]> = {};
@@ -907,25 +923,139 @@ export class DatabaseStorage implements IStorage {
       devicesBySite[device.site].push(device);
     }
     
-    // For each site, create potential links between devices
+    // For each site, create hierarchical links
     for (const site of Object.keys(devicesBySite)) {
       const siteDevices = devicesBySite[site];
       if (siteDevices.length < 2) continue;
       
-      // Simple heuristic: connect devices that likely form a chain
-      // (e.g., router -> switch -> access points)
-      const routers = siteDevices.filter(d => d.type === 'mikrotik' || d.type === 'router' || d.type === 'cisco');
-      const switches = siteDevices.filter(d => d.type === 'switch' || d.type === 'dlink');
-      const aps = siteDevices.filter(d => d.type === 'unifi' || d.type === 'ap');
+      // Categorize devices by naming pattern
+      const ispPE = siteDevices.filter(d => matchesPattern(d.name, ['ISP-PE', 'ISP_PE', 'ISPPE']));
+      const ispCE = siteDevices.filter(d => matchesPattern(d.name, ['ISP-CE', 'ISP_CE', 'ISPCE']));
+      const firewalls = siteDevices.filter(d => matchesPattern(d.name, ['FW-', 'FW_', 'FW0', 'FW1']));
+      const routers = siteDevices.filter(d => matchesPattern(d.name, ['RTR-', 'RTR_', 'RTR0', 'RTR1']));
+      const distribution = siteDevices.filter(d => matchesPattern(d.name, ['DST-', 'DST_', 'DTS-', 'DTS_', 'DST0', 'DTS0']));
+      const accessSwitches = siteDevices.filter(d => matchesPattern(d.name, ['ACC-', 'ACC_', 'ACC0']));
+      const accessPoints = siteDevices.filter(d => 
+        d.type === 'unifi' || d.type === 'ap' || d.type === 'access_point' ||
+        matchesPattern(d.name, ['UAP-', 'UAP_', 'AP-', 'AP_', 'UNIFI'])
+      );
       
-      // Connect routers to switches
-      for (const router of routers) {
-        for (const sw of switches) {
-          const linkExists = existingLinks.some(l => 
-            (l.sourceDeviceId === router.id && l.targetDeviceId === sw.id) ||
-            (l.sourceDeviceId === sw.id && l.targetDeviceId === router.id)
-          );
-          if (!linkExists) {
+      // Create hierarchy links: ISP-PE → ISP-CE
+      for (const pe of ispPE) {
+        for (const ce of ispCE) {
+          if (!linkExists(pe.id, ce.id)) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: pe.id,
+              targetDeviceId: ce.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${pe.name} → ${ce.name}`,
+              bandwidthMbps: 10000 // 10G uplink
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // ISP-CE → Firewall
+      const ceOrPE = ispCE.length > 0 ? ispCE : ispPE;
+      for (const ce of ceOrPE) {
+        for (const fw of firewalls) {
+          if (!linkExists(ce.id, fw.id)) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: ce.id,
+              targetDeviceId: fw.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${ce.name} → ${fw.name}`,
+              bandwidthMbps: 10000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // Firewall → Router
+      const fwOrCE = firewalls.length > 0 ? firewalls : ceOrPE;
+      for (const fw of fwOrCE) {
+        for (const rtr of routers) {
+          if (!linkExists(fw.id, rtr.id)) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: fw.id,
+              targetDeviceId: rtr.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${fw.name} → ${rtr.name}`,
+              bandwidthMbps: 10000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // Router → Distribution Switch
+      const rtrOrFW = routers.length > 0 ? routers : fwOrCE;
+      for (const rtr of rtrOrFW) {
+        for (const dst of distribution) {
+          if (!linkExists(rtr.id, dst.id)) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: rtr.id,
+              targetDeviceId: dst.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${rtr.name} → ${dst.name}`,
+              bandwidthMbps: 10000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // Distribution → Access Switches
+      const dstOrRtr = distribution.length > 0 ? distribution : rtrOrFW;
+      for (const dst of dstOrRtr) {
+        for (const acc of accessSwitches) {
+          if (!linkExists(dst.id, acc.id)) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: dst.id,
+              targetDeviceId: acc.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${dst.name} → ${acc.name}`,
+              bandwidthMbps: 1000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // Access Switches → Access Points (or Distribution → APs if no access switches)
+      const accOrDst = accessSwitches.length > 0 ? accessSwitches : dstOrRtr;
+      for (const acc of accOrDst) {
+        for (const ap of accessPoints) {
+          if (!linkExists(acc.id, ap.id)) {
+            const link = await this.createDeviceLink({
+              sourceDeviceId: acc.id,
+              targetDeviceId: ap.id,
+              linkType: 'auto-discovered',
+              linkLabel: `${acc.name} → ${ap.name}`,
+              bandwidthMbps: 1000
+            });
+            newLinks.push(link);
+          }
+        }
+      }
+      
+      // Fallback: Legacy type-based linking for devices not matching naming patterns
+      const unmatched = siteDevices.filter(d => 
+        !ispPE.includes(d) && !ispCE.includes(d) && !firewalls.includes(d) &&
+        !routers.includes(d) && !distribution.includes(d) && 
+        !accessSwitches.includes(d) && !accessPoints.includes(d)
+      );
+      
+      const legacyRouters = unmatched.filter(d => d.type === 'mikrotik' || d.type === 'router' || d.type === 'cisco');
+      const legacySwitches = unmatched.filter(d => d.type === 'switch' || d.type === 'dlink');
+      const legacyAPs = unmatched.filter(d => d.type === 'unifi' || d.type === 'ap');
+      
+      // Connect legacy routers to switches
+      for (const router of legacyRouters) {
+        for (const sw of legacySwitches) {
+          if (!linkExists(router.id, sw.id)) {
             const link = await this.createDeviceLink({
               sourceDeviceId: router.id,
               targetDeviceId: sw.id,
@@ -938,14 +1068,10 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      // Connect switches to APs
-      for (const sw of switches) {
-        for (const ap of aps) {
-          const linkExists = existingLinks.some(l => 
-            (l.sourceDeviceId === sw.id && l.targetDeviceId === ap.id) ||
-            (l.sourceDeviceId === ap.id && l.targetDeviceId === sw.id)
-          );
-          if (!linkExists) {
+      // Connect legacy switches to APs
+      for (const sw of legacySwitches) {
+        for (const ap of legacyAPs) {
+          if (!linkExists(sw.id, ap.id)) {
             const link = await this.createDeviceLink({
               sourceDeviceId: sw.id,
               targetDeviceId: ap.id,

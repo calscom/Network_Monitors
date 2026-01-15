@@ -207,6 +207,70 @@ function DeviceNode({ device, index, showAvailability = false }: { device: Devic
   );
 }
 
+// Pattern matching helper - matches server/storage.ts::autoDiscoverLinks()
+// Uses the same includes/startsWith logic as backend
+function matchesPattern(name: string, patterns: string[]): boolean {
+  const upperName = name.toUpperCase();
+  return patterns.some(p => upperName.includes(p) || upperName.startsWith(p));
+}
+
+// Device hierarchy order based on naming patterns
+// Patterns must match server/storage.ts::autoDiscoverLinks()
+function getDeviceHierarchyOrder(name: string, type: string): number {
+  if (matchesPattern(name, ['ISP-PE', 'ISP_PE', 'ISPPE'])) return 0;
+  if (matchesPattern(name, ['ISP-CE', 'ISP_CE', 'ISPCE'])) return 1;
+  if (matchesPattern(name, ['FW-', 'FW_', 'FW0', 'FW1'])) return 2;
+  if (matchesPattern(name, ['RTR-', 'RTR_', 'RTR0', 'RTR1'])) return 3;
+  if (matchesPattern(name, ['DST-', 'DST_', 'DTS-', 'DTS_', 'DST0', 'DTS0'])) return 4;
+  if (matchesPattern(name, ['ACC-', 'ACC_', 'ACC0'])) return 5;
+  if (type.toLowerCase() === 'unifi' || type.toLowerCase() === 'ap' || type.toLowerCase() === 'access_point' ||
+      matchesPattern(name, ['UAP-', 'UAP_', 'AP-', 'AP_', 'UNIFI'])) return 6;
+  return 7; // Other devices at the bottom
+}
+
+// Categorize devices by their role
+function categorizeDevices(devices: Device[]) {
+  const infrastructure: Device[] = []; // ISP-PE, ISP-CE, FW, RTR, DST
+  const accessSwitches: Device[] = []; // ACC-01 to ACC-09
+  const accessPoints: Device[] = []; // UniFi APs
+  const others: Device[] = [];
+
+  devices.forEach(device => {
+    const type = device.type.toLowerCase();
+    
+    // Use matchesPattern helper - same patterns as getDeviceHierarchyOrder() and server/storage.ts
+    if (matchesPattern(device.name, ['ISP-PE', 'ISP_PE', 'ISPPE']) ||
+        matchesPattern(device.name, ['ISP-CE', 'ISP_CE', 'ISPCE']) ||
+        matchesPattern(device.name, ['FW-', 'FW_', 'FW0', 'FW1']) ||
+        matchesPattern(device.name, ['RTR-', 'RTR_', 'RTR0', 'RTR1']) ||
+        matchesPattern(device.name, ['DST-', 'DST_', 'DTS-', 'DTS_', 'DST0', 'DTS0'])) {
+      infrastructure.push(device);
+    } else if (matchesPattern(device.name, ['ACC-', 'ACC_', 'ACC0'])) {
+      accessSwitches.push(device);
+    } else if (type === 'unifi' || type === 'ap' || type === 'access_point' ||
+               matchesPattern(device.name, ['UAP-', 'UAP_', 'AP-', 'AP_', 'UNIFI'])) {
+      accessPoints.push(device);
+    } else {
+      others.push(device);
+    }
+  });
+
+  // Sort infrastructure by hierarchy
+  infrastructure.sort((a, b) => getDeviceHierarchyOrder(a.name, a.type) - getDeviceHierarchyOrder(b.name, b.type));
+  
+  // Sort access switches by number
+  accessSwitches.sort((a, b) => {
+    const numA = parseInt(a.name.match(/\d+/)?.[0] || '0');
+    const numB = parseInt(b.name.match(/\d+/)?.[0] || '0');
+    return numA - numB;
+  });
+  
+  // Sort access points by name
+  accessPoints.sort((a, b) => a.name.localeCompare(b.name));
+
+  return { infrastructure, accessSwitches, accessPoints, others };
+}
+
 function SiteColumnComponent({ column, index, onSiteClick, compact, deviceLinks, allDevices }: { 
   column: SiteColumn; 
   index: number;
@@ -226,6 +290,13 @@ function SiteColumnComponent({ column, index, onSiteClick, compact, deviceLinks,
   const siteLinks = deviceLinks?.filter(l => 
     siteDeviceIds.has(l.sourceDeviceId) && siteDeviceIds.has(l.targetDeviceId)
   ) || [];
+
+  // Categorize and sort devices for hierarchical display
+  const { infrastructure, accessSwitches, accessPoints, others } = categorizeDevices(column.devices);
+  
+  // Determine AP matrix columns: 5 for Maiduguri, 2 for others
+  const isMaiduguri = column.site.toLowerCase().includes('maiduguri');
+  const apColumns = isMaiduguri ? 5 : 2;
 
   return (
     <motion.div
@@ -254,17 +325,80 @@ function SiteColumnComponent({ column, index, onSiteClick, compact, deviceLinks,
           </div>
         ) : (
           <>
-            {column.devices.map((device, idx) => (
-              <div key={device.id} className="relative">
-                {idx > 0 && (
-                  <div className="absolute -top-1 left-[3px] w-[1px] h-2 bg-border/50" />
-                )}
-                <DeviceNode device={device} index={idx} showAvailability={!compact} />
-                {idx < column.devices.length - 1 && (
-                  <div className="absolute bottom-0 left-[3px] w-[1px] h-2 bg-border/50" />
-                )}
+            {/* Infrastructure devices (ISP-PE → ISP-CE → FW → RTR → DST) */}
+            {infrastructure.length > 0 && (
+              <div className="space-y-1">
+                {infrastructure.map((device, idx) => (
+                  <div key={device.id} className="relative pl-2">
+                    {/* Vertical connection line for hierarchy */}
+                    {idx > 0 && (
+                      <div className="absolute left-[3px] -top-1 w-[1px] h-3 bg-blue-500/50" />
+                    )}
+                    {idx < infrastructure.length - 1 && (
+                      <div className="absolute left-[3px] bottom-0 w-[1px] h-2 bg-blue-500/50" />
+                    )}
+                    <DeviceNode device={device} index={idx} showAvailability={!compact} />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            
+            {/* Access Switches (ACC-01 to ACC-09) */}
+            {accessSwitches.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-border/20">
+                <div className="text-[8px] text-muted-foreground mb-1 flex items-center gap-1">
+                  <Server className="w-3 h-3" />
+                  Access Switches ({accessSwitches.length})
+                </div>
+                <div className="space-y-1 pl-3">
+                  {accessSwitches.map((device, idx) => (
+                    <div key={device.id} className="relative">
+                      {/* Horizontal connector from DST */}
+                      <div className="absolute -left-2 top-1/2 w-2 h-[1px] bg-green-500/40" />
+                      <DeviceNode device={device} index={idx} showAvailability={!compact} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Access Points (UniFi) - Matrix layout */}
+            {accessPoints.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-border/20">
+                <div className="text-[8px] text-muted-foreground mb-1 flex items-center gap-1">
+                  <Wifi className="w-3 h-3" />
+                  Access Points ({accessPoints.length})
+                </div>
+                <div 
+                  className="grid gap-1 pl-2"
+                  style={{ gridTemplateColumns: `repeat(${apColumns}, minmax(0, 1fr))` }}
+                >
+                  {accessPoints.map((device, idx) => (
+                    <div key={device.id} className="relative">
+                      <div className={`flex items-center gap-1 px-1 py-0.5 rounded border ${getStatusColor(device.status).border} bg-card/60`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(device.status).bg}`} />
+                        <Wifi className={`w-2 h-2 ${getStatusColor(device.status).text}`} />
+                        <span className="text-[7px] truncate max-w-[40px]" title={device.name}>
+                          {device.name.replace(/^AP-?|^UAP-?/i, '').slice(0, 6)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Other devices */}
+            {others.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-border/20">
+                <div className="text-[8px] text-muted-foreground mb-1">Other Devices ({others.length})</div>
+                <div className="space-y-1">
+                  {others.map((device, idx) => (
+                    <DeviceNode key={device.id} device={device} index={idx} showAvailability={!compact} />
+                  ))}
+                </div>
+              </div>
+            )}
             
             {siteLinks.length > 0 && (
               <div className="mt-3 pt-2 border-t border-border/30 space-y-1">

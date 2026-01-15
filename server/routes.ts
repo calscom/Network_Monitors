@@ -1057,6 +1057,142 @@ export async function registerRoutes(
     }
   });
 
+  // SNMP connectivity diagnostic endpoint - helps troubleshoot polling issues
+  app.post("/api/snmp-diagnostics", conditionalAuth, requireRole('operator', 'admin'), async (req, res) => {
+    const { ip, community, interfaceIndex = 1 } = req.body;
+    
+    if (!ip || !community) {
+      return res.status(400).json({ message: "IP address and community string are required" });
+    }
+    
+    const diagnostics: {
+      timestamp: string;
+      ip: string;
+      community: string;
+      interfaceIndex: number;
+      ping: { success: boolean; message: string };
+      snmp: { success: boolean; message: string; responseTime?: number };
+      interfaceData?: { inOctets: string; outOctets: string };
+      sysDescription?: string;
+      suggestions: string[];
+    } = {
+      timestamp: new Date().toISOString(),
+      ip,
+      community: community.substring(0, 3) + '***', // Mask community for security
+      interfaceIndex,
+      ping: { success: false, message: '' },
+      snmp: { success: false, message: '' },
+      suggestions: []
+    };
+    
+    // Step 1: Test ping connectivity
+    try {
+      const { stdout } = await execAsync(`ping -c 1 -W 2 ${ip}`, { timeout: 5000 });
+      const pingSuccess = stdout.includes('1 received') || stdout.includes('1 packets received') || stdout.includes('bytes from');
+      diagnostics.ping = { 
+        success: pingSuccess, 
+        message: pingSuccess ? 'Device responds to ICMP ping' : 'Device did not respond to ping'
+      };
+      if (!pingSuccess) {
+        diagnostics.suggestions.push('Device is not responding to ping. Check if device is online and reachable.');
+        diagnostics.suggestions.push('Verify the IP address is correct.');
+        diagnostics.suggestions.push('Check for firewall rules blocking ICMP.');
+      }
+    } catch (err: any) {
+      diagnostics.ping = { success: false, message: `Ping failed: ${err.message || 'timeout'}` };
+      diagnostics.suggestions.push('Device is unreachable. Verify network connectivity.');
+    }
+    
+    // Step 2: Test SNMP connectivity with system description OID
+    const snmpStartTime = Date.now();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const session = snmp.createSession(ip, community, { timeout: 5000, retries: 1 });
+        const OID_SYS_DESCR = "1.3.6.1.2.1.1.1.0"; // sysDescr
+        
+        session.get([OID_SYS_DESCR], (error: any, varbinds: any[]) => {
+          session.close();
+          const responseTime = Date.now() - snmpStartTime;
+          
+          if (error) {
+            diagnostics.snmp = { 
+              success: false, 
+              message: `SNMP error: ${error.message || error}`,
+              responseTime 
+            };
+            
+            if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+              diagnostics.suggestions.push('SNMP request timed out. Check:');
+              diagnostics.suggestions.push('  - SNMP is enabled on the device');
+              diagnostics.suggestions.push('  - Community string is correct');
+              diagnostics.suggestions.push('  - UDP port 161 is not blocked by firewall');
+              diagnostics.suggestions.push('  - Device allows SNMP from this server IP');
+            } else if (error.message?.includes('noSuchName') || error.message?.includes('noAccess')) {
+              diagnostics.suggestions.push('SNMP access denied. Check community string and SNMP ACL on device.');
+            }
+            reject(error);
+          } else if (varbinds.length > 0 && !snmp.isVarbindError(varbinds[0])) {
+            diagnostics.sysDescription = String(varbinds[0].value);
+            diagnostics.snmp = { 
+              success: true, 
+              message: 'SNMP connection successful',
+              responseTime
+            };
+            resolve();
+          } else {
+            diagnostics.snmp = { 
+              success: false, 
+              message: 'SNMP returned no data or error',
+              responseTime
+            };
+            diagnostics.suggestions.push('SNMP responded but returned no system info. Device may not support standard MIBs.');
+            reject(new Error('No data'));
+          }
+        });
+      });
+    } catch {
+      // Already handled in callback
+    }
+    
+    // Step 3: Test interface OIDs if SNMP is working
+    if (diagnostics.snmp.success) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const session = snmp.createSession(ip, community, { timeout: 5000, retries: 1 });
+          const OID_IF_IN = `${OID_IF_IN_OCTETS_BASE}.${interfaceIndex}`;
+          const OID_IF_OUT = `${OID_IF_OUT_OCTETS_BASE}.${interfaceIndex}`;
+          
+          session.get([OID_IF_IN, OID_IF_OUT], (error: any, varbinds: any[]) => {
+            session.close();
+            
+            if (!error && varbinds.length >= 2 && !snmp.isVarbindError(varbinds[0]) && !snmp.isVarbindError(varbinds[1])) {
+              diagnostics.interfaceData = {
+                inOctets: String(varbinds[0].value),
+                outOctets: String(varbinds[1].value)
+              };
+              resolve();
+            } else {
+              diagnostics.suggestions.push(`Interface ${interfaceIndex} returned no data. Try discovering available interfaces.`);
+              diagnostics.suggestions.push('The interface index may be incorrect for this device.');
+              reject(new Error('Interface data not available'));
+            }
+          });
+        });
+      } catch {
+        // Already handled
+      }
+    }
+    
+    // Summary
+    if (diagnostics.snmp.success && diagnostics.interfaceData) {
+      diagnostics.suggestions = ['SNMP polling is working correctly for this device.'];
+    } else if (diagnostics.snmp.success && !diagnostics.interfaceData) {
+      diagnostics.suggestions.push('Use "Discover Interfaces" to find valid interface indices for this device.');
+    }
+    
+    res.json(diagnostics);
+  });
+
   // Polling interval endpoints
   app.get("/api/settings/polling", conditionalAuth, (req, res) => {
     res.json({ 
