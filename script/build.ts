@@ -30,6 +30,10 @@ const allowlist = [
   "xlsx",
   "zod",
   "zod-validation-error",
+  "elysia",
+  "@elysiajs/server-timing",
+  "elysia-static",
+  "@elysiajs/cron"
 ];
 
 async function buildAll() {
@@ -50,8 +54,8 @@ async function buildAll() {
     entryPoints: ["server/index.ts"],
     platform: "node",
     bundle: true,
-    format: "cjs",
-    outfile: "dist/index.cjs",
+    format: "esm",
+    outfile: "dist/index.mjs",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
