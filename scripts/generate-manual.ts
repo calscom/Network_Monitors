@@ -766,7 +766,34 @@ const doc = new Document({
         ),
 
         new Paragraph({
-          text: "8.4 Interface Availability Tracking",
+          text: "8.4 Manual Device Arrangement",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 300, after: 200 },
+        }),
+        createParagraph(
+          "You can manually rearrange devices on the Network Map using drag-and-drop:"
+        ),
+        createNumberedItem("Navigate to the Network Map from the sidebar"),
+        createNumberedItem("Click the 'Edit' button in the header to enable edit mode"),
+        createNumberedItem("A blue indicator banner appears confirming edit mode is active"),
+        createNumberedItem("Devices show a blue ring and move icon when hovering"),
+        createNumberedItem("Click and drag any device to reposition it within the site column"),
+        createNumberedItem("Release the mouse button to drop the device in its new position"),
+        createNumberedItem("Click 'Done' to exit edit mode when finished"),
+        createParagraph("Position Persistence:"),
+        createBulletPoint("Custom positions are saved automatically to your browser's local storage"),
+        createBulletPoint("Positions persist across page refreshes and browser sessions"),
+        createBulletPoint("Each browser/device maintains its own layout preferences"),
+        createParagraph("Resetting Layout:"),
+        createBulletPoint("Click the 'Reset' button (appears when custom positions exist)"),
+        createBulletPoint("All devices return to their default automatic positions"),
+        createBulletPoint("Reset affects only your browser's saved layout"),
+        createNote(
+          "Manual positioning works for both regular device boxes and compact access point/switch tiles. Access Points and Access Switches can be dragged independently within their grid areas."
+        ),
+
+        new Paragraph({
+          text: "8.5 Interface Availability Tracking",
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 300, after: 200 },
         }),
@@ -788,7 +815,7 @@ const doc = new Document({
         ),
 
         new Paragraph({
-          text: "8.5 Responsive Grid Layout",
+          text: "8.6 Responsive Grid Layout",
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 300, after: 200 },
         }),
