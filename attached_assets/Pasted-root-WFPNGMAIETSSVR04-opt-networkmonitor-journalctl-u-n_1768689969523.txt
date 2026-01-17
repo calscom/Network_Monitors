@@ -1,0 +1,31 @@
+root@WFPNGMAIETSSVR04:/opt/networkmonitor# journalctl -u networkmonitor -n 30
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: 10:44:01 PM [express] serving on port 5000
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: [poll] Initializing staggered polling for 190 devices
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: [poll] Polling interval: 60000ms, offset per device: 252ms
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: [poll] Scheduled 190 devices for continuous staggered polling
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: [snmp] Polling CHR at 10.200.0.1 interface 1 (interval: 60s)...
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: [snmp] Response from CHR: IN=968345218, OUT=869054895
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: [snmp] Hotspot users for 10.200.0.1: 10 (AAA sessions)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: node:internal/process/promises:332
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     ^
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: PostgresError: column "max_bandwidth" does not exist
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at ErrorResponse (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:815:30)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at handle (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:489:6)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at Socket.data (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:324:9)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at Socket.emit (node:events:508:28)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at addChunk (node:internal/streams/readable:559:12)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at Readable.push (node:internal/streams/readable:390:5)
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:     at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   severity_local: 'ERROR',
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   severity: 'ERROR',
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   code: '42703',
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   position: '225',
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   file: 'parse_relation.c',
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   line: '3647',
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]:   routine: 'errorMissingColumn'
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: }
+Jan 17 22:44:01 WFPNGMAIETSSVR04 node[315616]: Node.js v25.3.0
+Jan 17 22:44:01 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 22:44:01 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
