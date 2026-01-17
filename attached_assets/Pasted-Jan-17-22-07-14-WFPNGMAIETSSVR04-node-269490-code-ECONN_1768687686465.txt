@@ -1,0 +1,196 @@
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]:       code: 'ECONNREFUSED',
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]:       syscall: 'connect',
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]:       address: '127.0.0.1',
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]:       port: 5432
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]:     }
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]:   ]
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]: }
+Jan 17 22:07:14 WFPNGMAIETSSVR04 node[269490]: Node.js v25.3.0
+Jan 17 22:07:14 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 22:07:14 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 17 22:07:24 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 266.
+Jan 17 22:07:24 WFPNGMAIETSSVR04 systemd[1]: Stopped SceptView Network Monitor.
+Jan 17 22:07:24 WFPNGMAIETSSVR04 systemd[1]: Started SceptView Network Monitor.
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]: [auth] Self-hosted mode: using local username/password authentication
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]: [settings] Failed to load polling interval, using default: AggregateError [ECONNREFUSED]:
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:     at internalConnectMultiple (node:net:1134:18)
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:     at afterConnectMultiple (node:net:1715:7) {
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:   code: 'ECONNREFUSED',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:   [errors]: [
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:     Error: connect ECONNREFUSED ::1:5432
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       errno: -111,
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       code: 'ECONNREFUSED',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       syscall: 'connect',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       address: '::1',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       port: 5432
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:     },
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:     Error: connect ECONNREFUSED 127.0.0.1:5432
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       errno: -111,
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       code: 'ECONNREFUSED',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       syscall: 'connect',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       address: '127.0.0.1',
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:       port: 5432
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:     }
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]:   ]
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]: }
+Jan 17 22:07:24 WFPNGMAIETSSVR04 node[269626]: [availability] Month-end availability scheduler started
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]: 10:07:24 PM [express] serving on port 5000
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]: node:internal/process/promises:332
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     ^
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]: AggregateError [ECONNREFUSED]:
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     at internalConnectMultiple (node:net:1134:18)
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     at afterConnectMultiple (node:net:1715:7) {
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:   code: 'ECONNREFUSED',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:   [errors]: [
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     Error: connect ECONNREFUSED ::1:5432
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       errno: -111,
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       code: 'ECONNREFUSED',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       syscall: 'connect',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       address: '::1',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       port: 5432
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     },
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     Error: connect ECONNREFUSED 127.0.0.1:5432
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       errno: -111,
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       code: 'ECONNREFUSED',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       syscall: 'connect',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       address: '127.0.0.1',
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:       port: 5432
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:     }
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]:   ]
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]: }
+Jan 17 22:07:25 WFPNGMAIETSSVR04 node[269626]: Node.js v25.3.0
+Jan 17 22:07:25 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 22:07:25 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 17 22:07:35 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 267.
+Jan 17 22:07:35 WFPNGMAIETSSVR04 systemd[1]: Stopped SceptView Network Monitor.
+Jan 17 22:07:35 WFPNGMAIETSSVR04 systemd[1]: Started SceptView Network Monitor.
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: [auth] Self-hosted mode: using local username/password authentication
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: [settings] Failed to load polling interval, using default: AggregateError [ECONNREFUSED]:
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     at internalConnectMultiple (node:net:1134:18)
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     at afterConnectMultiple (node:net:1715:7) {
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:   code: 'ECONNREFUSED',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:   [errors]: [
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     Error: connect ECONNREFUSED ::1:5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       errno: -111,
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       code: 'ECONNREFUSED',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       syscall: 'connect',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       address: '::1',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       port: 5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     },
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     Error: connect ECONNREFUSED 127.0.0.1:5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       errno: -111,
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       code: 'ECONNREFUSED',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       syscall: 'connect',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       address: '127.0.0.1',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       port: 5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     }
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:   ]
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: }
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: [availability] Month-end availability scheduler started
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: 10:07:35 PM [express] serving on port 5000
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: node:internal/process/promises:332
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     ^
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: AggregateError [ECONNREFUSED]:
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     at internalConnectMultiple (node:net:1134:18)
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     at afterConnectMultiple (node:net:1715:7) {
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:   code: 'ECONNREFUSED',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:   [errors]: [
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     Error: connect ECONNREFUSED ::1:5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       errno: -111,
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       code: 'ECONNREFUSED',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       syscall: 'connect',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       address: '::1',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       port: 5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     },
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     Error: connect ECONNREFUSED 127.0.0.1:5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       errno: -111,
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       code: 'ECONNREFUSED',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       syscall: 'connect',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       address: '127.0.0.1',
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:       port: 5432
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:     }
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]:   ]
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: }
+Jan 17 22:07:35 WFPNGMAIETSSVR04 node[269639]: Node.js v25.3.0
+Jan 17 22:07:35 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 22:07:35 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 17 22:07:45 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 268.
+Jan 17 22:07:45 WFPNGMAIETSSVR04 systemd[1]: Stopped SceptView Network Monitor.
+Jan 17 22:07:45 WFPNGMAIETSSVR04 systemd[1]: Started SceptView Network Monitor.
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]: [auth] Self-hosted mode: using local username/password authentication
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]: [settings] Failed to load polling interval, using default: AggregateError [ECONNREFUSED]:
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:     at internalConnectMultiple (node:net:1134:18)
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:     at afterConnectMultiple (node:net:1715:7) {
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:   code: 'ECONNREFUSED',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:   [errors]: [
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:     Error: connect ECONNREFUSED ::1:5432
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       errno: -111,
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       code: 'ECONNREFUSED',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       syscall: 'connect',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       address: '::1',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       port: 5432
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:     },
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:     Error: connect ECONNREFUSED 127.0.0.1:5432
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       errno: -111,
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       code: 'ECONNREFUSED',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       syscall: 'connect',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       address: '127.0.0.1',
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:       port: 5432
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:     }
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]:   ]
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]: }
+Jan 17 22:07:45 WFPNGMAIETSSVR04 node[269652]: [availability] Month-end availability scheduler started
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]: 10:07:45 PM [express] serving on port 5000
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]: node:internal/process/promises:332
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     ^
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]: AggregateError [ECONNREFUSED]:
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     at internalConnectMultiple (node:net:1134:18)
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     at afterConnectMultiple (node:net:1715:7) {
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:   code: 'ECONNREFUSED',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:   [errors]: [
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     Error: connect ECONNREFUSED ::1:5432
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       errno: -111,
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       code: 'ECONNREFUSED',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       syscall: 'connect',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       address: '::1',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       port: 5432
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     },
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     Error: connect ECONNREFUSED 127.0.0.1:5432
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:         at createConnectionError (node:net:1678:14)
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:         at afterConnectMultiple (node:net:1708:16) {
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       errno: -111,
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       code: 'ECONNREFUSED',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       syscall: 'connect',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       address: '127.0.0.1',
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:       port: 5432
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:     }
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]:   ]
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]: }
+Jan 17 22:07:46 WFPNGMAIETSSVR04 node[269652]: Node.js v25.3.0
+Jan 17 22:07:46 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 22:07:46 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
