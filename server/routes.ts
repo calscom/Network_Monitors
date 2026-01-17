@@ -77,7 +77,6 @@ const OID_AAA_SESSIONS = "1.3.6.1.4.1.9.9.150.1.1.1.0"; // Cisco AAA sessions (a
 
 // Global polling configuration
 let currentPollingInterval = 5000; // Default 5 seconds
-let pollingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let isAvailabilityResetInProgress = false; // Flag to pause polling during monthly reset
 const POLLING_OPTIONS = [
   { value: 5000, label: "5 sec" },
@@ -1219,12 +1218,6 @@ export async function registerRoutes(
       console.error('[settings] Failed to persist polling interval:', err);
     }
     
-    // Clear the existing timeout to prevent duplicate polling loops
-    if (pollingTimeoutId) {
-      clearTimeout(pollingTimeoutId);
-      pollingTimeoutId = null;
-    }
-    
     // Log the change
     await storage.createLog({
       deviceId: null,
@@ -1233,8 +1226,10 @@ export async function registerRoutes(
       message: `Polling interval changed: ${oldInterval/1000}s → ${interval/1000}s`
     });
     
-    // Reschedule polling with new interval using staggered approach
-    pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+    // Re-initialize staggered polling with new interval
+    if ((global as any).refreshPollingSchedule) {
+      (global as any).refreshPollingSchedule();
+    }
     
     res.json({ interval: currentPollingInterval });
   });
@@ -2284,71 +2279,80 @@ export async function registerRoutes(
     });
   };
 
-  // Helper function to process items in staggered batches over time
-  // Distributes polling load evenly across the polling interval
-  const processStaggered = async <T>(
-    items: T[],
-    processor: (item: T) => Promise<void>,
-    totalIntervalMs: number,
-    batchSize: number = 10
-  ): Promise<void> => {
-    if (items.length === 0) return;
-    
-    // Calculate number of batches and delay between each batch
-    const numBatches = Math.ceil(items.length / batchSize);
-    // Use 80% of interval for staggering, leave 20% buffer before next cycle
-    const staggerWindow = totalIntervalMs * 0.8;
-    const delayBetweenBatches = numBatches > 1 ? Math.floor(staggerWindow / numBatches) : 0;
-    
-    console.log(`[poll] Staggering ${items.length} devices in ${numBatches} batches, ${delayBetweenBatches}ms between batches`);
-    
-    for (let i = 0; i < items.length; i += batchSize) {
-      // Check if availability reset started mid-cycle
-      if (isAvailabilityResetInProgress) {
-        console.log('[poll] Stopping staggered poll - availability reset in progress');
-        break;
-      }
-      
-      const batch = items.slice(i, i + batchSize);
-      const batchNum = Math.floor(i / batchSize) + 1;
-      
-      // Process batch concurrently
-      await Promise.all(batch.map(processor));
-      
-      // Delay before next batch (except for last batch)
-      if (i + batchSize < items.length && delayBetweenBatches > 0) {
-        await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+  // Track individual device poll timers for continuous staggered polling
+  const devicePollTimers: Map<number, NodeJS.Timeout> = new Map();
+  let linkUpdateInterval: NodeJS.Timeout | null = null;
+  
+  // Poll a single device and reschedule its next poll
+  const pollSingleDevice = async (deviceId: number) => {
+    // Skip actual polling during availability reset, but always reschedule
+    if (!isAvailabilityResetInProgress) {
+      try {
+        const device = await storage.getDevice(deviceId);
+        if (!device) {
+          devicePollTimers.delete(deviceId);
+          return; // Device was deleted, don't reschedule
+        }
+        
+        const intervalSeconds = currentPollingInterval / 1000;
+        await pollDeviceUnified(device, intervalSeconds);
+      } catch (err) {
+        console.error(`[poll] Error polling device ${deviceId}:`, err);
       }
     }
+    
+    // Always reschedule this device's next poll (keeps timer alive even during reset)
+    const timer = setTimeout(() => pollSingleDevice(deviceId), currentPollingInterval);
+    devicePollTimers.set(deviceId, timer);
   };
-
-  // Background polling service with dynamic interval
-  const pollDevices = async () => {
-    // Skip polling if availability reset is in progress
-    if (isAvailabilityResetInProgress) {
-      console.log('[poll] Skipping poll cycle - availability reset in progress');
-      pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+  
+  // Initialize staggered polling - each device gets its own timer offset
+  const initializeStaggeredPolling = async () => {
+    // Clear any existing timers
+    for (const timer of devicePollTimers.values()) {
+      clearTimeout(timer);
+    }
+    devicePollTimers.clear();
+    
+    const devices = await storage.getDevices();
+    if (devices.length === 0) {
+      console.log('[poll] No devices to poll');
       return;
     }
     
-    const devices = await storage.getDevices();
-    const intervalSeconds = currentPollingInterval / 1000;
+    // Calculate stagger offset between each device
+    // Spread devices evenly across 80% of the polling interval
+    const staggerWindow = currentPollingInterval * 0.8;
+    const offsetPerDevice = Math.floor(staggerWindow / devices.length);
     
-    // Poll devices in staggered batches to distribute load over time
-    // Uses smaller batches (10) with delays between them to prevent network/server overload
-    await processStaggered(devices, (device) => pollDeviceUnified(device, intervalSeconds), currentPollingInterval, 10);
+    console.log(`[poll] Initializing staggered polling for ${devices.length} devices`);
+    console.log(`[poll] Polling interval: ${currentPollingInterval}ms, offset per device: ${offsetPerDevice}ms`);
     
-    // Poll device links to calculate real-time traffic based on connected device interfaces
+    // Schedule each device with its own offset
+    devices.forEach((device, index) => {
+      const initialDelay = index * offsetPerDevice;
+      const timer = setTimeout(() => pollSingleDevice(device.id), initialDelay);
+      devicePollTimers.set(device.id, timer);
+    });
+    
+    console.log(`[poll] Scheduled ${devices.length} devices for continuous staggered polling`);
+  };
+  
+  // Update device links periodically (separate from device polling)
+  const updateDeviceLinks = async () => {
+    if (isAvailabilityResetInProgress) return;
+    
     try {
       const allLinks = await storage.getDeviceLinks();
+      if (allLinks.length === 0) return;
+      
+      const devices = await storage.getDevices();
       const devicesMap = new Map(devices.map(d => [d.id, d]));
       
       for (const link of allLinks) {
         const sourceDevice = devicesMap.get(link.sourceDeviceId);
         const targetDevice = devicesMap.get(link.targetDeviceId);
         
-        // Determine link status based on device statuses
-        // Use 'up', 'down', 'degraded' to match UI expectations
         let linkStatus = 'down';
         if (sourceDevice && targetDevice) {
           if (sourceDevice.status === 'green' && targetDevice.status === 'green') {
@@ -2360,7 +2364,6 @@ export async function registerRoutes(
           }
         }
         
-        // Calculate traffic from source device's primary interface (approximation)
         let trafficMbps = "0.00";
         if (sourceDevice) {
           const totalMbps = parseFloat(sourceDevice.downloadMbps || "0") + parseFloat(sourceDevice.uploadMbps || "0");
@@ -2372,10 +2375,24 @@ export async function registerRoutes(
     } catch (linkErr) {
       console.error('[poll] Error updating device link traffic:', linkErr);
     }
-    
-    // Schedule next poll with current interval (only after all devices complete)
-    pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
   };
+  
+  // Start continuous link updates every 5 seconds
+  const startLinkUpdates = () => {
+    if (linkUpdateInterval) {
+      clearInterval(linkUpdateInterval);
+    }
+    linkUpdateInterval = setInterval(updateDeviceLinks, 5000);
+  };
+  
+  // Re-initialize polling when devices are added/removed
+  const refreshPollingSchedule = async () => {
+    console.log('[poll] Refreshing polling schedule for device changes');
+    await initializeStaggeredPolling();
+  };
+  
+  // Export for use in device CRUD operations
+  (global as any).refreshPollingSchedule = refreshPollingSchedule;
   
   // Load persisted polling interval from database on startup
   try {
@@ -2390,8 +2407,9 @@ export async function registerRoutes(
     console.error('[settings] Failed to load polling interval, using default:', err);
   }
   
-  // Start polling
-  pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
+  // Start continuous staggered polling
+  initializeStaggeredPolling();
+  startLinkUpdates();
 
   // Month-end availability reset scheduler
   // Runs at 23:59 on the last day of each month
@@ -2476,6 +2494,11 @@ export async function registerRoutes(
       // Resume polling
       isAvailabilityResetInProgress = false;
       console.log('[availability] Resuming polling after availability reset');
+      
+      // Re-initialize staggered polling to ensure fresh start after reset
+      if ((global as any).refreshPollingSchedule) {
+        (global as any).refreshPollingSchedule();
+      }
     }
   };
 
