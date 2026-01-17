@@ -1,0 +1,50 @@
+Jan 17 14:58:39 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 14:58:39 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 17 14:58:49 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 4.
+Jan 17 14:58:49 WFPNGMAIETSSVR04 systemd[1]: Stopped SceptView Network Monitor.
+Jan 17 14:58:49 WFPNGMAIETSSVR04 systemd[1]: Started SceptView Network Monitor.
+Jan 17 14:58:49 WFPNGMAIETSSVR04 node[16402]: [auth] Self-hosted mode: using local username/password authentication
+Jan 17 14:58:49 WFPNGMAIETSSVR04 node[16402]: [settings] Loaded persisted polling interval: 60000ms
+Jan 17 14:58:49 WFPNGMAIETSSVR04 node[16402]: [availability] Month-end availability scheduler started
+Jan 17 14:58:50 WFPNGMAIETSSVR04 node[16402]: 2:58:49 PM [express] serving on port 5000
+Jan 17 14:59:08 WFPNGMAIETSSVR04 systemd[1]: /etc/systemd/system/networkmonitor.service:9: Unknown key name 'SESSION_SECRET' in section 'Service', ignoring.
+Jan 17 14:59:39 WFPNGMAIETSSVR04 systemd[1]: /etc/systemd/system/networkmonitor.service:9: Unknown key name 'SESSION_SECRET' in section 'Service', ignoring.
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [poll] Staggering 190 devices in 19 batches, 2526ms between batches
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [snmp] Polling CHR at 10.200.0.1 interface 1 (interval: 60s)...
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [snmp] Polling Grafana Server at 10.50.181.118 interface 1 (interval: 60s)...
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [snmp] Polling VitalPBX at 10.50.181.116 interface 1 (interval: 60s)...
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [snmp] Response from CHR: IN=3355171838, OUT=3270829894
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [poll] WLC Server (ping_only): ping=true, snmp=false, status=green
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: [snmp] Hotspot users for 10.200.0.1: 9 (AAA sessions)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: node:internal/process/promises:394
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     ^
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: PostgresError: column "max_bandwidth" does not exist
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at ErrorResponse (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:815:30)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at handle (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:489:6)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at Socket.data (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:324:9)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at Socket.emit (node:events:508:28)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at addChunk (node:internal/streams/readable:559:12)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at Readable.push (node:internal/streams/readable:390:5)
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:     at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   severity_local: 'ERROR',
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   severity: 'ERROR',
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   code: '42703',
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   position: '225',
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   file: 'parse_relation.c',
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   line: '3647',
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]:   routine: 'errorMissingColumn'
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: }
+Jan 17 14:59:50 WFPNGMAIETSSVR04 node[16402]: Node.js v24.12.0
+Jan 17 14:59:50 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 17 14:59:50 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 17 15:00:00 WFPNGMAIETSSVR04 systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 5.
+Jan 17 15:00:00 WFPNGMAIETSSVR04 systemd[1]: Stopped SceptView Network Monitor.
+Jan 17 15:00:00 WFPNGMAIETSSVR04 systemd[1]: Started SceptView Network Monitor.
+Jan 17 15:00:00 WFPNGMAIETSSVR04 node[16814]: [auth] Self-hosted mode: using local username/password authentication
+Jan 17 15:00:00 WFPNGMAIETSSVR04 node[16814]: [settings] Loaded persisted polling interval: 60000ms
+Jan 17 15:00:00 WFPNGMAIETSSVR04 node[16814]: [availability] Month-end availability scheduler started
+Jan 17 15:00:00 WFPNGMAIETSSVR04 node[16814]: 3:00:00 PM [express] serving on port 5000
+Jan 17 15:00:10 WFPNGMAIETSSVR04 systemd[1]: /etc/systemd/system/networkmonitor.service:9: Unknown key name 'SESSION_SECRET' in section 'Service', ignoring.
+Jan 17 15:00:41 WFPNGMAIETSSVR04 systemd[1]: /etc/systemd/system/networkmonitor.service:9: Unknown key name 'SESSION_SECRET' in section 'Service', ignoring.
