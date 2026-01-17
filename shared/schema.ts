@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, bigint, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -29,7 +29,10 @@ export const devices = pgTable("devices", {
   interfaceName: text("interface_name"), // Human-readable interface name
   activeUsers: integer("active_users").default(0).notNull(), // Active hotspot/usermanager users (Mikrotik only)
   maxBandwidth: integer("max_bandwidth").default(100).notNull(), // Maximum bandwidth in Mbps for utilization calculation
-});
+}, (table) => [
+  index("devices_site_idx").on(table.site),
+  index("devices_status_idx").on(table.status),
+]);
 
 export const insertDeviceSchema = createInsertSchema(devices).omit({
   id: true,
@@ -54,7 +57,11 @@ export const logs = pgTable("logs", {
   type: text("type").notNull(), // 'status_change', 'bandwidth_alert', 'system'
   message: text("message").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
-});
+}, (table) => [
+  index("logs_site_idx").on(table.site),
+  index("logs_timestamp_idx").on(table.timestamp),
+  index("logs_device_id_idx").on(table.deviceId),
+]);
 
 export const insertLogSchema = createInsertSchema(logs).omit({ id: true, timestamp: true });
 
@@ -67,7 +74,10 @@ export const metricsHistory = pgTable("metrics_history", {
   downloadMbps: text("download_mbps").default("0").notNull(),
   uploadMbps: text("upload_mbps").default("0").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
-});
+}, (table) => [
+  index("metrics_history_device_id_idx").on(table.deviceId),
+  index("metrics_history_timestamp_idx").on(table.timestamp),
+]);
 
 export const insertMetricsHistorySchema = createInsertSchema(metricsHistory).omit({ id: true, timestamp: true });
 
@@ -88,7 +98,9 @@ export const deviceInterfaces = pgTable("device_interfaces", {
   totalChecks: integer("total_checks").default(0).notNull(), // Total poll attempts for availability
   successfulChecks: integer("successful_checks").default(0).notNull(), // Successful poll responses
   maxBandwidth: integer("max_bandwidth").default(100).notNull(), // Max bandwidth in Mbps for utilization calculation
-});
+}, (table) => [
+  index("device_interfaces_device_id_idx").on(table.deviceId),
+]);
 
 export const insertDeviceInterfaceSchema = createInsertSchema(deviceInterfaces).omit({
   id: true,
@@ -112,7 +124,10 @@ export const interfaceMetricsHistory = pgTable("interface_metrics_history", {
   downloadMbps: text("download_mbps").default("0").notNull(),
   uploadMbps: text("upload_mbps").default("0").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
-});
+}, (table) => [
+  index("interface_metrics_history_interface_id_idx").on(table.interfaceId),
+  index("interface_metrics_history_timestamp_idx").on(table.timestamp),
+]);
 
 export const insertInterfaceMetricsHistorySchema = createInsertSchema(interfaceMetricsHistory).omit({ id: true, timestamp: true });
 
