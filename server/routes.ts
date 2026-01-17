@@ -1233,13 +1233,8 @@ export async function registerRoutes(
       message: `Polling interval changed: ${oldInterval/1000}s → ${interval/1000}s`
     });
     
-    // Reschedule polling with new interval
-    pollingTimeoutId = setTimeout(async () => {
-      const devices = await storage.getDevices();
-      const intervalSeconds = currentPollingInterval / 1000;
-      await Promise.all(devices.map(device => pollDevice(device, intervalSeconds)));
-      pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
-    }, currentPollingInterval);
+    // Reschedule polling with new interval using staggered approach
+    pollingTimeoutId = setTimeout(pollDevices, currentPollingInterval);
     
     res.json({ interval: currentPollingInterval });
   });
@@ -2289,15 +2284,41 @@ export async function registerRoutes(
     });
   };
 
-  // Helper function to process items in batches with concurrency limit
-  const processBatched = async <T>(
+  // Helper function to process items in staggered batches over time
+  // Distributes polling load evenly across the polling interval
+  const processStaggered = async <T>(
     items: T[],
     processor: (item: T) => Promise<void>,
-    batchSize: number = 20
+    totalIntervalMs: number,
+    batchSize: number = 10
   ): Promise<void> => {
+    if (items.length === 0) return;
+    
+    // Calculate number of batches and delay between each batch
+    const numBatches = Math.ceil(items.length / batchSize);
+    // Use 80% of interval for staggering, leave 20% buffer before next cycle
+    const staggerWindow = totalIntervalMs * 0.8;
+    const delayBetweenBatches = numBatches > 1 ? Math.floor(staggerWindow / numBatches) : 0;
+    
+    console.log(`[poll] Staggering ${items.length} devices in ${numBatches} batches, ${delayBetweenBatches}ms between batches`);
+    
     for (let i = 0; i < items.length; i += batchSize) {
+      // Check if availability reset started mid-cycle
+      if (isAvailabilityResetInProgress) {
+        console.log('[poll] Stopping staggered poll - availability reset in progress');
+        break;
+      }
+      
       const batch = items.slice(i, i + batchSize);
+      const batchNum = Math.floor(i / batchSize) + 1;
+      
+      // Process batch concurrently
       await Promise.all(batch.map(processor));
+      
+      // Delay before next batch (except for last batch)
+      if (i + batchSize < items.length && delayBetweenBatches > 0) {
+        await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+      }
     }
   };
 
@@ -2313,9 +2334,9 @@ export async function registerRoutes(
     const devices = await storage.getDevices();
     const intervalSeconds = currentPollingInterval / 1000;
     
-    // Poll devices in batches to prevent overwhelming the server/network
-    // Use batch size of 20 for optimal balance between speed and resource usage
-    await processBatched(devices, (device) => pollDeviceUnified(device, intervalSeconds), 20);
+    // Poll devices in staggered batches to distribute load over time
+    // Uses smaller batches (10) with delays between them to prevent network/server overload
+    await processStaggered(devices, (device) => pollDeviceUnified(device, intervalSeconds), currentPollingInterval, 10);
     
     // Poll device links to calculate real-time traffic based on connected device interfaces
     try {
