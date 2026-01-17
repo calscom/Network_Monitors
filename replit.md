@@ -44,6 +44,29 @@ Preferred communication style: Simple, everyday language.
 - **Manual Generation**: Run `npx tsx scripts/generate-manual.ts` to regenerate after feature changes
 - **Important**: Always update the manual when editing features by modifying `scripts/generate-manual.ts` and regenerating
 
+## Database Migrations (Self-Hosted)
+
+When deploying updates to self-hosted environments (AWS/Vultr), you may need to add new columns manually. Run these SQL commands if you encounter "column does not exist" errors:
+
+```sql
+-- Add max_bandwidth to devices table
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;
+
+-- Add max_bandwidth to device_interfaces table
+ALTER TABLE device_interfaces ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;
+
+-- Add max_bandwidth to device_links table
+ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;
+```
+
+**Quick command for AWS:**
+```bash
+sudo -u postgres psql -d networkmonitor -c "ALTER TABLE devices ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
+sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_interfaces ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
+sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
+sudo systemctl restart networkmonitor
+```
+
 ## External Dependencies
 
 ### Database
