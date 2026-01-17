@@ -1,0 +1,25 @@
+networkmonitor=# \d device_links
+                                             Table "public.device_links"
+        Column        |            Type             | Collation | Nullable |                 Default
+----------------------+-----------------------------+-----------+----------+------------------------------------------
+ id                   | integer                     |           | not null | nextval('device_links_id_seq'::regclass)
+ source_device_id     | integer                     |           | not null |
+ source_interface_id  | integer                     |           |          |
+ target_device_id     | integer                     |           | not null |
+ target_interface_id  | integer                     |           |          |
+ link_type            | text                        |           | not null | 'manual'::text
+ link_label           | text                        |           |          |
+ bandwidth_mbps       | integer                     |           | not null | 100
+ current_traffic_mbps | text                        |           | not null | '0'::text
+ status               | text                        |           | not null | 'unknown'::text
+ last_check           | timestamp without time zone |           |          |
+ created_at           | timestamp without time zone |           | not null | now()
+ updated_at           | timestamp without time zone |           | not null | now()
+ max_bandwidth        | integer                     |           |          | 100
+Indexes:
+    "device_links_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "device_links_source_device_id_fkey" FOREIGN KEY (source_device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_links_source_interface_id_fkey" FOREIGN KEY (source_interface_id) REFERENCES device_interfaces(id) ON DELETE SET NULL
+    "device_links_target_device_id_fkey" FOREIGN KEY (target_device_id) REFERENCES devices(id) ON DELETE CASCADE
+    "device_links_target_interface_id_fkey" FOREIGN KEY (target_interface_id) REFERENCES device_interfaces(id) ON DELETE SET NULL
