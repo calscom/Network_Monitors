@@ -1,65 +1,70 @@
-import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
-import { Toaster } from "./components/ui/toaster";
-import { MainMenu } from "./components/MainMenu";
-import { ThemeProvider } from "./components/ThemeProvider";
-import { UserMenu } from "./components/UserMenu";
-import { useAuth } from "./hooks/use-auth";
-import { Onboarding } from "./components/Onboarding";
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { useAuth } from "@/hooks/use-auth";
+import Dashboard from "@/pages/Dashboard";
+import Login from "@/pages/Login";
+import ResetPassword from "@/pages/ResetPassword";
+import UserManagement from "@/pages/UserManagement";
+import NotificationSettings from "@/pages/NotificationSettings";
+import ActivityLog from "@/pages/ActivityLog";
+import KioskMap from "@/pages/KioskMap";
+import NotFound from "@/pages/not-found";
+import { Loader2 } from "lucide-react";
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Login = lazy(() => import("./pages/Login"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
-const KioskMap = lazy(() => import("./pages/KioskMap"));
-const ActivityLog = lazy(() => import("./pages/ActivityLog"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
-const NotFound = lazy(() => import("./pages/not-found"));
+function AuthenticatedRoutes() {
+  return (
+    <Switch>
+      <Route path="/" component={Dashboard} />
+      <Route path="/users" component={UserManagement} />
+      <Route path="/notifications" component={NotificationSettings} />
+      <Route path="/activity" component={ActivityLog} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
 
-function App() {
-  const { user } = useAuth();
+function AppContent() {
+  const { isLoading, isAuthenticated, isReplitEnvironment } = useAuth();
 
-  if (!user) {
+  if (window.location.pathname === "/reset-password") {
+    return <ResetPassword />;
+  }
+
+  if (window.location.pathname === "/kiosk") {
+    return <KioskMap />;
+  }
+
+  if (isLoading) {
     return (
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <div className="h-screen">
-          <Suspense fallback={<>...</>}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="*" element={<Login />} />
-            </Routes>
-          </Suspense>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
-      </ThemeProvider>
+      </div>
     );
   }
 
-  if (user && !user.onboarded) {
-    return <Onboarding />;
+  if (!isAuthenticated) {
+    return <Login />;
   }
 
+  return <AuthenticatedRoutes />;
+}
+
+function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div className="h-screen">
-        <header className="flex items-center justify-between p-4">
-          <MainMenu />
-          <UserMenu />
-        </header>
-        <main className="p-4">
-          <Suspense fallback={<>...</>}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/users" element={<UserManagement />} />
-              <Route path="/kiosk" element={<KioskMap />} />
-              <Route path="/activity" element={<ActivityLog />} />
-              <Route path="/notifications" element={<NotificationSettings />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </main>
-      </div>
-      <Toaster />
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AppContent />
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }
