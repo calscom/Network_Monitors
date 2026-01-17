@@ -1,0 +1,36 @@
+                                           Table "public.devices"
+      Column       |            Type             | Collation | Nullable |               Default
+-------------------+-----------------------------+-----------+----------+-------------------------------------
+ id                | integer                     |           | not null | nextval('devices_id_seq'::regclass)
+ name              | text                        |           | not null |
+ ip                | text                        |           | not null |
+ community         | text                        |           | not null | 'public'::text
+ type              | text                        |           | not null |
+ poll_type         | text                        |           | not null | 'snmp_only'::text
+ status            | text                        |           | not null | 'unknown'::text
+ utilization       | integer                     |           | not null | 0
+ bandwidth_mbps    | text                        |           | not null | '0'::text
+ download_mbps     | text                        |           | not null | '0'::text
+ upload_mbps       | text                        |           | not null | '0'::text
+ last_in_counter   | bigint                      |           | not null | 0
+ last_out_counter  | bigint                      |           | not null | 0
+ last_check        | timestamp without time zone |           |          |
+ last_seen         | timestamp without time zone |           |          |
+ site              | text                        |           | not null |
+ total_checks      | integer                     |           | not null | 0
+ successful_checks | integer                     |           | not null | 0
+ interface_index   | integer                     |           | not null | 1
+ interface_name    | text                        |           |          |
+ active_users      | integer                     |           | not null | 0
+ max_bandwidth     | integer                     |           | not null | 100
+Indexes:
+    "devices_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "availability_annual" CONSTRAINT "availability_annual_device_id_devices_id_fk" FOREIGN KEY (device_id) REFERENCES devices(id)
+    TABLE "availability_monthly" CONSTRAINT "availability_monthly_device_id_devices_id_fk" FOREIGN KEY (device_id) REFERENCES devices(id)
+    TABLE "device_interfaces" CONSTRAINT "device_interfaces_device_id_devices_id_fk" FOREIGN KEY (device_id) REFERENCES devices(id)
+    TABLE "device_links" CONSTRAINT "device_links_source_device_id_fkey" FOREIGN KEY (source_device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "device_links" CONSTRAINT "device_links_target_device_id_fkey" FOREIGN KEY (target_device_id) REFERENCES devices(id) ON DELETE CASCADE
+    TABLE "interface_metrics_history" CONSTRAINT "interface_metrics_history_device_id_devices_id_fk" FOREIGN KEY (device_id) REFERENCES devices(id)
+    TABLE "logs" CONSTRAINT "logs_device_id_devices_id_fk" FOREIGN KEY (device_id) REFERENCES devices(id)
+    TABLE "metrics_history" CONSTRAINT "metrics_history_device_id_devices_id_fk" FOREIGN KEY (device_id) REFERENCES devices(id)
