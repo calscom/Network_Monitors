@@ -314,27 +314,19 @@ export default function Dashboard() {
 
   const handleBulkDelete = async () => {
     try {
-      // Only delete devices that are currently visible
-      const selectableDevices = getSelectableDevices();
-      const selectableIds = new Set(selectableDevices.map(d => d.id));
-      const idsToDelete = Array.from(selectedDevices).filter(id => selectableIds.has(id));
-      
-      console.log('[BulkDelete] Selected devices:', Array.from(selectedDevices));
-      console.log('[BulkDelete] Visible IDs:', Array.from(selectableIds));
-      console.log('[BulkDelete] IDs to delete:', idsToDelete);
+      // Delete all selected devices (across all sites)
+      const idsToDelete = Array.from(selectedDevices);
       
       if (idsToDelete.length === 0) {
         toast({
           title: "No devices to delete",
-          description: "No visible devices are selected",
+          description: "No devices are selected",
           variant: "default",
         });
         return;
       }
       
-      console.log('[BulkDelete] Sending request with IDs:', idsToDelete);
       const result = await bulkDeleteMutation.mutateAsync(idsToDelete);
-      console.log('[BulkDelete] Result:', result);
       const deleted = (result as { deleted: number; notFound?: number; failed?: number }).deleted;
       const notFound = (result as { deleted: number; notFound?: number; failed?: number }).notFound;
       const failed = (result as { deleted: number; notFound?: number; failed?: number }).failed;
@@ -604,7 +596,7 @@ export default function Dashboard() {
 
                 {/* Bulk Actions Bar */}
                 {bulkActionsEnabled && displayedDevices.length > 0 && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/5">
+                  <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/5">
                     <Checkbox
                       id="select-all"
                       checked={visibleSelectedCount === displayedDevices.length && displayedDevices.length > 0}
@@ -620,13 +612,35 @@ export default function Dashboard() {
                     <label htmlFor="select-all" className="text-sm text-muted-foreground cursor-pointer">
                       {visibleSelectedCount === displayedDevices.length && displayedDevices.length > 0
                         ? "Deselect All"
-                        : "Select All"}
+                        : `Select All (${displayedDevices.length})`}
                     </label>
                     
-                    {visibleSelectedCount > 0 && (
+                    <div className="h-4 w-px bg-border mx-1" />
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const allDeviceIds = devices?.map(d => d.id) || [];
+                        setSelectedDevices(new Set(allDeviceIds));
+                      }}
+                      className="text-xs"
+                      data-testid="button-select-all-sites"
+                    >
+                      <CheckSquare className="w-3 h-3 mr-1" />
+                      All Sites ({devices?.length || 0})
+                    </Button>
+                    
+                    {selectedDevices.size > 0 && (
                       <>
-                        <span className="text-sm text-muted-foreground">
-                          ({visibleSelectedCount} selected)
+                        <div className="h-4 w-px bg-border mx-1" />
+                        <span className="text-sm font-medium text-foreground">
+                          {selectedDevices.size} selected
+                          {selectedDevices.size > visibleSelectedCount && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({visibleSelectedCount} in this site)
+                            </span>
+                          )}
                         </span>
                         <Button
                           size="sm"
@@ -779,7 +793,7 @@ export default function Dashboard() {
             
             {/* Bulk Actions Bar for Search Results */}
             {bulkActionsEnabled && filteredDevices.length > 0 && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/5">
+              <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-white/5">
                 <Checkbox
                   id="select-all-search"
                   checked={visibleSelectedCount === filteredDevices.length && filteredDevices.length > 0}
@@ -795,13 +809,30 @@ export default function Dashboard() {
                 <label htmlFor="select-all-search" className="text-sm text-muted-foreground cursor-pointer">
                   {visibleSelectedCount === filteredDevices.length && filteredDevices.length > 0
                     ? "Deselect All"
-                    : "Select All"}
+                    : `Select All Results (${filteredDevices.length})`}
                 </label>
+                
+                <div className="h-4 w-px bg-border mx-1" />
+                
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const allDeviceIds = devices?.map(d => d.id) || [];
+                    setSelectedDevices(new Set(allDeviceIds));
+                  }}
+                  className="text-xs"
+                  data-testid="button-select-all-sites-search"
+                >
+                  <CheckSquare className="w-3 h-3 mr-1" />
+                  All Devices ({devices?.length || 0})
+                </Button>
                 
                 {visibleSelectedCount > 0 && (
                   <>
-                    <span className="text-sm text-muted-foreground">
-                      ({visibleSelectedCount} selected)
+                    <div className="h-4 w-px bg-border mx-1" />
+                    <span className="text-sm font-medium text-foreground">
+                      {selectedDevices.size} selected
                     </span>
                     <Button
                       size="sm"
@@ -861,10 +892,15 @@ export default function Dashboard() {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {visibleSelectedCount} device(s)?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {selectedDevices.size} device(s)?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the selected devices
               and remove all their monitoring data.
+              {selectedDevices.size > visibleSelectedCount && (
+                <span className="block mt-2 text-amber-500">
+                  Note: {selectedDevices.size - visibleSelectedCount} device(s) from other sites are also selected.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -875,7 +911,7 @@ export default function Dashboard() {
               disabled={bulkDeleteMutation.isPending}
               data-testid="button-confirm-bulk-delete"
             >
-              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+              {bulkDeleteMutation.isPending ? "Deleting..." : `Delete ${selectedDevices.size} Device(s)`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
