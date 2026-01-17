@@ -1,8 +1,8 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Device, DeviceLink } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Server, Router, Wifi, Radio, Users, MonitorSmartphone, LayoutGrid, GalleryHorizontal, Link2 } from "lucide-react";
+import { Users, LayoutGrid, GalleryHorizontal, Link2, RotateCcw, Move, Lock, Unlock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { LinkManagement } from "./LinkManagement";
 
@@ -21,6 +21,30 @@ interface SiteColumn {
   totalDevices: number;
   activeUsers: number;
   status: "up" | "down" | "mixed" | "empty";
+}
+
+interface Position {
+  x: number;
+  y: number;
+}
+
+interface LayoutPositions {
+  [deviceId: string]: Position;
+}
+
+const LAYOUT_STORAGE_KEY = "networkMapDevicePositions";
+
+function loadSavedPositions(): LayoutPositions {
+  try {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePositions(positions: LayoutPositions) {
+  localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(positions));
 }
 
 function getStatusColor(status: string) {
@@ -88,22 +112,108 @@ function getDeviceOrder(category: string): number {
   return order[category] ?? 7;
 }
 
-function DeviceBox({ device, showTraffic = true }: { device: Device; showTraffic?: boolean }) {
+interface DraggableDeviceBoxProps {
+  device: Device;
+  position: Position;
+  onDragEnd: (deviceId: number, position: Position) => void;
+  editMode: boolean;
+  showTraffic?: boolean;
+}
+
+function DraggableDeviceBox({ device, position, onDragEnd, editMode, showTraffic = true }: DraggableDeviceBoxProps) {
   const statusColor = getStatusColor(device.status);
   const utilization = device.utilization || 0;
   const download = formatTraffic(device.downloadMbps);
   const upload = formatTraffic(device.uploadMbps);
   const hasTraffic = parseFloat(device.downloadMbps) > 0 || parseFloat(device.uploadMbps) > 0;
   
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [currentPos, setCurrentPos] = useState(position);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCurrentPos(position);
+  }, [position]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!editMode) return;
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const rect = boxRef.current?.getBoundingClientRect();
+    const parent = boxRef.current?.parentElement;
+    const parentRect = parent?.getBoundingClientRect();
+    
+    if (rect && parentRect) {
+      const initialX = rect.left - parentRect.left;
+      const initialY = rect.top - parentRect.top;
+      
+      setCurrentPos({ x: initialX, y: initialY });
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+      setIsDragging(true);
+    }
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !boxRef.current) return;
+    const parent = boxRef.current.parentElement;
+    if (!parent) return;
+    
+    const parentRect = parent.getBoundingClientRect();
+    const newX = e.clientX - parentRect.left - dragOffset.x;
+    const newY = e.clientY - parentRect.top - dragOffset.y;
+    
+    setCurrentPos({ x: newX, y: newY });
+  }, [isDragging, dragOffset]);
+
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      onDragEnd(device.id, currentPos);
+    }
+  }, [isDragging, device.id, currentPos, onDragEnd]);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+  
+  const hasCustomPosition = position.x !== 0 || position.y !== 0;
+  const shouldBeAbsolute = isDragging || hasCustomPosition;
+  
   return (
     <div 
-      className="relative flex flex-col items-center"
+      ref={boxRef}
+      className={`relative flex flex-col items-center ${editMode ? 'cursor-move' : ''} ${isDragging ? 'z-50' : 'z-10'}`}
+      style={shouldBeAbsolute ? {
+        position: 'absolute',
+        left: currentPos.x,
+        top: currentPos.y,
+        transform: isDragging ? 'scale(1.05)' : 'scale(1)',
+        transition: isDragging ? 'none' : 'transform 0.1s'
+      } : undefined}
+      onMouseDown={handleMouseDown}
       data-testid={`device-box-${device.id}`}
     >
       <div 
-        className={`relative px-2 py-1 rounded border-2 ${statusColor.bg}/20 min-w-[60px] text-center`}
+        className={`relative px-2 py-1 rounded border-2 ${statusColor.bg}/20 min-w-[60px] text-center ${editMode ? 'ring-2 ring-blue-500/30' : ''}`}
         style={{ borderColor: statusColor.hex }}
       >
+        {editMode && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+            <Move className="w-2 h-2 text-white" />
+          </div>
+        )}
         <div className="text-[8px] font-bold text-foreground truncate max-w-[80px]" title={device.name}>
           {device.name}
         </div>
@@ -167,19 +277,102 @@ function LinkLine({ link, toDevice }: {
   );
 }
 
-function CompactDeviceBox({ device }: { device: Device }) {
+function CompactDeviceBox({ device, editMode, position, onDragEnd }: { 
+  device: Device; 
+  editMode: boolean;
+  position: Position;
+  onDragEnd: (deviceId: number, position: Position) => void;
+}) {
   const statusColor = getStatusColor(device.status);
   const shortName = device.name
     .replace(/^(UAP-?|AP-?|UNIFI-?|ACC-?|ACCESS-?)/i, '')
     .slice(0, 6);
   
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [currentPos, setCurrentPos] = useState(position);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCurrentPos(position);
+  }, [position]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!editMode) return;
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const rect = boxRef.current?.getBoundingClientRect();
+    const parent = boxRef.current?.parentElement;
+    const parentRect = parent?.getBoundingClientRect();
+    
+    if (rect && parentRect) {
+      const initialX = rect.left - parentRect.left;
+      const initialY = rect.top - parentRect.top;
+      
+      setCurrentPos({ x: initialX, y: initialY });
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+      setIsDragging(true);
+    }
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !boxRef.current) return;
+    const parent = boxRef.current.parentElement;
+    if (!parent) return;
+    
+    const parentRect = parent.getBoundingClientRect();
+    const newX = e.clientX - parentRect.left - dragOffset.x;
+    const newY = e.clientY - parentRect.top - dragOffset.y;
+    
+    setCurrentPos({ x: newX, y: newY });
+  }, [isDragging, dragOffset]);
+
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      onDragEnd(device.id, currentPos);
+    }
+  }, [isDragging, device.id, currentPos, onDragEnd]);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  const hasCustomPosition = position.x !== 0 || position.y !== 0;
+  const shouldBeAbsolute = isDragging || hasCustomPosition;
+  
   return (
     <div 
-      className={`px-1 py-0.5 rounded text-center border ${statusColor.bg}/30`}
-      style={{ borderColor: statusColor.hex }}
+      ref={boxRef}
+      className={`px-1 py-0.5 rounded text-center border ${statusColor.bg}/30 ${editMode ? 'cursor-move ring-1 ring-blue-500/30' : ''} ${isDragging ? 'z-50' : ''} relative`}
+      style={{
+        borderColor: statusColor.hex,
+        ...(shouldBeAbsolute ? {
+          position: 'absolute' as const,
+          left: currentPos.x,
+          top: currentPos.y,
+          transform: isDragging ? 'scale(1.05)' : 'scale(1)',
+          transition: isDragging ? 'none' : 'transform 0.1s'
+        } : {})
+      }}
       title={device.name}
       data-testid={`compact-box-${device.id}`}
+      onMouseDown={handleMouseDown}
     >
+      {editMode && (
+        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
+      )}
       <div className="text-[6px] font-medium truncate text-foreground">
         {shortName}
       </div>
@@ -275,9 +468,18 @@ function buildTopologyTree(
   return tree;
 }
 
-function DeviceTreeRenderer({ node, isGridItem = false }: { node: DeviceNode; isGridItem?: boolean }) {
+interface DeviceTreeRendererProps {
+  node: DeviceNode;
+  isGridItem?: boolean;
+  editMode: boolean;
+  positions: LayoutPositions;
+  onDragEnd: (deviceId: number, position: Position) => void;
+}
+
+function DeviceTreeRenderer({ node, isGridItem = false, editMode, positions, onDragEnd }: DeviceTreeRendererProps) {
   const category = getDeviceCategory(node.device);
   const isCompact = category === 'ap' || category === 'access';
+  const devicePos = positions[node.device.id] || { x: 0, y: 0 };
   
   const compactChildren = node.children.filter(c => {
     const cat = getDeviceCategory(c.device);
@@ -290,7 +492,14 @@ function DeviceTreeRenderer({ node, isGridItem = false }: { node: DeviceNode; is
   });
   
   if (isGridItem && isCompact) {
-    return <CompactDeviceBox device={node.device} />;
+    return (
+      <CompactDeviceBox 
+        device={node.device} 
+        editMode={editMode}
+        position={devicePos}
+        onDragEnd={onDragEnd}
+      />
+    );
   }
   
   return (
@@ -300,15 +509,31 @@ function DeviceTreeRenderer({ node, isGridItem = false }: { node: DeviceNode; is
       )}
       
       {isCompact ? (
-        <CompactDeviceBox device={node.device} />
+        <CompactDeviceBox 
+          device={node.device} 
+          editMode={editMode}
+          position={devicePos}
+          onDragEnd={onDragEnd}
+        />
       ) : (
-        <DeviceBox device={node.device} />
+        <DraggableDeviceBox 
+          device={node.device} 
+          position={devicePos}
+          onDragEnd={onDragEnd}
+          editMode={editMode}
+        />
       )}
       
       {regularChildren.length > 0 && (
         <div className="flex flex-col items-center">
           {regularChildren.map((child) => (
-            <DeviceTreeRenderer key={child.device.id} node={child} />
+            <DeviceTreeRenderer 
+              key={child.device.id} 
+              node={child} 
+              editMode={editMode}
+              positions={positions}
+              onDragEnd={onDragEnd}
+            />
           ))}
         </div>
       )}
@@ -319,13 +544,20 @@ function DeviceTreeRenderer({ node, isGridItem = false }: { node: DeviceNode; is
             <div className="w-0.5 h-2 bg-green-500/50" />
           </div>
           <div 
-            className="grid gap-0.5"
+            className="grid gap-0.5 relative"
             style={{ 
               gridTemplateColumns: `repeat(${Math.min(compactChildren.length, 4)}, minmax(0, 1fr))` 
             }}
           >
             {compactChildren.map((child) => (
-              <DeviceTreeRenderer key={child.device.id} node={child} isGridItem />
+              <DeviceTreeRenderer 
+                key={child.device.id} 
+                node={child} 
+                isGridItem 
+                editMode={editMode}
+                positions={positions}
+                onDragEnd={onDragEnd}
+              />
             ))}
           </div>
         </div>
@@ -334,12 +566,15 @@ function DeviceTreeRenderer({ node, isGridItem = false }: { node: DeviceNode; is
   );
 }
 
-function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices }: { 
+function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, editMode, positions, onDragEnd }: { 
   column: SiteColumn; 
   index: number;
   onSiteClick?: (site: string) => void;
   deviceLinks: DeviceLink[];
   allDevices: Device[];
+  editMode: boolean;
+  positions: LayoutPositions;
+  onDragEnd: (deviceId: number, position: Position) => void;
 }) {
   const deviceMap = useMemo(() => {
     const map = new Map<number, Device>();
@@ -355,13 +590,21 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices }:
   const allDown = column.devices.length > 0 && column.devices.every(d => d.status === 'red');
   const headerBg = allDown ? 'bg-red-600' : hasDownDevice ? 'bg-yellow-600' : 'bg-green-600';
   
+  const handleClick = (e: React.MouseEvent) => {
+    if (editMode) {
+      e.stopPropagation();
+      return;
+    }
+    onSiteClick?.(column.site);
+  };
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
-      className="flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden min-w-[120px] max-w-[160px] cursor-pointer hover:border-primary/50 transition-colors"
-      onClick={() => onSiteClick?.(column.site)}
+      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden min-w-[120px] max-w-[160px] transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
+      onClick={handleClick}
       data-testid={`site-column-${index}`}
     >
       <div className={`${headerBg} px-2 py-1 text-center`}>
@@ -370,14 +613,20 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices }:
         </div>
       </div>
       
-      <div className="flex-1 p-1 space-y-0.5 bg-gray-900/50 min-h-[200px] max-h-[70vh] overflow-y-auto">
+      <div className="flex-1 p-1 space-y-0.5 bg-gray-900/50 min-h-[200px] max-h-[70vh] overflow-y-auto relative">
         {column.devices.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground/50 text-[10px] italic">
             No devices
           </div>
         ) : (
           tree.map((node) => (
-            <DeviceTreeRenderer key={node.device.id} node={node} />
+            <DeviceTreeRenderer 
+              key={node.device.id} 
+              node={node} 
+              editMode={editMode}
+              positions={positions}
+              onDragEnd={onDragEnd}
+            />
           ))
         )}
       </div>
@@ -443,6 +692,8 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
     const saved = localStorage.getItem("networkMapLayout");
     return (saved === "horizontal" || saved === "grid") ? saved : "horizontal";
   });
+  const [editMode, setEditMode] = useState(false);
+  const [positions, setPositions] = useState<LayoutPositions>(() => loadSavedPositions());
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: deviceLinks = [] } = useQuery<DeviceLink[]>({
@@ -457,6 +708,19 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  const handleDragEnd = useCallback((deviceId: number, position: Position) => {
+    setPositions(prev => {
+      const updated = { ...prev, [deviceId]: position };
+      savePositions(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleResetLayout = useCallback(() => {
+    setPositions({});
+    localStorage.removeItem(LAYOUT_STORAGE_KEY);
   }, []);
 
   const columns = useMemo<SiteColumn[]>(() => {
@@ -495,6 +759,7 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
   };
 
   const totalActiveUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
+  const hasCustomPositions = Object.keys(positions).length > 0;
 
   return (
     <div className={`bg-gray-900 rounded-xl overflow-hidden flex flex-col ${kioskMode ? 'h-full' : ''}`} data-testid="network-map-container" ref={containerRef}>
@@ -539,11 +804,45 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
               <GalleryHorizontal className="w-4 h-4" />
             </Button>
           </div>
+          
           {!kioskMode && (
-            <LinkManagement devices={devices} />
+            <>
+              <Button
+                size="sm"
+                variant={editMode ? "default" : "outline"}
+                className="h-7 px-2 gap-1"
+                onClick={() => setEditMode(!editMode)}
+                data-testid="button-edit-layout"
+              >
+                {editMode ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                <span className="text-xs">{editMode ? "Done" : "Edit"}</span>
+              </Button>
+              
+              {hasCustomPositions && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 gap-1 text-orange-400 hover:text-orange-300"
+                  onClick={handleResetLayout}
+                  data-testid="button-reset-layout"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span className="text-xs">Reset</span>
+                </Button>
+              )}
+              
+              <LinkManagement devices={devices} />
+            </>
           )}
         </div>
       </div>
+      
+      {editMode && (
+        <div className="bg-blue-500/20 border-b border-blue-500/30 px-3 py-2 flex items-center gap-2">
+          <Move className="w-4 h-4 text-blue-400" />
+          <span className="text-xs text-blue-300">Edit Mode: Drag devices to rearrange them. Click "Done" when finished.</span>
+        </div>
+      )}
 
       <div className={`flex-1 p-2 overflow-x-auto overflow-y-hidden ${kioskMode ? 'min-h-0' : ''}`}>
         <div 
@@ -563,6 +862,9 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
               onSiteClick={onSiteClick}
               deviceLinks={deviceLinks}
               allDevices={devices}
+              editMode={editMode}
+              positions={positions}
+              onDragEnd={handleDragEnd}
             />
           ))}
         </div>
