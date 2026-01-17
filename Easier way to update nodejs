@@ -13,3 +13,14 @@ node -v # Should print "v24.12.0".
 
 # Verify npm version:
 npm -v # Should print "11.6.2".
+Set the default version (optional):
+If you want the newly installed version to be the default version used every time you open a new terminal, run:
+bash
+nvm alias default node
+ 
+Managing Multiple Versions
+The main advantage of NVM is its flexibility in managing multiple Node.js versions. 
+List all available remote versions: nvm ls-remote
+List installed versions: nvm ls
+Switch to a different installed version: nvm use <version_number> (e.g., nvm use 20.9.0)
+Uninstall a specific version: nvm uninstall <version_number>
