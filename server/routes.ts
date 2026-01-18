@@ -1912,17 +1912,15 @@ export async function registerRoutes(
     sessions: UserManagerSession[];
   }
 
-  // Helper function to poll Mikrotik User Manager active users via REST API
-  // Uses native https module to properly handle self-signed MikroTik certificates
-  // Queries /rest/user-manager/session to get active RADIUS sessions (not hotspot)
-  const pollMikrotikUserManagerAPI = async (ip: string, username: string, password: string): Promise<UserManagerPollResult> => {
-    const https = await import('https');
-    return new Promise((resolve) => {
+  // Helper function to make HTTP/HTTPS request to MikroTik REST API
+  const makeUserManagerRequest = (ip: string, username: string, password: string, useHttps: boolean): Promise<UserManagerPollResult> => {
+    return new Promise(async (resolve) => {
+      const protocol = useHttps ? await import('https') : await import('http');
+      const port = useHttps ? 443 : 80;
       
-      // Use GET on /rest/user-manager/session to list all active User Manager sessions
       const options = {
         hostname: ip,
-        port: 443,
+        port: port,
         path: '/rest/user-manager/session',
         method: 'GET',
         headers: {
@@ -1933,7 +1931,7 @@ export async function registerRoutes(
         rejectUnauthorized: false // MikroTik devices typically use self-signed certs
       };
       
-      const req = https.request(options, (res: any) => {
+      const req = protocol.request(options, (res: any) => {
         let data = '';
         
         res.on('data', (chunk: string) => {
@@ -1948,32 +1946,53 @@ export async function registerRoutes(
               const activeSessions = Array.isArray(sessions) 
                 ? sessions.filter(s => !s['till-time'] || s.status === 'start')
                 : [];
-              console.log(`[api] User Manager sessions for ${ip}: ${activeSessions.length} active (${sessions.length} total)`);
+              console.log(`[api] User Manager sessions for ${ip} (${useHttps ? 'HTTPS' : 'HTTP'}): ${activeSessions.length} active (${sessions.length} total)`);
               resolve({ count: activeSessions.length, sessions: activeSessions });
             } else {
-              console.log(`[api] User Manager API failed for ${ip}: HTTPS ${res.statusCode} - ${data}`);
-              resolve({ count: 0, sessions: [] });
+              console.log(`[api] User Manager API failed for ${ip}: ${useHttps ? 'HTTPS' : 'HTTP'} ${res.statusCode}`);
+              resolve({ count: -1, sessions: [] }); // -1 indicates failure, trigger fallback
             }
           } catch (parseError) {
             console.log(`[api] User Manager API parse error for ${ip}: ${parseError}`);
-            resolve({ count: 0, sessions: [] });
+            resolve({ count: -1, sessions: [] });
           }
         });
       });
       
       req.on('error', (error: any) => {
-        console.log(`[api] User Manager API error for ${ip}: ${error.message}`);
-        resolve({ count: 0, sessions: [] });
+        console.log(`[api] User Manager ${useHttps ? 'HTTPS' : 'HTTP'} error for ${ip}: ${error.message}`);
+        resolve({ count: -1, sessions: [] }); // -1 indicates failure, trigger fallback
       });
       
       req.on('timeout', () => {
-        console.log(`[api] User Manager API timeout for ${ip}`);
+        console.log(`[api] User Manager ${useHttps ? 'HTTPS' : 'HTTP'} timeout for ${ip}`);
         req.destroy();
-        resolve({ count: 0, sessions: [] });
+        resolve({ count: -1, sessions: [] });
       });
       
       req.end();
     });
+  };
+
+  // Helper function to poll Mikrotik User Manager active users via REST API
+  // Tries HTTPS first, falls back to HTTP if HTTPS fails
+  // Queries /rest/user-manager/session to get active RADIUS sessions (not hotspot)
+  const pollMikrotikUserManagerAPI = async (ip: string, username: string, password: string): Promise<UserManagerPollResult> => {
+    // Try HTTPS first
+    let result = await makeUserManagerRequest(ip, username, password, true);
+    
+    // If HTTPS failed, try HTTP
+    if (result.count === -1) {
+      console.log(`[api] HTTPS failed for ${ip}, trying HTTP...`);
+      result = await makeUserManagerRequest(ip, username, password, false);
+    }
+    
+    // If both failed, return 0
+    if (result.count === -1) {
+      return { count: 0, sessions: [] };
+    }
+    
+    return result;
   };
   
   // Helper function to save user sessions to database
