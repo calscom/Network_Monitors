@@ -311,5 +311,61 @@ export type InsertInterfaceAvailabilityAnnual = z.infer<typeof insertInterfaceAv
 export type DeviceLink = typeof deviceLinks.$inferSelect;
 export type InsertDeviceLink = z.infer<typeof insertDeviceLinkSchema>;
 
+// User sessions from MikroTik User Manager API
+export const userSessions = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id).notNull(),
+  site: text("site").notNull(),
+  sessionId: text("session_id"), // MikroTik session ID
+  username: text("username").notNull(),
+  email: text("email"), // User email if available
+  macAddress: text("mac_address"),
+  ipAddress: text("ip_address"),
+  uploadBytes: bigint("upload_bytes", { mode: "bigint" }).default(sql`0`).notNull(),
+  downloadBytes: bigint("download_bytes", { mode: "bigint" }).default(sql`0`).notNull(),
+  sessionStart: timestamp("session_start"),
+  sessionEnd: timestamp("session_end"),
+  isActive: integer("is_active").default(1).notNull(), // 1 = active, 0 = ended
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("user_sessions_device_id_idx").on(table.deviceId),
+  index("user_sessions_site_idx").on(table.site),
+  index("user_sessions_created_at_idx").on(table.createdAt),
+  index("user_sessions_is_active_idx").on(table.isActive),
+]);
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Daily user statistics for graphing
+export const dailyUserStats = pgTable("daily_user_stats", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").references(() => devices.id),
+  site: text("site").notNull(),
+  date: timestamp("date").notNull(),
+  totalUsers: integer("total_users").default(0).notNull(),
+  peakUsers: integer("peak_users").default(0).notNull(),
+  totalUploadBytes: bigint("total_upload_bytes", { mode: "bigint" }).default(sql`0`).notNull(),
+  totalDownloadBytes: bigint("total_download_bytes", { mode: "bigint" }).default(sql`0`).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("daily_user_stats_date_idx").on(table.date),
+  index("daily_user_stats_site_idx").on(table.site),
+]);
+
+export const insertDailyUserStatsSchema = createInsertSchema(dailyUserStats).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type DailyUserStats = typeof dailyUserStats.$inferSelect;
+export type InsertDailyUserStats = z.infer<typeof insertDailyUserStatsSchema>;
+
 // Export auth models
 export * from "./models/auth";
