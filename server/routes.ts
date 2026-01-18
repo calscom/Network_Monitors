@@ -1773,6 +1773,66 @@ export async function registerRoutes(
     });
   };
 
+  // Helper function to poll Mikrotik User Manager active users via REST API
+  // Uses native https module to properly handle self-signed MikroTik certificates
+  const pollMikrotikUserManagerAPI = async (ip: string, username: string, password: string): Promise<number> => {
+    const https = await import('https');
+    return new Promise((resolve) => {
+      
+      const options = {
+        hostname: ip,
+        port: 443,
+        path: '/rest/user-manager/session/print',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
+          'Content-Type': 'application/json'
+        },
+        timeout: 5000,
+        rejectUnauthorized: false // MikroTik devices typically use self-signed certs
+      };
+      
+      const req = https.request(options, (res: any) => {
+        let data = '';
+        
+        res.on('data', (chunk: string) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            if (res.statusCode === 200) {
+              const sessions = JSON.parse(data);
+              const activeCount = Array.isArray(sessions) ? sessions.length : 0;
+              console.log(`[api] User Manager users for ${ip}: ${activeCount}`);
+              resolve(activeCount);
+            } else {
+              console.log(`[api] User Manager API failed for ${ip}: HTTPS ${res.statusCode}`);
+              resolve(0);
+            }
+          } catch (parseError) {
+            console.log(`[api] User Manager API parse error for ${ip}: ${parseError}`);
+            resolve(0);
+          }
+        });
+      });
+      
+      req.on('error', (error: any) => {
+        console.log(`[api] User Manager API error for ${ip}: ${error.message}`);
+        resolve(0);
+      });
+      
+      req.on('timeout', () => {
+        console.log(`[api] User Manager API timeout for ${ip}`);
+        req.destroy();
+        resolve(0);
+      });
+      
+      req.write(JSON.stringify({}));
+      req.end();
+    });
+  };
+
   // Helper function to ping a device (ICMP ping via system command)
   const pingDevice = (device: any): Promise<void> => {
     return new Promise(async (resolve) => {
@@ -1996,8 +2056,15 @@ export async function registerRoutes(
         let activeUsers = device.activeUsers || 0;
         if (device.type === 'mikrotik' && isSuccess) {
           try {
-            const polledUsers = await pollMikrotikActiveUsers(device.ip, device.community);
-            activeUsers = polledUsers; // Only update if poll succeeds
+            // Use User Manager API if poll type is usermanager_api and credentials are available
+            if (device.pollType === 'usermanager_api' && device.apiUsername && device.apiPassword) {
+              const polledUsers = await pollMikrotikUserManagerAPI(device.ip, device.apiUsername, device.apiPassword);
+              activeUsers = polledUsers;
+            } else {
+              // Default to SNMP hotspot polling
+              const polledUsers = await pollMikrotikActiveUsers(device.ip, device.community);
+              activeUsers = polledUsers;
+            }
           } catch (err) {
             console.log(`[snmp] Could not poll hotspot users for ${device.name}: ${err}`);
             // Keep the existing activeUsers value (already set above)

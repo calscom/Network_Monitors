@@ -69,6 +69,10 @@ ALTER TABLE device_interfaces ADD COLUMN IF NOT EXISTS max_bandwidth integer DEF
 
 -- Add max_bandwidth to device_links table
 ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;
+
+-- Add API credentials for MikroTik User Manager REST API polling
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_username text;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_password text;
 ```
 
 **Quick command for AWS:**
@@ -76,6 +80,8 @@ ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 
 sudo -u postgres psql -d networkmonitor -c "ALTER TABLE devices ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
 sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_interfaces ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
 sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
+sudo -u postgres psql -d networkmonitor -c "ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_username text;"
+sudo -u postgres psql -d networkmonitor -c "ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_password text;"
 sudo systemctl restart networkmonitor
 ```
 

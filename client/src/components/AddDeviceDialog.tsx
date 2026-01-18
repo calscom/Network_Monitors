@@ -110,6 +110,8 @@ export function AddDeviceDialog() {
       interfaceIndex: 1,
       interfaceName: null,
       maxBandwidth: 100,
+      apiUsername: undefined,
+      apiPassword: undefined,
     },
   });
 
@@ -271,6 +273,7 @@ export function AddDeviceDialog() {
                         <SelectItem value="snmp_only">SNMP Only</SelectItem>
                         <SelectItem value="ping_and_snmp">Ping AND SNMP</SelectItem>
                         <SelectItem value="ping_or_snmp">Ping OR SNMP</SelectItem>
+                        <SelectItem value="usermanager_api">User Manager API</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -394,6 +397,53 @@ export function AddDeviceDialog() {
               <div className="text-xs text-muted-foreground bg-secondary/30 p-2 rounded-md border border-white/10">
                 Ping-only: monitors online/offline status only, no bandwidth metrics.
               </div>
+            )}
+
+            {form.watch("pollType") === "usermanager_api" && (
+              <>
+                <div className="text-xs text-muted-foreground bg-blue-500/10 p-2 rounded-md border border-blue-500/20">
+                  User Manager API: Polls active sessions via MikroTik REST API (requires RouterOS 7.1+).
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="apiUsername"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">API Username</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="admin" 
+                            {...field} 
+                            value={field.value || ""}
+                            className="h-9 bg-secondary/50 border-white/10 focus:border-primary/50" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="apiPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">API Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password"
+                            placeholder="password" 
+                            {...field}
+                            value={field.value || ""}
+                            className="h-9 bg-secondary/50 border-white/10 focus:border-primary/50" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
             )}
 
             <DialogFooter className="pt-3 gap-2">

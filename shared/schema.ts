@@ -4,7 +4,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 
 // Poll type determines how device is monitored
-export type PollType = 'ping_only' | 'snmp_only' | 'ping_and_snmp' | 'ping_or_snmp';
+export type PollType = 'ping_only' | 'snmp_only' | 'ping_and_snmp' | 'ping_or_snmp' | 'usermanager_api';
 
 export const devices = pgTable("devices", {
   id: serial("id").primaryKey(),
@@ -29,6 +29,8 @@ export const devices = pgTable("devices", {
   interfaceName: text("interface_name"), // Human-readable interface name
   activeUsers: integer("active_users").default(0).notNull(), // Active hotspot/usermanager users (Mikrotik only)
   maxBandwidth: integer("max_bandwidth").default(100).notNull(), // Maximum bandwidth in Mbps for utilization calculation
+  apiUsername: text("api_username"), // MikroTik REST API username (for usermanager_api poll type)
+  apiPassword: text("api_password"), // MikroTik REST API password (for usermanager_api poll type)
 }, (table) => [
   index("devices_site_idx").on(table.site),
   index("devices_status_idx").on(table.status),
