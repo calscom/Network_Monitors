@@ -1914,20 +1914,22 @@ export async function registerRoutes(
 
   // Helper function to poll Mikrotik User Manager active users via REST API
   // Uses native https module to properly handle self-signed MikroTik certificates
+  // Queries /rest/user-manager/session to get active RADIUS sessions (not hotspot)
   const pollMikrotikUserManagerAPI = async (ip: string, username: string, password: string): Promise<UserManagerPollResult> => {
     const https = await import('https');
     return new Promise((resolve) => {
       
+      // Use GET on /rest/user-manager/session to list all active User Manager sessions
       const options = {
         hostname: ip,
         port: 443,
-        path: '/rest/user-manager/session/print',
-        method: 'POST',
+        path: '/rest/user-manager/session',
+        method: 'GET',
         headers: {
           'Authorization': 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
           'Content-Type': 'application/json'
         },
-        timeout: 5000,
+        timeout: 10000,
         rejectUnauthorized: false // MikroTik devices typically use self-signed certs
       };
       
@@ -1942,11 +1944,14 @@ export async function registerRoutes(
           try {
             if (res.statusCode === 200) {
               const sessions = JSON.parse(data) as UserManagerSession[];
-              const activeCount = Array.isArray(sessions) ? sessions.length : 0;
-              console.log(`[api] User Manager users for ${ip}: ${activeCount}`);
-              resolve({ count: activeCount, sessions: Array.isArray(sessions) ? sessions : [] });
+              // Filter for active sessions only (sessions without 'till-time' or with active status)
+              const activeSessions = Array.isArray(sessions) 
+                ? sessions.filter(s => !s['till-time'] || s.status === 'start')
+                : [];
+              console.log(`[api] User Manager sessions for ${ip}: ${activeSessions.length} active (${sessions.length} total)`);
+              resolve({ count: activeSessions.length, sessions: activeSessions });
             } else {
-              console.log(`[api] User Manager API failed for ${ip}: HTTPS ${res.statusCode}`);
+              console.log(`[api] User Manager API failed for ${ip}: HTTPS ${res.statusCode} - ${data}`);
               resolve({ count: 0, sessions: [] });
             }
           } catch (parseError) {
@@ -1967,7 +1972,6 @@ export async function registerRoutes(
         resolve({ count: 0, sessions: [] });
       });
       
-      req.write(JSON.stringify({}));
       req.end();
     });
   };
