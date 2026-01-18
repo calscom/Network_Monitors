@@ -39,6 +39,18 @@ Preferred communication style: Simple, everyday language.
 - Email test functionality for SMTP verification
 - CSV/Excel import/export with poll_type and max_bandwidth columns
 
+### Network Map 7-Tier Grid Layout
+Each site column displays devices organized into 7 vertical grid tiers:
+- **Tier 0 (Top)**: PTP and PmPT devices (wireless links)
+- **Tier 1**: ISP-PE and ISP-CE devices (provider edge/customer edge routers, Starlink)
+- **Tier 2**: Fortigate firewalls (devices with type "fortigate" or names containing FW-, FORTI, FGT)
+- **Tier 3**: MikroTik routers (devices with names containing RTR)
+- **Tier 4**: Distribution switches (DST-01, DST-, DIST)
+- **Tier 5**: Access switches (ACC-) - displayed in 1 row x 3 columns
+- **Tier 6**: UAP access points - 5 columns for Maiduguri sites, 2 columns for other sites
+
+Drag-and-drop editing mode allows manual repositioning of devices within their site column.
+
 ### Documentation
 - **Operational Manual**: `Network_Monitor_Operational_Manual.docx` - Comprehensive user guide
 - **Manual Generation**: Run `npx tsx scripts/generate-manual.ts` to regenerate after feature changes

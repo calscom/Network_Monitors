@@ -83,25 +83,51 @@ function matchesPattern(name: string, patterns: string[]): boolean {
   return patterns.some(p => upperName.includes(p) || upperName.startsWith(p));
 }
 
-function getDeviceCategory(device: Device): string {
+// Grid tier system: 7 vertical zones per site
+// Tier 0 (top): PTP and PmPT devices
+// Tier 1: ISP-PE and ISP-CE devices  
+// Tier 2: Fortigate devices
+// Tier 3: MikroTik routers (containing RTR)
+// Tier 4: DST-01 (distribution switches)
+// Tier 5: ACC- devices (access switches) - 1 row x 3 columns
+// Tier 6: UAP devices - 5 columns for Maiduguri, 2 columns for others
+
+type GridTier = 'ptp' | 'isp' | 'firewall' | 'router' | 'distribution' | 'access' | 'ap' | 'other';
+
+function getGridTier(device: Device): GridTier {
   const name = device.name.toUpperCase();
   const type = device.type.toLowerCase();
   
-  if (matchesPattern(name, ['ISP-PE', 'ISP_PE', 'ISPPE', 'PE-', 'PE_'])) return 'isp-pe';
-  if (matchesPattern(name, ['ISP-CE', 'ISP_CE', 'ISPCE', 'CE-', 'CE_', 'STARLINK'])) return 'isp-ce';
-  if (matchesPattern(name, ['FW-', 'FW_', 'FW0', 'FW1', 'FIREWALL', 'FORTI'])) return 'firewall';
-  if (matchesPattern(name, ['RTR-', 'RTR_', 'RTR0', 'RTR1', 'ROUTER', 'CHR'])) return 'router';
-  if (matchesPattern(name, ['DST-', 'DST_', 'DTS-', 'DTS_', 'DST0', 'DTS0', 'DIST'])) return 'distribution';
+  // Tier 0: PTP and PmPT devices (at top)
+  if (matchesPattern(name, ['PTP', 'PMPT', 'P2P', 'PTMP'])) return 'ptp';
+  
+  // Tier 1: ISP-PE and ISP-CE devices
+  if (matchesPattern(name, ['ISP-PE', 'ISP_PE', 'ISPPE', 'ISP-CE', 'ISP_CE', 'ISPCE', 'PE-', 'CE-', 'STARLINK'])) return 'isp';
+  
+  // Tier 2: Fortigate devices
+  if (type === 'fortigate' || matchesPattern(name, ['FW-', 'FW_', 'FIREWALL', 'FORTI', 'FGT'])) return 'firewall';
+  
+  // Tier 3: MikroTik routers (containing RTR)
+  if (type === 'mikrotik' && matchesPattern(name, ['RTR', 'ROUTER', 'CHR'])) return 'router';
+  if (matchesPattern(name, ['RTR-', 'RTR_', 'RTR0', 'RTR1'])) return 'router';
+  
+  // Tier 4: DST-01 (distribution switches)
+  if (matchesPattern(name, ['DST-01', 'DST_01', 'DST01', 'DST-', 'DTS-', 'DIST'])) return 'distribution';
+  
+  // Tier 5: ACC- devices (access switches)
   if (matchesPattern(name, ['ACC-', 'ACC_', 'ACC0', 'ACCESS'])) return 'access';
+  
+  // Tier 6: UAP devices
   if (type === 'unifi' || type === 'ap' || type === 'access_point' ||
-      matchesPattern(name, ['UAP-', 'UAP_', 'AP-', 'AP_', 'UNIFI'])) return 'ap';
+      matchesPattern(name, ['UAP-', 'UAP_', 'UAP0', 'AP-', 'AP_', 'UNIFI'])) return 'ap';
+  
   return 'other';
 }
 
-function getDeviceOrder(category: string): number {
-  const order: Record<string, number> = {
-    'isp-pe': 0,
-    'isp-ce': 1,
+function getGridTierOrder(tier: GridTier): number {
+  const order: Record<GridTier, number> = {
+    'ptp': 0,
+    'isp': 1,
     'firewall': 2,
     'router': 3,
     'distribution': 4,
@@ -109,7 +135,16 @@ function getDeviceOrder(category: string): number {
     'ap': 6,
     'other': 7
   };
-  return order[category] ?? 7;
+  return order[tier] ?? 7;
+}
+
+// Keep legacy function for backward compatibility
+function getDeviceCategory(device: Device): string {
+  return getGridTier(device);
+}
+
+function getDeviceOrder(category: string): number {
+  return getGridTierOrder(category as GridTier);
 }
 
 interface DraggableDeviceBoxProps {
@@ -130,11 +165,14 @@ function DraggableDeviceBox({ device, position, onDragEnd, editMode, showTraffic
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [currentPos, setCurrentPos] = useState(position);
+  const [dragStartTime, setDragStartTime] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCurrentPos(position);
-  }, [position]);
+    if (!isDragging) {
+      setCurrentPos(position);
+    }
+  }, [position, isDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!editMode) return;
@@ -142,46 +180,62 @@ function DraggableDeviceBox({ device, position, onDragEnd, editMode, showTraffic
     e.preventDefault();
     
     const rect = boxRef.current?.getBoundingClientRect();
-    const parent = boxRef.current?.parentElement;
-    const parentRect = parent?.getBoundingClientRect();
+    const container = boxRef.current?.closest('[data-testid^="site-column-"]');
+    const containerRect = container?.getBoundingClientRect();
     
-    if (rect && parentRect) {
-      const initialX = rect.left - parentRect.left;
-      const initialY = rect.top - parentRect.top;
+    if (rect && containerRect) {
+      const initialX = rect.left - containerRect.left;
+      const initialY = rect.top - containerRect.top;
       
       setCurrentPos({ x: initialX, y: initialY });
       setDragOffset({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       });
+      setDragStartTime(Date.now());
       setIsDragging(true);
     }
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !boxRef.current) return;
-    const parent = boxRef.current.parentElement;
-    if (!parent) return;
+    const container = boxRef.current.closest('[data-testid^="site-column-"]');
+    if (!container) return;
     
-    const parentRect = parent.getBoundingClientRect();
-    const newX = e.clientX - parentRect.left - dragOffset.x;
-    const newY = e.clientY - parentRect.top - dragOffset.y;
+    const containerRect = container.getBoundingClientRect();
+    let newX = e.clientX - containerRect.left - dragOffset.x;
+    let newY = e.clientY - containerRect.top - dragOffset.y;
+    
+    // Constrain within container bounds
+    const boxWidth = boxRef.current.offsetWidth;
+    const boxHeight = boxRef.current.offsetHeight;
+    newX = Math.max(0, Math.min(newX, containerRect.width - boxWidth));
+    newY = Math.max(0, Math.min(newY, containerRect.height - boxHeight));
     
     setCurrentPos({ x: newX, y: newY });
   }, [isDragging, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
     if (isDragging) {
+      const dragDuration = Date.now() - dragStartTime;
       setIsDragging(false);
-      onDragEnd(device.id, currentPos);
+      
+      // Only save if dragged for more than 100ms (not a click)
+      if (dragDuration > 100) {
+        onDragEnd(device.id, currentPos);
+      }
     }
-  }, [isDragging, device.id, currentPos, onDragEnd]);
+  }, [isDragging, device.id, currentPos, onDragEnd, dragStartTime]);
 
   useEffect(() => {
     if (isDragging) {
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       return () => {
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
       };
@@ -286,16 +340,19 @@ function CompactDeviceBox({ device, editMode, position, onDragEnd }: {
   const statusColor = getStatusColor(device.status);
   const shortName = device.name
     .replace(/^(UAP-?|AP-?|UNIFI-?|ACC-?|ACCESS-?)/i, '')
-    .slice(0, 6);
+    .slice(0, 8);
   
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [currentPos, setCurrentPos] = useState(position);
+  const [dragStartTime, setDragStartTime] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCurrentPos(position);
-  }, [position]);
+    if (!isDragging) {
+      setCurrentPos(position);
+    }
+  }, [position, isDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!editMode) return;
@@ -303,46 +360,62 @@ function CompactDeviceBox({ device, editMode, position, onDragEnd }: {
     e.preventDefault();
     
     const rect = boxRef.current?.getBoundingClientRect();
-    const parent = boxRef.current?.parentElement;
-    const parentRect = parent?.getBoundingClientRect();
+    const container = boxRef.current?.closest('[data-testid^="site-column-"]');
+    const containerRect = container?.getBoundingClientRect();
     
-    if (rect && parentRect) {
-      const initialX = rect.left - parentRect.left;
-      const initialY = rect.top - parentRect.top;
+    if (rect && containerRect) {
+      const initialX = rect.left - containerRect.left;
+      const initialY = rect.top - containerRect.top;
       
       setCurrentPos({ x: initialX, y: initialY });
       setDragOffset({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       });
+      setDragStartTime(Date.now());
       setIsDragging(true);
     }
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !boxRef.current) return;
-    const parent = boxRef.current.parentElement;
-    if (!parent) return;
+    const container = boxRef.current.closest('[data-testid^="site-column-"]');
+    if (!container) return;
     
-    const parentRect = parent.getBoundingClientRect();
-    const newX = e.clientX - parentRect.left - dragOffset.x;
-    const newY = e.clientY - parentRect.top - dragOffset.y;
+    const containerRect = container.getBoundingClientRect();
+    let newX = e.clientX - containerRect.left - dragOffset.x;
+    let newY = e.clientY - containerRect.top - dragOffset.y;
+    
+    // Constrain within container bounds
+    const boxWidth = boxRef.current.offsetWidth;
+    const boxHeight = boxRef.current.offsetHeight;
+    newX = Math.max(0, Math.min(newX, containerRect.width - boxWidth));
+    newY = Math.max(0, Math.min(newY, containerRect.height - boxHeight));
     
     setCurrentPos({ x: newX, y: newY });
   }, [isDragging, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
     if (isDragging) {
+      const dragDuration = Date.now() - dragStartTime;
       setIsDragging(false);
-      onDragEnd(device.id, currentPos);
+      
+      // Only save if dragged for more than 100ms (not a click)
+      if (dragDuration > 100) {
+        onDragEnd(device.id, currentPos);
+      }
     }
-  }, [isDragging, device.id, currentPos, onDragEnd]);
+  }, [isDragging, device.id, currentPos, onDragEnd, dragStartTime]);
 
   useEffect(() => {
     if (isDragging) {
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       return () => {
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
       };
@@ -566,6 +639,104 @@ function DeviceTreeRenderer({ node, isGridItem = false, editMode, positions, onD
   );
 }
 
+// Group devices by grid tier
+function groupDevicesByTier(devices: Device[]): Record<GridTier, Device[]> {
+  const groups: Record<GridTier, Device[]> = {
+    ptp: [],
+    isp: [],
+    firewall: [],
+    router: [],
+    distribution: [],
+    access: [],
+    ap: [],
+    other: []
+  };
+  
+  devices.forEach(device => {
+    const tier = getGridTier(device);
+    groups[tier].push(device);
+  });
+  
+  // Sort devices within each tier by name
+  Object.keys(groups).forEach(tier => {
+    groups[tier as GridTier].sort((a, b) => a.name.localeCompare(b.name));
+  });
+  
+  return groups;
+}
+
+// Grid tier row component with link visualization
+function GridTierRow({ 
+  tier, 
+  devices, 
+  columns, 
+  editMode, 
+  positions, 
+  onDragEnd,
+  showConnector = true,
+  deviceLinks = [],
+  deviceMap
+}: {
+  tier: GridTier;
+  devices: Device[];
+  columns: number;
+  editMode: boolean;
+  positions: LayoutPositions;
+  onDragEnd: (deviceId: number, position: Position) => void;
+  showConnector?: boolean;
+  deviceLinks?: DeviceLink[];
+  deviceMap?: Map<number, Device>;
+}) {
+  if (devices.length === 0) return null;
+  
+  const isCompactTier = tier === 'access' || tier === 'ap';
+  
+  // Get link info for traffic display on connectors
+  const getDeviceLink = (deviceId: number): DeviceLink | undefined => {
+    return deviceLinks.find(l => l.targetDeviceId === deviceId || l.sourceDeviceId === deviceId);
+  };
+  
+  return (
+    <div className="flex flex-col items-center w-full">
+      {showConnector && (
+        <div className="w-0.5 h-3 bg-green-500/60" />
+      )}
+      <div 
+        className="grid gap-1 w-full justify-items-center"
+        style={{ 
+          gridTemplateColumns: `repeat(${Math.min(devices.length, columns)}, minmax(0, 1fr))` 
+        }}
+      >
+        {devices.map(device => {
+          const devicePos = positions[device.id] || { x: 0, y: 0 };
+          const link = getDeviceLink(device.id);
+          
+          return (
+            <div key={device.id} className="flex flex-col items-center">
+              {isCompactTier ? (
+                <CompactDeviceBox
+                  device={device}
+                  editMode={editMode}
+                  position={devicePos}
+                  onDragEnd={onDragEnd}
+                />
+              ) : (
+                <DraggableDeviceBox
+                  device={device}
+                  position={devicePos}
+                  onDragEnd={onDragEnd}
+                  editMode={editMode}
+                  showTraffic={true}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, editMode, positions, onDragEnd }: { 
   column: SiteColumn; 
   index: number;
@@ -582,9 +753,17 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
     return map;
   }, [allDevices]);
   
-  const tree = useMemo(() => {
-    return buildTopologyTree(column.devices, deviceLinks, deviceMap);
-  }, [column.devices, deviceLinks, deviceMap]);
+  // Group devices by tier
+  const tierGroups = useMemo(() => {
+    return groupDevicesByTier(column.devices);
+  }, [column.devices]);
+  
+  // Check if this is Maiduguri site (for UAP column count)
+  // Match "02 HH Maiduguri" or just "Maiduguri" but NOT any site with "02" in it
+  const siteName = column.site.toUpperCase();
+  const isMaiduguri = siteName.includes('MAIDUGURI') || siteName.startsWith('02 HH');
+  const uapColumns = isMaiduguri ? 5 : 2;
+  const accColumns = 3;
   
   const hasDownDevice = column.devices.some(d => d.status === 'red');
   const allDown = column.devices.length > 0 && column.devices.every(d => d.status === 'red');
@@ -598,12 +777,22 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
     onSiteClick?.(column.site);
   };
   
+  // Check if we have any devices to show connectors
+  const hasPTP = tierGroups.ptp.length > 0;
+  const hasISP = tierGroups.isp.length > 0;
+  const hasFirewall = tierGroups.firewall.length > 0;
+  const hasRouter = tierGroups.router.length > 0;
+  const hasDistribution = tierGroups.distribution.length > 0;
+  const hasAccess = tierGroups.access.length > 0;
+  const hasAP = tierGroups.ap.length > 0;
+  const hasOther = tierGroups.other.length > 0;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
-      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden min-w-[120px] max-w-[160px] transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
+      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden min-w-[120px] max-w-[180px] transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
       onClick={handleClick}
       data-testid={`site-column-${index}`}
     >
@@ -613,21 +802,117 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
         </div>
       </div>
       
-      <div className="flex-1 p-1 space-y-0.5 bg-gray-900/50 min-h-[200px] max-h-[70vh] overflow-y-auto relative">
+      <div className="flex-1 p-1 bg-gray-900/50 min-h-[200px] max-h-[70vh] overflow-y-auto relative">
         {column.devices.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground/50 text-[10px] italic">
             No devices
           </div>
         ) : (
-          tree.map((node) => (
-            <DeviceTreeRenderer 
-              key={node.device.id} 
-              node={node} 
-              editMode={editMode}
-              positions={positions}
+          <div className="flex flex-col items-center space-y-0">
+            {/* Tier 0: PTP/PmPT devices (at top) */}
+            <GridTierRow 
+              tier="ptp" 
+              devices={tierGroups.ptp} 
+              columns={2} 
+              editMode={editMode} 
+              positions={positions} 
               onDragEnd={onDragEnd}
+              showConnector={false}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
             />
-          ))
+            
+            {/* Tier 1: ISP-PE and ISP-CE */}
+            <GridTierRow 
+              tier="isp" 
+              devices={tierGroups.isp} 
+              columns={2} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+            
+            {/* Tier 2: Fortigate */}
+            <GridTierRow 
+              tier="firewall" 
+              devices={tierGroups.firewall} 
+              columns={1} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP || hasISP}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+            
+            {/* Tier 3: MikroTik routers (RTR) */}
+            <GridTierRow 
+              tier="router" 
+              devices={tierGroups.router} 
+              columns={1} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP || hasISP || hasFirewall}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+            
+            {/* Tier 4: Distribution (DST-01) */}
+            <GridTierRow 
+              tier="distribution" 
+              devices={tierGroups.distribution} 
+              columns={1} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP || hasISP || hasFirewall || hasRouter}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+            
+            {/* Tier 5: Access switches (ACC-) - 1 row x 3 columns */}
+            <GridTierRow 
+              tier="access" 
+              devices={tierGroups.access} 
+              columns={accColumns} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP || hasISP || hasFirewall || hasRouter || hasDistribution}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+            
+            {/* Tier 6: UAP devices - 5 cols for Maiduguri, 2 cols for others */}
+            <GridTierRow 
+              tier="ap" 
+              devices={tierGroups.ap} 
+              columns={uapColumns} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP || hasISP || hasFirewall || hasRouter || hasDistribution || hasAccess}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+            
+            {/* Other devices */}
+            <GridTierRow 
+              tier="other" 
+              devices={tierGroups.other} 
+              columns={2} 
+              editMode={editMode} 
+              positions={positions} 
+              onDragEnd={onDragEnd}
+              showConnector={hasPTP || hasISP || hasFirewall || hasRouter || hasDistribution || hasAccess || hasAP}
+              deviceLinks={deviceLinks}
+              deviceMap={deviceMap}
+            />
+          </div>
         )}
       </div>
       
