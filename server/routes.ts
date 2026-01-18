@@ -2685,9 +2685,16 @@ export async function registerRoutes(
       // Poll all devices that have User Manager API credentials configured
       const userManagerDevices = devices.filter(d => d.apiUsername && d.apiPassword);
       
-      if (userManagerDevices.length === 0) return;
+      // Debug: Show device credential status
+      const devicesWithApiUser = devices.filter(d => d.apiUsername);
+      const devicesWithApiPass = devices.filter(d => d.apiPassword);
+      console.log(`[usermanager] Credential check: ${devices.length} devices, ${devicesWithApiUser.length} have username, ${devicesWithApiPass.length} have password, ${userManagerDevices.length} have both`);
       
-      console.log(`[usermanager] Polling ${userManagerDevices.length} devices with User Manager API`);
+      if (userManagerDevices.length === 0) {
+        return;
+      }
+      
+      console.log(`[usermanager] Polling: ${userManagerDevices.map(d => `${d.name}@${d.ip}`).join(', ')}`);
       
       for (const device of userManagerDevices) {
         try {
