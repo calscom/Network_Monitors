@@ -6,7 +6,7 @@ import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Onboarding } from "@/components/Onboarding";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X, GripVertical, CheckSquare, Square, Trash2 } from "lucide-react";
+import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X, GripVertical, CheckSquare, Square, Trash2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -229,6 +229,7 @@ export default function Dashboard() {
     total: devices?.length || 0,
     online: devices?.filter(d => d.status === 'green').length || 0,
     critical: devices?.filter(d => d.status === 'red' || d.status === 'blue').length || 0,
+    hotspotUsers: devices?.reduce((sum, d) => sum + (d.activeUsers || 0), 0) || 0,
   };
 
   // Search filter function
@@ -421,7 +422,7 @@ export default function Dashboard() {
           </div>
 
         {/* Status Overview Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -468,6 +469,22 @@ export default function Dashboard() {
             ) : (
               <div className="w-3 h-3 rounded-full bg-secondary" />
             )}
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="glass rounded-xl p-4 sm:p-6 border-l-4 border-l-blue-500 flex items-center justify-between"
+            data-testid="card-hotspot-users"
+          >
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Hotspot Users</p>
+              <p className="text-2xl sm:text-3xl font-bold font-mono mt-1 text-blue-500">{stats.hotspotUsers}</p>
+            </div>
+            <div className="p-2 sm:p-3 bg-blue-500/10 rounded-full text-blue-500">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
           </motion.div>
         </div>
 

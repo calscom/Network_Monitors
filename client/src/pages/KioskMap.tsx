@@ -1,6 +1,6 @@
 import { useDevices } from "@/hooks/use-devices";
 import { NetworkMap } from "@/components/NetworkMap";
-import { Loader2, Activity, AlertCircle } from "lucide-react";
+import { Loader2, Activity, AlertCircle, Users } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { useSites } from "@/hooks/use-sites";
@@ -11,9 +11,11 @@ export default function KioskMap() {
 
   const stats = useMemo(() => {
     const total = devices.length;
-    const online = devices.filter(d => d.status === "online").length;
-    const critical = devices.filter(d => d.status === "offline" || d.status === "recovering").length;
-    return { total, online, critical };
+    // Status values are: green (online), yellow (warning), blue (recovering), red (offline)
+    const online = devices.filter(d => d.status === "green").length;
+    const critical = devices.filter(d => d.status === "red" || d.status === "blue").length;
+    const hotspotUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
+    return { total, online, critical, hotspotUsers };
   }, [devices]);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function KioskMap() {
 
   return (
     <div className="fixed inset-0 bg-background p-2 flex flex-col" data-testid="kiosk-map-page">
-      <div className="grid grid-cols-3 gap-3 mb-2">
+      <div className="grid grid-cols-4 gap-3 mb-2">
         <Card className="p-3 flex items-center justify-between" data-testid="card-total-devices">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Devices</p>
@@ -59,6 +61,14 @@ export default function KioskMap() {
             <p className="text-2xl font-bold text-red-500">{stats.critical}</p>
           </div>
           <AlertCircle className="h-8 w-8 text-red-500" />
+        </Card>
+        
+        <Card className="p-3 flex items-center justify-between" data-testid="card-hotspot-users">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Hotspot Users</p>
+            <p className="text-2xl font-bold text-blue-500">{stats.hotspotUsers}</p>
+          </div>
+          <Users className="h-8 w-8 text-blue-500" />
         </Card>
       </div>
       
