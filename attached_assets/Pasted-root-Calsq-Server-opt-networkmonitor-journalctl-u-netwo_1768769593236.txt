@@ -1,0 +1,42 @@
+root@Calsq-Server:/opt/networkmonitor# journalctl -u networkmonitor -f
+Jan 18 20:52:47 Calsq-Server node[3690000]:   severity: 'ERROR',
+Jan 18 20:52:47 Calsq-Server node[3690000]:   code: '42703',
+Jan 18 20:52:47 Calsq-Server node[3690000]:   position: '318',
+Jan 18 20:52:47 Calsq-Server node[3690000]:   file: 'parse_relation.c',
+Jan 18 20:52:47 Calsq-Server node[3690000]:   line: '3647',
+Jan 18 20:52:47 Calsq-Server node[3690000]:   routine: 'errorMissingColumn'
+Jan 18 20:52:47 Calsq-Server node[3690000]: }
+Jan 18 20:52:47 Calsq-Server node[3690000]: Node.js v25.2.1
+Jan 18 20:52:47 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 18 20:52:47 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 18 20:52:57 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 49.
+Jan 18 20:52:57 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 18 20:52:57 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 18 20:52:58 Calsq-Server node[3690175]: [auth] Self-hosted mode: using local username/password authentication
+Jan 18 20:52:58 Calsq-Server node[3690175]: [settings] Using default polling interval: 5000ms
+Jan 18 20:52:58 Calsq-Server node[3690175]: [usermanager] Started independent User Manager API polling (30s interval)
+Jan 18 20:52:58 Calsq-Server node[3690175]: [availability] Month-end availability scheduler started
+Jan 18 20:52:58 Calsq-Server node[3690175]: 8:52:58 PM [express] serving on port 5000
+Jan 18 20:52:58 Calsq-Server node[3690175]: node:internal/process/promises:332
+Jan 18 20:52:58 Calsq-Server node[3690175]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 18 20:52:58 Calsq-Server node[3690175]:     ^
+Jan 18 20:52:58 Calsq-Server node[3690175]: PostgresError: column "api_username" does not exist
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at ErrorResponse (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:815:30)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at handle (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:489:6)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at Socket.data (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:324:9)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at Socket.emit (node:events:508:28)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at addChunk (node:internal/streams/readable:559:12)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at Readable.push (node:internal/streams/readable:390:5)
+Jan 18 20:52:58 Calsq-Server node[3690175]:     at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+Jan 18 20:52:58 Calsq-Server node[3690175]:   severity_local: 'ERROR',
+Jan 18 20:52:58 Calsq-Server node[3690175]:   severity: 'ERROR',
+Jan 18 20:52:58 Calsq-Server node[3690175]:   code: '42703',
+Jan 18 20:52:58 Calsq-Server node[3690175]:   position: '318',
+Jan 18 20:52:58 Calsq-Server node[3690175]:   file: 'parse_relation.c',
+Jan 18 20:52:58 Calsq-Server node[3690175]:   line: '3647',
+Jan 18 20:52:58 Calsq-Server node[3690175]:   routine: 'errorMissingColumn'
+Jan 18 20:52:58 Calsq-Server node[3690175]: }
+Jan 18 20:52:58 Calsq-Server node[3690175]: Node.js v25.2.1
+Jan 18 20:52:58 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 18 20:52:58 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
