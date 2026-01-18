@@ -194,66 +194,56 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
           <Edit2 className="w-3.5 h-3.5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass border-white/10 sm:max-w-[425px]">
+      <DialogContent className="glass border-white/10 sm:max-w-[550px] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Edit Device</DialogTitle>
-          <DialogDescription>
-            Update the monitoring properties for this device.
+          <DialogDescription className="text-sm">
+            Update monitoring properties for this device.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Device Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} data-testid="input-edit-name" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="ip"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>IP Address</FormLabel>
-                  <FormControl>
-                    <Input {...field} data-testid="input-edit-ip" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {form.watch("pollType") !== "ping_only" && (
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-3 overflow-y-auto max-h-[60vh] pr-2">
+            {/* Row 1: Name and IP */}
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="community"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>SNMP Community</FormLabel>
+                    <FormLabel className="text-xs">Device Name</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-edit-community" />
+                      <Input {...field} className="h-9" data-testid="input-edit-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
-            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="ip"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">IP Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="h-9 font-mono" data-testid="input-edit-ip" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Row 2: Type and Site */}
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Device Type</FormLabel>
+                    <FormLabel className="text-xs">Device Type</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-edit-type">
+                        <SelectTrigger className="h-9" data-testid="select-edit-type">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                       </FormControl>
@@ -279,10 +269,10 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
                 name="site"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Site Location</FormLabel>
+                    <FormLabel className="text-xs">Site</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-edit-site">
+                        <SelectTrigger className="h-9" data-testid="select-edit-site">
                           <SelectValue placeholder="Select site" />
                         </SelectTrigger>
                       </FormControl>
@@ -298,174 +288,183 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
               />
             </div>
             
-            <FormField
-              control={form.control}
-              name="pollType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Poll Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value || "snmp_only"}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-edit-poll-type">
-                        <SelectValue placeholder="Select poll type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="ping_only">Ping Only</SelectItem>
-                      <SelectItem value="snmp_only">SNMP Only</SelectItem>
-                      <SelectItem value="ping_and_snmp">Ping AND SNMP</SelectItem>
-                      <SelectItem value="ping_or_snmp">Ping OR SNMP</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {form.watch("pollType") !== "ping_only" && (
+            {/* Row 3: Poll Type and Community */}
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="maxBandwidth"
+                name="pollType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Bandwidth (Mbps)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="100" 
-                        {...field}
-                        value={field.value || 100}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 100)}
-                        data-testid="input-max-bandwidth-edit"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-muted-foreground">
-                      Used to calculate bandwidth utilization percentage
-                    </p>
-                  </FormItem>
-                )}
-              />
-            )}
-            
-            {/* Interface Selection - Hidden for ping-only devices */}
-            {form.watch("pollType") !== "ping_only" && (
-            <div className="border-t border-white/10 pt-4 mt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Network className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">SNMP Interface</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDiscoverEnabled(true);
-                    discoverInterfaces();
-                  }}
-                  disabled={isDiscovering}
-                  data-testid="button-discover-interfaces"
-                >
-                  {isDiscovering ? (
-                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                  ) : (
-                    <RefreshCw className="w-3 h-3 mr-1" />
-                  )}
-                  Discover
-                </Button>
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="interfaceIndex"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Interface to Monitor</FormLabel>
-                    <Select 
-                      onValueChange={(val) => {
-                        const intVal = parseInt(val);
-                        field.onChange(intVal);
-                        const iface = interfaceData?.interfaces?.find(i => i.index === intVal);
-                        if (iface) {
-                          form.setValue("interfaceName", iface.name);
-                        }
-                      }} 
-                      value={String(field.value || 1)}
-                    >
+                    <FormLabel className="text-xs">Poll Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || "snmp_only"}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-edit-interface">
-                          <SelectValue placeholder="Select interface" />
+                        <SelectTrigger className="h-9" data-testid="select-edit-poll-type">
+                          <SelectValue placeholder="Select poll type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {interfaceData?.interfaces && interfaceData.interfaces.length > 0 ? (
-                          interfaceData.interfaces.map((iface) => (
-                            <SelectItem key={iface.index} value={String(iface.index)}>
-                              {iface.index}: {iface.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value={String(device.interfaceIndex || 1)}>
-                            Interface {device.interfaceIndex || 1} {device.interfaceName ? `(${device.interfaceName})` : "(current)"}
-                          </SelectItem>
-                        )}
+                        <SelectItem value="ping_only">Ping Only</SelectItem>
+                        <SelectItem value="snmp_only">SNMP Only</SelectItem>
+                        <SelectItem value="ping_and_snmp">Ping AND SNMP</SelectItem>
+                        <SelectItem value="ping_or_snmp">Ping OR SNMP</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Click "Discover" to scan available network interfaces on this device
-                    </p>
                   </FormItem>
                 )}
               />
-
-              {/* Additional Interfaces Selection */}
-              {interfaceData?.interfaces && interfaceData.interfaces.length > 1 && (
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Layers className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">Additional Interfaces (Optional)</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Select additional interfaces to monitor alongside the primary interface
-                  </p>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {interfaceData.interfaces
-                      .filter(iface => iface.index !== form.getValues("interfaceIndex"))
-                      .map((iface) => (
-                        <label 
-                          key={iface.index}
-                          className="flex items-center gap-2 p-2 rounded-md bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50 transition-colors"
-                        >
-                          <Checkbox
-                            checked={additionalInterfaces.includes(iface.index)}
-                            onCheckedChange={() => toggleAdditionalInterface(iface.index)}
-                            data-testid={`checkbox-interface-${iface.index}`}
-                          />
-                          <span className="text-xs">
-                            {iface.index}: {iface.name}
-                          </span>
-                        </label>
-                      ))}
-                  </div>
-                  {additionalInterfaces.length > 0 && (
-                    <p className="text-xs text-primary mt-2">
-                      {additionalInterfaces.length} additional interface{additionalInterfaces.length > 1 ? 's' : ''} selected
-                    </p>
+              {form.watch("pollType") !== "ping_only" ? (
+                <FormField
+                  control={form.control}
+                  name="community"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">SNMP Community</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-9" data-testid="input-edit-community" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
+                />
+              ) : (
+                <div />
               )}
             </div>
+            
+            {form.watch("pollType") !== "ping_only" && (
+              <>
+                {/* Row 4: Max Bandwidth and Interface */}
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="maxBandwidth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Max Bandwidth (Mbps)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="100" 
+                            {...field}
+                            value={field.value || 100}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 100)}
+                            className="h-9"
+                            data-testid="input-max-bandwidth-edit"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="interfaceIndex"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="text-xs">Interface</FormLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDiscoverEnabled(true);
+                              discoverInterfaces();
+                            }}
+                            disabled={isDiscovering}
+                            className="h-5 px-2 text-xs"
+                            data-testid="button-discover-interfaces"
+                          >
+                            {isDiscovering ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Discover
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <Select 
+                          onValueChange={(val) => {
+                            const intVal = parseInt(val);
+                            field.onChange(intVal);
+                            const iface = interfaceData?.interfaces?.find(i => i.index === intVal);
+                            if (iface) {
+                              form.setValue("interfaceName", iface.name);
+                            }
+                          }} 
+                          value={String(field.value || 1)}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="h-9" data-testid="select-edit-interface">
+                              <SelectValue placeholder="Select interface" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {interfaceData?.interfaces && interfaceData.interfaces.length > 0 ? (
+                              interfaceData.interfaces.map((iface) => (
+                                <SelectItem key={iface.index} value={String(iface.index)}>
+                                  {iface.index}: {iface.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value={String(device.interfaceIndex || 1)}>
+                                Interface {device.interfaceIndex || 1} {device.interfaceName ? `(${device.interfaceName})` : "(current)"}
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Additional Interfaces Selection */}
+                {interfaceData?.interfaces && interfaceData.interfaces.length > 1 && (
+                  <div className="pt-3 border-t border-white/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers className="w-3 h-3 text-primary" />
+                      <span className="text-xs font-medium">Additional Interfaces</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto">
+                      {interfaceData.interfaces
+                        .filter(iface => iface.index !== form.getValues("interfaceIndex"))
+                        .map((iface) => (
+                          <label 
+                            key={iface.index}
+                            className="flex items-center gap-2 p-1.5 rounded-md bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50 transition-colors"
+                          >
+                            <Checkbox
+                              checked={additionalInterfaces.includes(iface.index)}
+                              onCheckedChange={() => toggleAdditionalInterface(iface.index)}
+                              data-testid={`checkbox-interface-${iface.index}`}
+                            />
+                            <span className="text-xs truncate">
+                              {iface.index}: {iface.name}
+                            </span>
+                          </label>
+                        ))}
+                    </div>
+                    {additionalInterfaces.length > 0 && (
+                      <p className="text-xs text-primary mt-1">
+                        {additionalInterfaces.length} additional selected
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
             
-            {form.watch("type") === "ping" && (
-              <div className="text-sm text-muted-foreground bg-secondary/30 p-3 rounded-md border border-white/10 mt-4">
-                <p>Ping-only devices are monitored for online/offline status using ICMP ping. No bandwidth or traffic metrics are collected.</p>
+            {form.watch("pollType") === "ping_only" && (
+              <div className="text-xs text-muted-foreground bg-secondary/30 p-2 rounded-md border border-white/10">
+                Ping-only: monitors online/offline status only, no bandwidth metrics.
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-2 pt-3">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
