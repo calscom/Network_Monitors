@@ -73,6 +73,45 @@ ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 
 -- Add API credentials for MikroTik User Manager REST API polling
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_username text;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_password text;
+
+-- Create user_sessions table for User Manager tracking
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id SERIAL PRIMARY KEY,
+  device_id INTEGER NOT NULL REFERENCES devices(id),
+  site TEXT NOT NULL,
+  session_id TEXT,
+  username TEXT NOT NULL,
+  email TEXT,
+  mac_address TEXT,
+  ip_address TEXT,
+  upload_bytes BIGINT DEFAULT 0 NOT NULL,
+  download_bytes BIGINT DEFAULT 0 NOT NULL,
+  session_start TIMESTAMP,
+  session_end TIMESTAMP,
+  is_active INTEGER DEFAULT 1 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- Create daily_user_stats table for graphing
+CREATE TABLE IF NOT EXISTS daily_user_stats (
+  id SERIAL PRIMARY KEY,
+  device_id INTEGER REFERENCES devices(id),
+  site TEXT NOT NULL,
+  date TIMESTAMP NOT NULL,
+  total_users INTEGER DEFAULT 0 NOT NULL,
+  peak_users INTEGER DEFAULT 0 NOT NULL,
+  total_upload_bytes BIGINT DEFAULT 0 NOT NULL,
+  total_download_bytes BIGINT DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS user_sessions_device_id_idx ON user_sessions(device_id);
+CREATE INDEX IF NOT EXISTS user_sessions_site_idx ON user_sessions(site);
+CREATE INDEX IF NOT EXISTS user_sessions_created_at_idx ON user_sessions(created_at);
+CREATE INDEX IF NOT EXISTS daily_user_stats_date_idx ON daily_user_stats(date);
+CREATE INDEX IF NOT EXISTS daily_user_stats_site_idx ON daily_user_stats(site);
 ```
 
 **Quick command for AWS:**
@@ -82,6 +121,7 @@ sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_interfaces ADD CO
 sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_links ADD COLUMN IF NOT EXISTS max_bandwidth integer DEFAULT 100 NOT NULL;"
 sudo -u postgres psql -d networkmonitor -c "ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_username text;"
 sudo -u postgres psql -d networkmonitor -c "ALTER TABLE devices ADD COLUMN IF NOT EXISTS api_password text;"
+sudo -u postgres psql -d networkmonitor -f /opt/networkmonitor/migrations/user_sessions.sql
 sudo systemctl restart networkmonitor
 ```
 

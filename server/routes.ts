@@ -8,7 +8,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import net from "net";
 import dns from "dns";
-import { insertDeviceSchema, type UserRole, insertNotificationSettingsSchema } from "@shared/schema";
+import { insertDeviceSchema, type UserRole, insertNotificationSettingsSchema, userSessions, dailyUserStats } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { setupAuth, registerAuthRoutes, isAuthenticated, authStorage, getSession } from "./replit_integrations/auth";
 import { testTelegramConnection, notifyDeviceOffline, notifyDeviceRecovery, notifyHighUtilization } from "./notifications";
 
@@ -1481,6 +1483,124 @@ export async function registerRoutes(
     }
   });
 
+  // ============= USER SESSIONS ROUTES =============
+  
+  // Get active user sessions (all sites or filtered by site)
+  app.get("/api/user-sessions", conditionalAuth, async (req, res) => {
+    try {
+      const site = req.query.site as string | undefined;
+      const activeOnly = req.query.active !== 'false';
+      
+      let query = db.select().from(userSessions);
+      
+      if (site) {
+        query = query.where(eq(userSessions.site, site)) as any;
+      }
+      
+      if (activeOnly) {
+        query = query.where(eq(userSessions.isActive, 1)) as any;
+      }
+      
+      const sessions = await query.orderBy(desc(userSessions.createdAt)).limit(1000);
+      res.json(sessions);
+    } catch (err: any) {
+      console.error('Error fetching user sessions:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
+  // Get total active users count (for kiosk summary)
+  app.get("/api/user-sessions/count", async (req, res) => {
+    try {
+      const result = await db.select().from(userSessions).where(eq(userSessions.isActive, 1));
+      res.json({ count: result.length });
+    } catch (err: any) {
+      console.error('Error fetching user count:', err);
+      res.status(500).json({ message: err.message, count: 0 });
+    }
+  });
+  
+  // Get daily user statistics for graphing
+  app.get("/api/user-stats/daily", conditionalAuth, async (req, res) => {
+    try {
+      const days = Number(req.query.days) || 30;
+      const site = req.query.site as string | undefined;
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      startDate.setHours(0, 0, 0, 0);
+      
+      let query = db.select().from(dailyUserStats).where(gte(dailyUserStats.date, startDate));
+      
+      if (site) {
+        query = query.where(and(gte(dailyUserStats.date, startDate), eq(dailyUserStats.site, site))) as any;
+      }
+      
+      const stats = await query.orderBy(dailyUserStats.date);
+      res.json(stats);
+    } catch (err: any) {
+      console.error('Error fetching daily stats:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
+  // Export user sessions as CSV
+  app.get("/api/user-sessions/export", conditionalAuth, async (req, res) => {
+    try {
+      const site = req.query.site as string | undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      let conditions: any[] = [];
+      
+      if (site) {
+        conditions.push(eq(userSessions.site, site));
+      }
+      if (startDate) {
+        conditions.push(gte(userSessions.createdAt, startDate));
+      }
+      if (endDate) {
+        conditions.push(lte(userSessions.createdAt, endDate));
+      }
+      
+      let sessions;
+      if (conditions.length > 0) {
+        sessions = await db.select().from(userSessions).where(and(...conditions)).orderBy(desc(userSessions.createdAt));
+      } else {
+        sessions = await db.select().from(userSessions).orderBy(desc(userSessions.createdAt));
+      }
+      
+      // Build CSV content
+      const headers = ['Username', 'Email', 'MAC Address', 'IP Address', 'Site', 'Session Start', 'Upload (MB)', 'Download (MB)', 'Total Traffic (MB)', 'Active'];
+      const rows = sessions.map(s => {
+        const uploadMB = (Number(s.uploadBytes) / 1048576).toFixed(2);
+        const downloadMB = (Number(s.downloadBytes) / 1048576).toFixed(2);
+        const totalMB = ((Number(s.uploadBytes) + Number(s.downloadBytes)) / 1048576).toFixed(2);
+        return [
+          s.username,
+          s.email || '',
+          s.macAddress || '',
+          s.ipAddress || '',
+          s.site,
+          s.sessionStart ? new Date(s.sessionStart).toISOString() : '',
+          uploadMB,
+          downloadMB,
+          totalMB,
+          s.isActive === 1 ? 'Yes' : 'No'
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+      });
+      
+      const csv = [headers.join(','), ...rows].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="user_sessions_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (err: any) {
+      console.error('Error exporting user sessions:', err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ============= UTILITY ROUTES (Ping & Traceroute) =============
   
   // Helper: TCP-based ping for environments without raw socket access
@@ -1773,9 +1893,28 @@ export async function registerRoutes(
     });
   };
 
+  // MikroTik User Manager session data structure
+  interface UserManagerSession {
+    '.id'?: string;
+    user?: string;
+    customer?: string;
+    'calling-station-id'?: string; // MAC address
+    'framed-ip-address'?: string;
+    'acct-input-octets'?: string;
+    'acct-output-octets'?: string;
+    'from-time'?: string;
+    'till-time'?: string;
+    status?: string;
+  }
+
+  interface UserManagerPollResult {
+    count: number;
+    sessions: UserManagerSession[];
+  }
+
   // Helper function to poll Mikrotik User Manager active users via REST API
   // Uses native https module to properly handle self-signed MikroTik certificates
-  const pollMikrotikUserManagerAPI = async (ip: string, username: string, password: string): Promise<number> => {
+  const pollMikrotikUserManagerAPI = async (ip: string, username: string, password: string): Promise<UserManagerPollResult> => {
     const https = await import('https');
     return new Promise((resolve) => {
       
@@ -1802,35 +1941,109 @@ export async function registerRoutes(
         res.on('end', () => {
           try {
             if (res.statusCode === 200) {
-              const sessions = JSON.parse(data);
+              const sessions = JSON.parse(data) as UserManagerSession[];
               const activeCount = Array.isArray(sessions) ? sessions.length : 0;
               console.log(`[api] User Manager users for ${ip}: ${activeCount}`);
-              resolve(activeCount);
+              resolve({ count: activeCount, sessions: Array.isArray(sessions) ? sessions : [] });
             } else {
               console.log(`[api] User Manager API failed for ${ip}: HTTPS ${res.statusCode}`);
-              resolve(0);
+              resolve({ count: 0, sessions: [] });
             }
           } catch (parseError) {
             console.log(`[api] User Manager API parse error for ${ip}: ${parseError}`);
-            resolve(0);
+            resolve({ count: 0, sessions: [] });
           }
         });
       });
       
       req.on('error', (error: any) => {
         console.log(`[api] User Manager API error for ${ip}: ${error.message}`);
-        resolve(0);
+        resolve({ count: 0, sessions: [] });
       });
       
       req.on('timeout', () => {
         console.log(`[api] User Manager API timeout for ${ip}`);
         req.destroy();
-        resolve(0);
+        resolve({ count: 0, sessions: [] });
       });
       
       req.write(JSON.stringify({}));
       req.end();
     });
+  };
+  
+  // Helper function to save user sessions to database
+  const saveUserSessions = async (deviceId: number, site: string, sessions: UserManagerSession[]) => {
+    try {
+      // Mark existing active sessions as ended
+      await db.update(userSessions)
+        .set({ isActive: 0, updatedAt: new Date() })
+        .where(and(eq(userSessions.deviceId, deviceId), eq(userSessions.isActive, 1)));
+      
+      // Insert new active sessions
+      for (const session of sessions) {
+        const username = session.user || session.customer || 'unknown';
+        const sessionId = session['.id'] || null;
+        const macAddress = session['calling-station-id'] || null;
+        const ipAddress = session['framed-ip-address'] || null;
+        const uploadBytes = BigInt(session['acct-output-octets'] || '0');
+        const downloadBytes = BigInt(session['acct-input-octets'] || '0');
+        
+        await db.insert(userSessions).values({
+          deviceId,
+          site,
+          sessionId,
+          username,
+          macAddress,
+          ipAddress,
+          uploadBytes,
+          downloadBytes,
+          isActive: 1,
+          sessionStart: session['from-time'] ? new Date(session['from-time']) : new Date(),
+        });
+      }
+      
+      // Update daily stats
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const existingStats = await db.select()
+        .from(dailyUserStats)
+        .where(and(
+          eq(dailyUserStats.site, site),
+          eq(dailyUserStats.date, today)
+        ))
+        .limit(1);
+      
+      const totalUpload = sessions.reduce((sum, s) => sum + BigInt(s['acct-output-octets'] || '0'), BigInt(0));
+      const totalDownload = sessions.reduce((sum, s) => sum + BigInt(s['acct-input-octets'] || '0'), BigInt(0));
+      
+      if (existingStats.length > 0) {
+        const newPeak = Math.max(existingStats[0].peakUsers, sessions.length);
+        await db.update(dailyUserStats)
+          .set({
+            totalUsers: sessions.length,
+            peakUsers: newPeak,
+            totalUploadBytes: totalUpload,
+            totalDownloadBytes: totalDownload
+          })
+          .where(eq(dailyUserStats.id, existingStats[0].id));
+      } else {
+        await db.insert(dailyUserStats).values({
+          deviceId,
+          site,
+          date: today,
+          totalUsers: sessions.length,
+          peakUsers: sessions.length,
+          totalUploadBytes: totalUpload,
+          totalDownloadBytes: totalDownload
+        });
+      }
+      
+      console.log(`[api] Saved ${sessions.length} user sessions for device ${deviceId}`);
+    } catch (error) {
+      console.error(`[api] Failed to save user sessions: ${error}`);
+    }
   };
 
   // Helper function to ping a device (ICMP ping via system command)
@@ -2058,8 +2271,10 @@ export async function registerRoutes(
           try {
             // Use User Manager API if poll type is usermanager_api and credentials are available
             if (device.pollType === 'usermanager_api' && device.apiUsername && device.apiPassword) {
-              const polledUsers = await pollMikrotikUserManagerAPI(device.ip, device.apiUsername, device.apiPassword);
-              activeUsers = polledUsers;
+              const pollResult = await pollMikrotikUserManagerAPI(device.ip, device.apiUsername, device.apiPassword);
+              activeUsers = pollResult.count;
+              // Always save user sessions to database (handles zero sessions case to reset active flags)
+              await saveUserSessions(device.id, device.site, pollResult.sessions);
             } else {
               // Default to SNMP hotspot polling
               const polledUsers = await pollMikrotikActiveUsers(device.ip, device.community);

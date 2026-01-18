@@ -4,19 +4,26 @@ import { Loader2, Activity, AlertCircle, Users } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { useSites } from "@/hooks/use-sites";
+import { useQuery } from "@tanstack/react-query";
 
 export default function KioskMap() {
   const { data: devices = [], isLoading } = useDevices();
   const { siteNames: sites, isLoading: sitesLoading } = useSites();
+  
+  const { data: activeUsersData } = useQuery<{ count: number }>({
+    queryKey: ['/api/user-sessions/count'],
+    refetchInterval: 5000,
+  });
 
   const stats = useMemo(() => {
     const total = devices.length;
-    // Status values are: green (online), yellow (warning), blue (recovering), red (offline)
     const online = devices.filter(d => d.status === "green").length;
     const critical = devices.filter(d => d.status === "red" || d.status === "blue").length;
-    const hotspotUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
-    return { total, online, critical, hotspotUsers };
-  }, [devices]);
+    const deviceHotspotUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
+    // Prefer API count when available (even if 0), fall back to device data if API unavailable
+    const activeUsers = activeUsersData?.count ?? deviceHotspotUsers;
+    return { total, online, critical, activeUsers };
+  }, [devices, activeUsersData]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -65,8 +72,8 @@ export default function KioskMap() {
         
         <Card className="p-3 flex items-center justify-between" data-testid="card-hotspot-users">
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Hotspot Users</p>
-            <p className="text-2xl font-bold text-blue-500">{stats.hotspotUsers}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Users</p>
+            <p className="text-2xl font-bold text-blue-500">{stats.activeUsers}</p>
           </div>
           <Users className="h-8 w-8 text-blue-500" />
         </Card>

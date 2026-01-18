@@ -48,6 +48,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useSites } from "@/hooks/use-sites";
+import { DailyUsersChart } from "@/components/DailyUsersChart";
 
 // Sortable wrapper for device cards
 function SortableDeviceCard({ device, canManage }: { device: Device; canManage: boolean }) {
@@ -96,6 +97,12 @@ export default function Dashboard() {
   const canManageDevices = userRole === 'admin' || userRole === 'operator';
   const { toast } = useToast();
   const bulkDeleteMutation = useBulkDeleteDevices();
+  
+  // Fetch active users count from API
+  const { data: activeUsersData } = useQuery<{ count: number }>({
+    queryKey: ['/api/user-sessions/count'],
+    refetchInterval: 5000,
+  });
   
   // Fetch sites from centralized hook
   const { sites: sitesData, siteNames: sites, renameSite } = useSites();
@@ -224,12 +231,13 @@ export default function Dashboard() {
     setIsEditing(false);
   };
 
-  // Stats calculation
+  // Stats calculation - prefer API count when available (even if 0), fall back to device data if API unavailable
+  const deviceHotspotUsers = devices?.reduce((sum, d) => sum + (d.activeUsers || 0), 0) || 0;
   const stats = {
     total: devices?.length || 0,
     online: devices?.filter(d => d.status === 'green').length || 0,
     critical: devices?.filter(d => d.status === 'red' || d.status === 'blue').length || 0,
-    hotspotUsers: devices?.reduce((sum, d) => sum + (d.activeUsers || 0), 0) || 0,
+    activeUsers: activeUsersData?.count ?? deviceHotspotUsers,
   };
 
   // Search filter function
@@ -479,14 +487,17 @@ export default function Dashboard() {
             data-testid="card-hotspot-users"
           >
             <div>
-              <p className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Hotspot Users</p>
-              <p className="text-2xl sm:text-3xl font-bold font-mono mt-1 text-blue-500">{stats.hotspotUsers}</p>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Active Users</p>
+              <p className="text-2xl sm:text-3xl font-bold font-mono mt-1 text-blue-500">{stats.activeUsers}</p>
             </div>
             <div className="p-2 sm:p-3 bg-blue-500/10 rounded-full text-blue-500">
               <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </motion.div>
         </div>
+
+        {/* Daily Users Chart */}
+        <DailyUsersChart />
 
         {/* Network Map View */}
         {viewMode === "map" && devices && (
