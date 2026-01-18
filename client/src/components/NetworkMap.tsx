@@ -269,7 +269,7 @@ function DraggableDeviceBox({ device, position, onDragEnd, editMode, showTraffic
           </div>
         )}
         <div className="text-[8px] font-bold text-foreground truncate max-w-[80px]" title={device.name}>
-          {device.name}
+          {device.name.slice(-6)}
         </div>
         
         {showTraffic && device.status === 'green' && hasTraffic && (
@@ -338,9 +338,8 @@ function CompactDeviceBox({ device, editMode, position, onDragEnd }: {
   onDragEnd: (deviceId: number, position: Position) => void;
 }) {
   const statusColor = getStatusColor(device.status);
-  const shortName = device.name
-    .replace(/^(UAP-?|AP-?|UNIFI-?|ACC-?|ACCESS-?)/i, '')
-    .slice(0, 8);
+  // Use last 6 characters of device name for compact label
+  const shortName = device.name.slice(-6);
   
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -702,17 +701,14 @@ function GridTierRow({
         <div className="w-0.5 h-3 bg-green-500/60" />
       )}
       <div 
-        className="grid gap-1 w-full justify-items-center"
-        style={{ 
-          gridTemplateColumns: `repeat(${Math.min(devices.length, columns)}, minmax(0, 1fr))` 
-        }}
+        className="flex flex-wrap gap-1 w-full justify-center"
       >
         {devices.map(device => {
           const devicePos = positions[device.id] || { x: 0, y: 0 };
           const link = getDeviceLink(device.id);
           
           return (
-            <div key={device.id} className="flex flex-col items-center">
+            <div key={device.id} className="flex flex-col items-center flex-shrink-0">
               {isCompactTier ? (
                 <CompactDeviceBox
                   device={device}
@@ -792,7 +788,7 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
-      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden min-w-[120px] max-w-[180px] transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
+      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden w-[140px] flex-shrink-0 transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
       onClick={handleClick}
       data-testid={`site-column-${index}`}
     >
@@ -802,13 +798,13 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
         </div>
       </div>
       
-      <div className="flex-1 p-1 bg-gray-900/50 min-h-[200px] max-h-[70vh] overflow-y-auto relative">
+      <div className="flex-1 p-1 bg-gray-900/50 min-h-[180px] max-h-[60vh] overflow-y-auto overflow-x-hidden relative">
         {column.devices.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground/50 text-[10px] italic">
             No devices
           </div>
         ) : (
-          <div className="flex flex-col items-center space-y-0">
+          <div className="flex flex-col items-center gap-0.5">
             {/* Tier 0: PTP/PmPT devices (at top) */}
             <GridTierRow 
               tier="ptp" 
