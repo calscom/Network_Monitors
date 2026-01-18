@@ -754,12 +754,30 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
     return groupDevicesByTier(column.devices);
   }, [column.devices]);
   
-  // Check if this is Maiduguri site (for UAP column count)
+  // Check if this is Maiduguri site (for UAP column count and double width)
   // Match "02 HH Maiduguri" or just "Maiduguri" but NOT any site with "02" in it
   const siteName = column.site.toUpperCase();
   const isMaiduguri = siteName.includes('MAIDUGURI') || siteName.startsWith('02 HH');
   const uapColumns = isMaiduguri ? 5 : 2;
   const accColumns = 3;
+  
+  // Calculate responsive column width based on device count and site type
+  // Maiduguri gets double width (280px), others scale based on max devices in any tier
+  const maxDevicesInTier = Math.max(
+    tierGroups.ptp.length,
+    tierGroups.isp.length,
+    tierGroups.firewall.length,
+    tierGroups.router.length,
+    tierGroups.distribution.length,
+    Math.ceil(tierGroups.access.length / accColumns),
+    Math.ceil(tierGroups.ap.length / uapColumns),
+    tierGroups.other.length
+  );
+  const baseWidth = isMaiduguri ? 280 : 140;
+  // Expand width if many devices (each additional device beyond 2 adds 40px)
+  const responsiveWidth = isMaiduguri 
+    ? baseWidth 
+    : Math.max(baseWidth, 100 + maxDevicesInTier * 45);
   
   const hasDownDevice = column.devices.some(d => d.status === 'red');
   const allDown = column.devices.length > 0 && column.devices.every(d => d.status === 'red');
@@ -788,7 +806,8 @@ function SiteColumnView({ column, index, onSiteClick, deviceLinks, allDevices, e
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
-      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden w-[140px] flex-shrink-0 transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
+      className={`flex flex-col bg-card/80 border border-border/50 rounded overflow-hidden flex-shrink-0 transition-colors ${editMode ? 'border-blue-500/50' : 'cursor-pointer hover:border-primary/50'}`}
+      style={{ width: `${responsiveWidth}px` }}
       onClick={handleClick}
       data-testid={`site-column-${index}`}
     >
