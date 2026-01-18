@@ -67,6 +67,50 @@ sudo -u postgres psql -d networkmonitor -c "ALTER TABLE device_links ADD COLUMN 
 sudo systemctl restart networkmonitor
 ```
 
+## Uninstallation (Self-Hosted AWS/Vultr)
+
+To completely remove the Network Monitor from your self-hosted server:
+
+### Step 1: Stop and Disable the Service
+```bash
+sudo systemctl stop networkmonitor
+sudo systemctl disable networkmonitor
+sudo rm /etc/systemd/system/networkmonitor.service
+sudo systemctl daemon-reload
+```
+
+### Step 2: Remove Application Files
+```bash
+sudo rm -rf /opt/networkmonitor
+# Or wherever you installed the app
+```
+
+### Step 3: Drop the Database (Optional - Only if you want to remove all data)
+```bash
+# Drop the database and user
+sudo -u postgres psql -c "DROP DATABASE IF EXISTS networkmonitor;"
+sudo -u postgres psql -c "DROP USER IF EXISTS networkmonitor;"
+```
+
+### Step 4: Remove Nginx Configuration (if configured)
+```bash
+sudo rm /etc/nginx/sites-enabled/networkmonitor
+sudo rm /etc/nginx/sites-available/networkmonitor
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Step 5: Remove SSL Certificates (if using Let's Encrypt)
+```bash
+sudo certbot delete --cert-name yourdomain.com
+```
+
+### Complete One-Liner for AWS/Vultr
+```bash
+sudo systemctl stop networkmonitor && sudo systemctl disable networkmonitor && sudo rm -f /etc/systemd/system/networkmonitor.service && sudo systemctl daemon-reload && sudo rm -rf /opt/networkmonitor && sudo -u postgres psql -c "DROP DATABASE IF EXISTS networkmonitor;" && sudo -u postgres psql -c "DROP USER IF EXISTS networkmonitor;" && echo "Network Monitor uninstalled successfully"
+```
+
+**Note**: If you only want to reinstall (keeping database data), skip Step 3.
+
 ## External Dependencies
 
 ### Database
