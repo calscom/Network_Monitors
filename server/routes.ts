@@ -2265,21 +2265,15 @@ export async function registerRoutes(
         // Track availability: increment totalChecks, and successfulChecks on success
         const isSuccess = newStatus === 'green' || newStatus === 'blue';
         
-        // Poll active users for Mikrotik devices (preserve last known value on failure)
+        // Poll active users for Mikrotik devices via SNMP (User Manager API runs independently)
+        // Preserve last known value on failure
         let activeUsers = device.activeUsers || 0;
-        if (device.type === 'mikrotik' && isSuccess) {
+        if (device.type === 'mikrotik' && isSuccess && !device.apiUsername) {
+          // Only poll via SNMP if device doesn't have User Manager API credentials
+          // (devices with API credentials are polled by the independent User Manager polling loop)
           try {
-            // Use User Manager API if poll type is usermanager_api and credentials are available
-            if (device.pollType === 'usermanager_api' && device.apiUsername && device.apiPassword) {
-              const pollResult = await pollMikrotikUserManagerAPI(device.ip, device.apiUsername, device.apiPassword);
-              activeUsers = pollResult.count;
-              // Always save user sessions to database (handles zero sessions case to reset active flags)
-              await saveUserSessions(device.id, device.site, pollResult.sessions);
-            } else {
-              // Default to SNMP hotspot polling
-              const polledUsers = await pollMikrotikActiveUsers(device.ip, device.community);
-              activeUsers = polledUsers;
-            }
+            const polledUsers = await pollMikrotikActiveUsers(device.ip, device.community);
+            activeUsers = polledUsers;
           } catch (err) {
             console.log(`[snmp] Could not poll hotspot users for ${device.name}: ${err}`);
             // Keep the existing activeUsers value (already set above)
@@ -2304,6 +2298,12 @@ export async function registerRoutes(
           return;
         }
         
+        // For devices with User Manager API credentials, preserve the activeUsers from independent polling
+        // For devices without API credentials, use the SNMP-polled value
+        const finalActiveUsers = device.apiUsername && device.apiPassword 
+          ? freshDevice.activeUsers 
+          : activeUsers;
+        
         await storage.updateDeviceMetrics(device.id, {
           status: newStatus,
           utilization: newUtilization,
@@ -2314,7 +2314,7 @@ export async function registerRoutes(
           lastOutCounter,
           totalChecks: freshDevice.totalChecks + 1,
           successfulChecks: isSuccess ? freshDevice.successfulChecks + 1 : freshDevice.successfulChecks,
-          activeUsers
+          activeUsers: finalActiveUsers
         });
 
         if (isSuccess && newUtilization >= 90) {
@@ -2547,6 +2547,13 @@ export async function registerRoutes(
     const freshDevice = await storage.getDevice(device.id);
     if (!freshDevice) return;
     
+    // For devices with User Manager API credentials, always preserve activeUsers from independent polling
+    // For other ping_only devices without API credentials, set to 0
+    const hasUserManagerAPI = device.apiUsername && device.apiPassword;
+    const finalActiveUsers = hasUserManagerAPI 
+      ? freshDevice.activeUsers 
+      : (isPingOnlyMode ? 0 : freshDevice.activeUsers);
+    
     await storage.updateDeviceMetrics(device.id, {
       status: newStatus,
       utilization: isPingOnlyMode ? 0 : freshDevice.utilization,
@@ -2557,7 +2564,7 @@ export async function registerRoutes(
       lastOutCounter: isPingOnlyMode ? BigInt(0) : freshDevice.lastOutCounter,
       totalChecks: freshDevice.totalChecks + 1,
       successfulChecks: isOnline ? freshDevice.successfulChecks + 1 : freshDevice.successfulChecks,
-      activeUsers: isPingOnlyMode ? 0 : freshDevice.activeUsers
+      activeUsers: finalActiveUsers
     });
   };
 
@@ -2667,6 +2674,54 @@ export async function registerRoutes(
     linkUpdateInterval = setInterval(updateDeviceLinks, 5000);
   };
   
+  // User Manager API polling - runs independently of SNMP/ping polling
+  let userManagerPollingInterval: NodeJS.Timeout | null = null;
+  
+  const pollUserManagerAPIs = async () => {
+    if (isAvailabilityResetInProgress) return;
+    
+    try {
+      const devices = await storage.getDevices();
+      // Poll all devices that have User Manager API credentials configured
+      const userManagerDevices = devices.filter(d => d.apiUsername && d.apiPassword);
+      
+      if (userManagerDevices.length === 0) return;
+      
+      console.log(`[usermanager] Polling ${userManagerDevices.length} devices with User Manager API`);
+      
+      for (const device of userManagerDevices) {
+        try {
+          const pollResult = await pollMikrotikUserManagerAPI(device.ip, device.apiUsername!, device.apiPassword!);
+          console.log(`[usermanager] ${device.name}: ${pollResult.count} active sessions`);
+          
+          // Save user sessions to database (handles zero sessions case to reset active flags)
+          await saveUserSessions(device.id, device.site, pollResult.sessions);
+          
+          // Update device activeUsers count using partial update (preserves other metrics)
+          await storage.updateDevice(device.id, {
+            activeUsers: pollResult.count
+          });
+        } catch (err) {
+          console.log(`[usermanager] Failed to poll ${device.name}: ${err}`);
+        }
+      }
+    } catch (err) {
+      console.error('[usermanager] Error in User Manager API polling:', err);
+    }
+  };
+  
+  // Start User Manager API polling every 30 seconds (independent of device status polling)
+  const startUserManagerPolling = () => {
+    if (userManagerPollingInterval) {
+      clearInterval(userManagerPollingInterval);
+    }
+    // Initial poll immediately
+    pollUserManagerAPIs();
+    // Then poll every 30 seconds
+    userManagerPollingInterval = setInterval(pollUserManagerAPIs, 30000);
+    console.log('[usermanager] Started independent User Manager API polling (30s interval)');
+  };
+  
   // Re-initialize polling when devices are added/removed
   const refreshPollingSchedule = async () => {
     console.log('[poll] Refreshing polling schedule for device changes');
@@ -2692,6 +2747,7 @@ export async function registerRoutes(
   // Start continuous staggered polling
   initializeStaggeredPolling();
   startLinkUpdates();
+  startUserManagerPolling();
 
   // Month-end availability reset scheduler
   // Runs at 23:59 on the last day of each month
