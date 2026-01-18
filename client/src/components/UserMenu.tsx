@@ -53,7 +53,11 @@ export function UserMenu() {
   const [deletePassword, setDeletePassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const isReplitEnvironment = !!import.meta.env.VITE_REPLIT_ENV || window.location.hostname.includes('replit');
+  const isReplitEnvironment = !!import.meta.env.VITE_REPLIT_ENV || 
+    window.location.hostname.includes('replit') ||
+    window.location.hostname.includes('repl.co') ||
+    window.location.hostname.endsWith('.replit.dev') ||
+    window.location.hostname.endsWith('.replit.app');
 
   if (!user) return null;
 

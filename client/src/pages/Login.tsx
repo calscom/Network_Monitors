@@ -13,6 +13,8 @@ import { Loader2, Activity, Lock, Mail, User, Wifi, Shield, Users, LogIn } from 
 const isReplitEnvironment = typeof window !== "undefined" && 
   (window.location.hostname.includes("replit") || 
    window.location.hostname.includes("repl.co") ||
+   window.location.hostname.endsWith(".replit.dev") ||
+   window.location.hostname.endsWith(".replit.app") ||
    !!import.meta.env.VITE_REPLIT_ENV);
 
 export default function Login() {

@@ -4,6 +4,8 @@ import type { User } from "@shared/models/auth";
 const isReplitEnvironment = typeof window !== "undefined" && 
   (window.location.hostname.includes("replit") || 
    window.location.hostname.includes("repl.co") ||
+   window.location.hostname.endsWith(".replit.dev") ||
+   window.location.hostname.endsWith(".replit.app") ||
    !!import.meta.env.VITE_REPLIT_ENV);
 
 async function fetchUser(): Promise<User | null> {
