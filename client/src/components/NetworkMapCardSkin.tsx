@@ -17,8 +17,11 @@ interface SiteData {
 }
 
 function getStatusIcon(status: string) {
-  if (status === "green" || status === "blue") {
+  if (status === "green") {
     return <CheckCircle className="w-4 h-4 text-green-500" />;
+  }
+  if (status === "blue") {
+    return <CheckCircle className="w-4 h-4 text-blue-500" />;
   }
   return <XCircle className="w-4 h-4 text-red-500" />;
 }
@@ -38,35 +41,37 @@ function formatTrafficPercent(device: Device): string {
   return `${Math.round(total)}%`;
 }
 
+function getStatusColors(status: string) {
+  if (status === "green") {
+    return { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400', badge: 'bg-green-500/20 text-green-300', line: 'bg-green-500' };
+  }
+  if (status === "blue") {
+    return { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-300', line: 'bg-blue-500' };
+  }
+  return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', badge: 'bg-red-500/20 text-red-300', line: 'bg-red-500' };
+}
+
 function DeviceRow({ device, showTrafficLine = false }: { device: Device; showTrafficLine?: boolean }) {
-  const isOnline = device.status === "green" || device.status === "blue";
   const availability = formatAvailability(device);
   const trafficPercent = formatTrafficPercent(device);
+  const colors = getStatusColors(device.status);
   
   return (
     <div className="flex flex-col items-center" data-testid={`card-device-${device.id}`}>
       {showTrafficLine && (
         <div className="flex flex-col items-center mb-1">
-          <div className={`w-0.5 h-4 ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+          <div className={`w-0.5 h-4 ${colors.line}`} />
           {trafficPercent && (
             <span className="text-[10px] text-muted-foreground">{trafficPercent}</span>
           )}
         </div>
       )}
-      <div 
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-md border ${
-          isOnline 
-            ? 'bg-green-500/10 border-green-500/30' 
-            : 'bg-red-500/10 border-red-500/30'
-        }`}
-      >
+      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border ${colors.bg} ${colors.border}`}>
         {getStatusIcon(device.status)}
-        <span className={`text-sm font-medium ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
+        <span className={`text-sm font-medium ${colors.text}`}>
           {device.name}
         </span>
-        <span className={`text-xs px-1.5 py-0.5 rounded ${
-          isOnline ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
-        }`}>
+        <span className={`text-xs px-1.5 py-0.5 rounded ${colors.badge}`}>
           {availability}
         </span>
       </div>
@@ -123,22 +128,26 @@ export function NetworkMapCardSkin({ devices, sites }: NetworkMapCardSkinProps) 
   const siteDataList = useMemo(() => {
     return sites.map(site => {
       const siteDevices = devices.filter(d => d.site === site);
-      const onlineCount = siteDevices.filter(d => d.status === "green" || d.status === "blue").length;
-      const offlineCount = siteDevices.filter(d => d.status === "red").length;
+      // Count only green as "up", blue (recovering) and red (offline) as "down"
+      // This matches the dashboard's "Online & Stable" vs "Critical / Recovering" terminology
+      const onlineCount = siteDevices.filter(d => d.status === "green").length;
+      const offlineCount = siteDevices.filter(d => d.status === "red" || d.status === "blue").length;
       const userCount = siteDevices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
       
+      // Sort: green first, then blue (recovering), then red (offline)
+      const statusOrder: Record<string, number> = { green: 0, blue: 1, red: 2 };
       const sortedDevices = [...siteDevices].sort((a, b) => {
-        const aOnline = a.status === "green" || a.status === "blue" ? 1 : 0;
-        const bOnline = b.status === "green" || b.status === "blue" ? 1 : 0;
-        if (aOnline !== bOnline) return bOnline - aOnline;
+        const aOrder = statusOrder[a.status] ?? 3;
+        const bOrder = statusOrder[b.status] ?? 3;
+        if (aOrder !== bOrder) return aOrder - bOrder;
         return a.name.localeCompare(b.name);
       });
       
       return {
         site,
         devices: sortedDevices,
-        onlineCount,
-        offlineCount,
+        onlineCount, // Only green = "up"
+        offlineCount, // Blue + Red = "down" (matches dashboard Critical/Recovering)
         deviceCount: siteDevices.length,
         userCount
       };
