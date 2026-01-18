@@ -1,0 +1,48 @@
+root@Calsq-Server:/opt/networkmonitor# journalctl -u networkmonitor -f
+Jan 18 20:55:34 Calsq-Server node[3690890]:   severity: 'ERROR',
+Jan 18 20:55:34 Calsq-Server node[3690890]:   code: '42703',
+Jan 18 20:55:34 Calsq-Server node[3690890]:   position: '188',
+Jan 18 20:55:34 Calsq-Server node[3690890]:   file: 'parse_relation.c',
+Jan 18 20:55:34 Calsq-Server node[3690890]:   line: '3647',
+Jan 18 20:55:34 Calsq-Server node[3690890]:   routine: 'errorMissingColumn'
+Jan 18 20:55:34 Calsq-Server node[3690890]: }
+Jan 18 20:55:34 Calsq-Server node[3690890]: Node.js v25.2.1
+Jan 18 20:55:34 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 18 20:55:34 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
+Jan 18 20:55:44 Calsq-Server systemd[1]: networkmonitor.service: Scheduled restart job, restart counter is at 64.
+Jan 18 20:55:44 Calsq-Server systemd[1]: Stopped Network Monitor Dashboard.
+Jan 18 20:55:44 Calsq-Server systemd[1]: Started Network Monitor Dashboard.
+Jan 18 20:55:45 Calsq-Server node[3690905]: [auth] Self-hosted mode: using local username/password authentication
+Jan 18 20:55:45 Calsq-Server node[3690905]: [settings] Using default polling interval: 5000ms
+Jan 18 20:55:45 Calsq-Server node[3690905]: [usermanager] Started independent User Manager API polling (30s interval)
+Jan 18 20:55:45 Calsq-Server node[3690905]: [availability] Month-end availability scheduler started
+Jan 18 20:55:45 Calsq-Server node[3690905]: 8:55:45 PM [express] serving on port 5000
+Jan 18 20:55:45 Calsq-Server node[3690905]: [poll] Initializing staggered polling for 11 devices
+Jan 18 20:55:45 Calsq-Server node[3690905]: [poll] Polling interval: 5000ms, offset per device: 363ms
+Jan 18 20:55:45 Calsq-Server node[3690905]: [poll] Scheduled 11 devices for continuous staggered polling
+Jan 18 20:55:45 Calsq-Server node[3690905]: [snmp] Polling CIA-Calscore at 10.10.10.1 interface 1 (interval: 5s)...
+Jan 18 20:55:45 Calsq-Server node[3690905]: [snmp] Response from CIA-Calscore: IN=3252648586, OUT=2349679613
+Jan 18 20:55:45 Calsq-Server node[3690905]: [snmp] Hotspot users for 10.10.10.1: 8 (AAA sessions)
+Jan 18 20:55:45 Calsq-Server node[3690905]: node:internal/process/promises:332
+Jan 18 20:55:45 Calsq-Server node[3690905]:     triggerUncaughtException(err, true /* fromPromise */);
+Jan 18 20:55:45 Calsq-Server node[3690905]:     ^
+Jan 18 20:55:45 Calsq-Server node[3690905]: PostgresError: column "total_checks" does not exist
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at ErrorResponse (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:815:30)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at handle (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:489:6)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at Socket.data (/opt/networkmonitor/node_modules/postgres/cjs/src/connection.js:324:9)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at Socket.emit (node:events:508:28)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at addChunk (node:internal/streams/readable:559:12)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at Readable.push (node:internal/streams/readable:390:5)
+Jan 18 20:55:45 Calsq-Server node[3690905]:     at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+Jan 18 20:55:45 Calsq-Server node[3690905]:   severity_local: 'ERROR',
+Jan 18 20:55:45 Calsq-Server node[3690905]:   severity: 'ERROR',
+Jan 18 20:55:45 Calsq-Server node[3690905]:   code: '42703',
+Jan 18 20:55:45 Calsq-Server node[3690905]:   position: '188',
+Jan 18 20:55:45 Calsq-Server node[3690905]:   file: 'parse_relation.c',
+Jan 18 20:55:45 Calsq-Server node[3690905]:   line: '3647',
+Jan 18 20:55:45 Calsq-Server node[3690905]:   routine: 'errorMissingColumn'
+Jan 18 20:55:45 Calsq-Server node[3690905]: }
+Jan 18 20:55:45 Calsq-Server node[3690905]: Node.js v25.2.1
+Jan 18 20:55:45 Calsq-Server systemd[1]: networkmonitor.service: Main process exited, code=exited, status=1/FAILURE
+Jan 18 20:55:45 Calsq-Server systemd[1]: networkmonitor.service: Failed with result 'exit-code'.
