@@ -1144,15 +1144,12 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
         </div>
       )}
 
-      <div className={`flex-1 p-2 overflow-x-auto overflow-y-hidden ${kioskMode ? 'min-h-0' : ''}`}>
+      <div className={`flex-1 p-2 overflow-x-auto overflow-y-auto ${kioskMode ? 'min-h-0' : ''}`}>
         <div 
           className={layoutMode === "horizontal" 
             ? "flex gap-2 min-w-max h-full" 
-            : "grid gap-2 auto-rows-fr"
+            : "flex flex-wrap gap-2 content-start"
           }
-          style={layoutMode === "grid" ? {
-            gridTemplateColumns: `repeat(auto-fill, minmax(140px, 1fr))`
-          } : undefined}
         >
           {columns.map((column, index) => (
             <SiteColumnView
