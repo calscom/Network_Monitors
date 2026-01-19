@@ -236,6 +236,9 @@ export async function registerRoutes(
       grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
       gap: 4px;
     }
+    .devices-grid.cols-6 {
+      grid-template-columns: repeat(6, 1fr);
+    }
     .device {
       width: 100%;
       aspect-ratio: 1;
@@ -319,13 +322,14 @@ export async function registerRoutes(
         return (order[a.status || 'gray'] || 3) - (order[b.status || 'gray'] || 3);
       });
       
+      const isMaiduguri = site.toLowerCase().includes('maiduguri');
       return `
         <div class="site-card">
           <div class="site-header">
             <span>${site}</span>
             <span class="site-status">${up} up / ${down} down</span>
           </div>
-          <div class="devices-grid">
+          <div class="devices-grid${isMaiduguri ? ' cols-6' : ''}">
             ${sorted.map(d => `
               <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
                 ${d.name.length > 10 ? d.name.substring(0, 8) + '..' : d.name}
