@@ -140,8 +140,11 @@ export async function registerRoutes(
   // No React, no heavy JavaScript - just plain HTML with auto-refresh
   app.get("/kiosk-lite", async (req, res) => {
     try {
-      const devices = await storage.getAllDevices();
+      console.log("[kiosk-lite] Loading devices and sites...");
+      const devices = await storage.getDevices();
+      console.log(`[kiosk-lite] Loaded ${devices.length} devices`);
       const sites = await storage.getSites();
+      console.log(`[kiosk-lite] Loaded ${sites.length} sites`);
       
       // Calculate stats
       const total = devices.length;
@@ -348,8 +351,8 @@ export async function registerRoutes(
       res.setHeader('Content-Type', 'text/html');
       res.send(html);
     } catch (err: any) {
-      console.error("Error generating kiosk-lite:", err);
-      res.status(500).send("Error loading kiosk view");
+      console.error("[kiosk-lite] Error:", err.message, err.stack);
+      res.status(500).send(`Error loading kiosk view: ${err.message}`);
     }
   });
 
