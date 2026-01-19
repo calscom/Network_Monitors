@@ -136,6 +136,223 @@ export async function registerRoutes(
     res.json(updatedUser);
   });
 
+  // Lightweight HTML-only kiosk page for low-memory devices (Raspberry Pi)
+  // No React, no heavy JavaScript - just plain HTML with auto-refresh
+  app.get("/kiosk-lite", async (req, res) => {
+    try {
+      const devices = await storage.getAllDevices();
+      const sites = await storage.getSites();
+      
+      // Calculate stats
+      const total = devices.length;
+      const online = devices.filter(d => d.status === "green").length;
+      const critical = devices.filter(d => d.status === "red" || d.status === "blue").length;
+      const activeUsers = devices.reduce((sum, d) => sum + (d.activeUsers || 0), 0);
+      
+      // Group devices by site
+      const devicesBySite: Record<string, typeof devices> = {};
+      const siteOrder = sites.map(s => s.name);
+      
+      for (const site of siteOrder) {
+        devicesBySite[site] = devices.filter(d => d.site === site);
+      }
+      
+      // Generate HTML
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="30">
+  <title>Network Monitor - Kiosk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      padding: 8px;
+      min-height: 100vh;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .stat-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .stat-value.green { color: #22c55e; }
+    .stat-value.red { color: #ef4444; }
+    .stat-value.blue { color: #3b82f6; }
+    .stat-value.primary { color: #6366f1; }
+    
+    .sites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+    }
+    .site-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .site-header {
+      font-size: 12px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .site-status {
+      font-size: 10px;
+      color: #888;
+    }
+    .devices-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 4px;
+    }
+    .device {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 500;
+      text-align: center;
+      padding: 2px;
+      word-break: break-all;
+      overflow: hidden;
+    }
+    .device.green { background: #166534; color: #bbf7d0; }
+    .device.red { background: #991b1b; color: #fecaca; }
+    .device.blue { background: #1e40af; color: #bfdbfe; }
+    .device.gray { background: #374151; color: #9ca3af; }
+    
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a1a;
+      padding: 4px 8px;
+      font-size: 10px;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #333;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .legend-dot.green { background: #22c55e; }
+    .legend-dot.blue { background: #3b82f6; }
+    .legend-dot.red { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Devices</div>
+      <div class="stat-value primary">${total}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Online & Stable</div>
+      <div class="stat-value green">${online}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Critical / Recovering</div>
+      <div class="stat-value red">${critical}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Users</div>
+      <div class="stat-value blue">${activeUsers}</div>
+    </div>
+  </div>
+  
+  <div class="sites-grid">
+    ${siteOrder.map(site => {
+      const siteDevices = devicesBySite[site] || [];
+      const up = siteDevices.filter(d => d.status === "green").length;
+      const down = siteDevices.filter(d => d.status === "red" || d.status === "blue").length;
+      
+      // Sort: green first, then blue, then red
+      const sorted = [...siteDevices].sort((a, b) => {
+        const order: Record<string, number> = { green: 0, blue: 1, red: 2, gray: 3 };
+        return (order[a.status || 'gray'] || 3) - (order[b.status || 'gray'] || 3);
+      });
+      
+      return `
+        <div class="site-card">
+          <div class="site-header">
+            <span>${site}</span>
+            <span class="site-status">${up} up / ${down} down</span>
+          </div>
+          <div class="devices-grid">
+            ${sorted.map(d => `
+              <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
+                ${d.name.length > 10 ? d.name.substring(0, 8) + '..' : d.name}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('')}
+  </div>
+  
+  <div class="footer">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot green"></div> Online</div>
+      <div class="legend-item"><div class="legend-dot blue"></div> Recovering</div>
+      <div class="legend-item"><div class="legend-dot red"></div> Offline</div>
+    </div>
+    <div>Auto-refresh: 30s | Last updated: ${new Date().toLocaleTimeString()}</div>
+  </div>
+</body>
+</html>`;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (err: any) {
+      console.error("Error generating kiosk-lite:", err);
+      res.status(500).send("Error loading kiosk view");
+    }
+  });
+
   // Sites management endpoints
   // GET sites - no auth required (needed for kiosk mode)
   app.get("/api/sites", async (req, res) => {
