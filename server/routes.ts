@@ -251,24 +251,22 @@ export async function registerRoutes(
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-auto-rows: min-content;
-      gap: 5px;
+      gap: 3px;
       flex: 1;
       align-content: start;
       overflow: hidden;
     }
     .devices-grid.cols-4 {
       grid-template-columns: repeat(4, 1fr);
-      gap: 3px;
     }
     .devices-grid.cols-4 .device {
-      padding: 3px 2px;
       font-size: 10px;
-      border-radius: 4px;
     }
     .device {
       width: 100%;
       padding: 5px 2px;
       border-radius: 4px;
+      font-size: 11px;
       word-wrap: break-word;
       overflow-wrap: break-word;
       display: flex;
@@ -307,8 +305,9 @@ export async function registerRoutes(
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 1vw;
+      gap: 1.5vw;
       font-size: 40px;
+      padding: 0 1vw;
     }
     .legend-dot {
       width: 4vh;
@@ -366,7 +365,7 @@ export async function registerRoutes(
           <div class="devices-grid${isMaiduguri ? ' cols-4' : ''}">
             ${sorted.map(d => `
               <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
-                ${d.name.length > 12 ? d.name.substring(12) : d.name}
+                ${(() => { let n = d.name.length > 12 ? d.name.substring(12) : d.name; return n.startsWith('-') ? n.substring(1) : n; })()}
               </div>
             `).join('')}
           </div>
