@@ -357,7 +357,7 @@ export async function registerRoutes(
           <div class="devices-grid${isMaiduguri ? ' cols-3' : ''}">
             ${sorted.map(d => `
               <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
-                ${d.name.length > 10 ? d.name.substring(0, 8) + '..' : d.name}
+                ${d.name}
               </div>
             `).join('')}
           </div>
