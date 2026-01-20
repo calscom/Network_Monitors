@@ -258,9 +258,10 @@ export async function registerRoutes(
     }
     .devices-grid.cols-3 {
       grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
     }
     .devices-grid.cols-3 .device {
-      padding: 4px 2px;
+      padding: 3px 2px;
       font-size: 10px;
       border-radius: 4px;
     }
@@ -379,7 +380,7 @@ export async function registerRoutes(
       <div class="legend-item"><div class="legend-dot blue"></div> Recovering</div>
       <div class="legend-item"><div class="legend-dot red"></div> Offline</div>
     </div>
-    <div class="footer-time">Last updated: ${new Date().toLocaleTimeString()}</div>
+    <div class="footer-time">Last updated: ${new Date().toLocaleTimeString('en-GB', { timeZone: 'Africa/Lagos', hour: '2-digit', minute: '2-digit', second: '2-digit' })} WAT</div>
   </div>
 </body>
 </html>`;
