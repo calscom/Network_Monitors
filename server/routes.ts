@@ -251,7 +251,7 @@ export async function registerRoutes(
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-auto-rows: min-content;
-      gap: 2px;
+      gap: 5px;
       flex: 1;
       align-content: start;
       overflow: hidden;
@@ -261,15 +261,17 @@ export async function registerRoutes(
     }
     .device {
       width: 100%;
-      padding: 3px 2px;
-      border-radius: 2px;
+      padding: 5px 2px;
+      border-radius: 4px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 500;
       text-align: center;
-      white-space: nowrap;
+      white-space: normal;
       overflow: hidden;
       text-overflow: ellipsis;
     }
