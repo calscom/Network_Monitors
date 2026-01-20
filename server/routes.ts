@@ -247,14 +247,11 @@ export async function registerRoutes(
     }
     .devices-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(50px, 100%), 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 0.3vw;
       flex: 1;
       align-content: start;
       padding-top: 0.3vh;
-    }
-    .devices-grid.cols-5 {
-      grid-template-columns: repeat(5, 1fr);
     }
     .device {
       width: 100%;
@@ -344,14 +341,13 @@ export async function registerRoutes(
         return (order[a.status || 'gray'] || 3) - (order[b.status || 'gray'] || 3);
       });
       
-      const isMaiduguri = site.toLowerCase().includes('maiduguri');
       return `
         <div class="site-card">
           <div class="site-header">
             <span>${site}</span>
             <span class="site-status">${up} up / ${down} down</span>
           </div>
-          <div class="devices-grid${isMaiduguri ? ' cols-5' : ''}">
+          <div class="devices-grid">
             ${sorted.map(d => `
               <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
                 ${d.name.length > 10 ? d.name.substring(0, 8) + '..' : d.name}
