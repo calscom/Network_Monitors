@@ -260,13 +260,13 @@ export async function registerRoutes(
       grid-template-columns: repeat(4, 1fr);
     }
     .devices-grid.cols-4 .device {
-      font-size: 10px;
+      font-size: 11px;
     }
     .device {
       width: 100%;
       padding: 5px 2px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 14px;
       word-wrap: break-word;
       overflow-wrap: break-word;
       display: flex;
@@ -356,6 +356,7 @@ export async function registerRoutes(
       });
       
       const isMaiduguri = site.toLowerCase().includes('maiduguri');
+      const isSite01 = site.toLowerCase().includes('01') || site.toLowerCase().startsWith('01');
       return `
         <div class="site-card">
           <div class="site-header">
@@ -365,7 +366,7 @@ export async function registerRoutes(
           <div class="devices-grid${isMaiduguri ? ' cols-4' : ''}">
             ${sorted.map(d => `
               <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
-                ${(() => { let n = d.name.length > 12 ? d.name.substring(12) : d.name; return n.startsWith('-') ? n.substring(1) : n; })()}
+                ${isSite01 ? d.name : (() => { let n = d.name.length > 12 ? d.name.substring(12) : d.name; return n.startsWith('-') ? n.substring(1) : n; })()}
               </div>
             `).join('')}
           </div>
