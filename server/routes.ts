@@ -259,6 +259,11 @@ export async function registerRoutes(
     .devices-grid.cols-3 {
       grid-template-columns: repeat(3, 1fr);
     }
+    .devices-grid.cols-3 .device {
+      padding: 4px 2px;
+      font-size: 10px;
+      border-radius: 4px;
+    }
     .device {
       width: 100%;
       padding: 5px 2px;
