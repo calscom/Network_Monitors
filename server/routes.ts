@@ -216,8 +216,9 @@ export async function registerRoutes(
     
     .sites-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-      gap: 0.5vw;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 0.4vw;
       flex: 1;
       overflow: hidden;
     }
@@ -225,16 +226,17 @@ export async function registerRoutes(
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 0.3vw;
-      padding: 0.4vw;
+      padding: 0.5vw;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     .site-header {
-      font-size: clamp(10px, 1.2vw, 16px);
+      font-size: clamp(12px, 1.4vw, 20px);
       font-weight: bold;
       color: #fff;
-      padding-bottom: 0.3vh;
+      padding-bottom: 0.4vh;
+      margin-bottom: 0.4vh;
       border-bottom: 1px solid #333;
       display: flex;
       justify-content: space-between;
@@ -242,16 +244,15 @@ export async function registerRoutes(
       flex-shrink: 0;
     }
     .site-status {
-      font-size: clamp(8px, 0.9vw, 12px);
+      font-size: clamp(10px, 1vw, 14px);
       color: #888;
     }
     .devices-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(min(45px, 20%), 1fr));
       gap: 0.3vw;
       flex: 1;
       align-content: start;
-      padding-top: 0.3vh;
     }
     .device {
       width: 100%;
@@ -260,10 +261,10 @@ export async function registerRoutes(
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: clamp(6px, 0.7vw, 10px);
+      font-size: clamp(8px, 0.9vw, 12px);
       font-weight: 500;
       text-align: center;
-      padding: 0.1vw;
+      padding: 0.2vw;
       word-break: break-all;
       overflow: hidden;
     }
