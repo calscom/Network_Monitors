@@ -249,15 +249,15 @@ export async function registerRoutes(
     }
     .devices-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       grid-auto-rows: min-content;
       gap: 2px;
       flex: 1;
       align-content: start;
       overflow: hidden;
     }
-    .devices-grid.cols-4 {
-      grid-template-columns: repeat(4, 1fr);
+    .devices-grid.cols-3 {
+      grid-template-columns: repeat(3, 1fr);
     }
     .device {
       width: 100%;
@@ -354,7 +354,7 @@ export async function registerRoutes(
             <span>${site}</span>
             <span class="site-status">${up} up / ${down} down</span>
           </div>
-          <div class="devices-grid${isMaiduguri ? ' cols-4' : ''}">
+          <div class="devices-grid${isMaiduguri ? ' cols-3' : ''}">
             ${sorted.map(d => `
               <div class="device ${d.status || 'gray'}" title="${d.name} - ${d.ip}">
                 ${d.name.length > 10 ? d.name.substring(0, 8) + '..' : d.name}
