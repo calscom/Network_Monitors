@@ -170,36 +170,43 @@ export async function registerRoutes(
   <title>Network Monitor - Kiosk</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100vh;
+      overflow: hidden;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #0a0a0a;
       color: #e5e5e5;
-      padding: 1vw;
-      padding-bottom: 140px;
-      min-height: 100vh;
-      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      padding: 0.5vh 0.5vw;
     }
     .stats {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 1vw;
-      margin-bottom: 1vw;
+      gap: 0.5vw;
+      margin-bottom: 0.5vh;
+      flex-shrink: 0;
+      height: 6vh;
     }
     .stat-card {
       background: #1a1a1a;
       border: 1px solid #333;
-      border-radius: 0.5vw;
-      padding: 1vw;
+      border-radius: 0.3vw;
+      padding: 0.3vh 0.5vw;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .stat-label {
-      font-size: clamp(10px, 1.2vw, 16px);
+      font-size: clamp(8px, 1vw, 14px);
       text-transform: uppercase;
       color: #888;
-      margin-bottom: 0.5vw;
     }
     .stat-value {
-      font-size: clamp(20px, 3vw, 48px);
+      font-size: clamp(16px, 2.5vw, 36px);
       font-weight: bold;
     }
     .stat-value.green { color: #22c55e; }
@@ -209,34 +216,42 @@ export async function registerRoutes(
     
     .sites-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-      gap: 1vw;
+      grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+      gap: 0.5vw;
+      flex: 1;
+      overflow: hidden;
     }
     .site-card {
       background: #1a1a1a;
       border: 1px solid #333;
-      border-radius: 0.5vw;
-      padding: 0.8vw;
+      border-radius: 0.3vw;
+      padding: 0.4vw;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     .site-header {
-      font-size: clamp(12px, 1.4vw, 20px);
+      font-size: clamp(10px, 1.2vw, 16px);
       font-weight: bold;
       color: #fff;
-      margin-bottom: 0.6vw;
-      padding-bottom: 0.4vw;
+      padding-bottom: 0.3vh;
       border-bottom: 1px solid #333;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
     .site-status {
-      font-size: clamp(10px, 1vw, 14px);
+      font-size: clamp(8px, 0.9vw, 12px);
       color: #888;
     }
     .devices-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(60px, 100%), 1fr));
-      gap: 0.4vw;
+      grid-template-columns: repeat(auto-fill, minmax(min(50px, 100%), 1fr));
+      gap: 0.3vw;
+      flex: 1;
+      align-content: start;
+      padding-top: 0.3vh;
     }
     .devices-grid.cols-5 {
       grid-template-columns: repeat(5, 1fr);
@@ -244,14 +259,14 @@ export async function registerRoutes(
     .device {
       width: 100%;
       aspect-ratio: 1;
-      border-radius: 0.3vw;
+      border-radius: 0.2vw;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: clamp(7px, 0.8vw, 12px);
+      font-size: clamp(6px, 0.7vw, 10px);
       font-weight: 500;
       text-align: center;
-      padding: 0.2vw;
+      padding: 0.1vw;
       word-break: break-all;
       overflow: hidden;
     }
@@ -261,13 +276,12 @@ export async function registerRoutes(
     .device.gray { background: #374151; color: #9ca3af; }
     
     .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      flex-shrink: 0;
+      height: 8vh;
       background: #1a1a1a;
-      padding: 16px 24px;
-      font-size: 72px;
+      margin: 0.5vh -0.5vw -0.5vh -0.5vw;
+      padding: 0 2vw;
+      font-size: 55px;
       font-weight: bold;
       color: #fff;
       display: flex;
@@ -277,23 +291,23 @@ export async function registerRoutes(
     }
     .legend {
       display: flex;
-      gap: 48px;
+      gap: 3vw;
     }
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 1vw;
     }
     .legend-dot {
-      width: 48px;
-      height: 48px;
-      border-radius: 8px;
+      width: 4vh;
+      height: 4vh;
+      border-radius: 0.5vh;
     }
     .legend-dot.green { background: #22c55e; }
     .legend-dot.blue { background: #3b82f6; }
     .legend-dot.red { background: #ef4444; }
     .footer-time {
-      font-size: 48px;
+      font-size: 40px;
       color: #aaa;
     }
   </style>
