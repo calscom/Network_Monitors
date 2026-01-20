@@ -35,7 +35,7 @@ Preferred communication style: Simple, everyday language.
 - Historical interface metrics for graphing
 - Notification settings for alerts (email, Telegram) on offline, recovery, or high utilization events
 - Period-over-period comparison data for performance analysis
-- Network Map with kiosk mode (/kiosk) for wall-mounted NOC displays
+- Network Map with multiple kiosk modes for wall-mounted NOC displays (see Kiosk Modes section)
 - Email test functionality for SMTP verification
 - CSV/Excel import/export with poll_type and max_bandwidth columns
 
@@ -50,6 +50,45 @@ Each site column displays devices organized into 7 vertical grid tiers:
 - **Tier 6**: UAP access points - 5 columns for Maiduguri sites, 2 columns for other sites
 
 Drag-and-drop editing mode allows manual repositioning of devices within their site column.
+
+### Kiosk Modes
+
+The application provides multiple kiosk modes optimized for different display scenarios:
+
+#### Standard Kiosk Mode (`/kiosk`)
+- **Technology**: React-based SPA with full UI framework
+- **Memory Usage**: ~100MB RAM
+- **Features**: Full network map with all skins (Classic Grid, Card Layout), real-time updates via React Query, smooth animations
+- **Best For**: Modern displays with adequate memory (4GB+ RAM)
+- **Customization**: Supports all network map skins and themes
+
+#### Lightweight Kiosk Mode (`/kiosk-lite`)
+- **Technology**: Pure HTML/CSS with no JavaScript framework
+- **Memory Usage**: ~1-2MB RAM
+- **Features**: 
+  - Auto-refresh every 30 seconds via meta refresh tag
+  - Responsive layout using viewport units (scales to any screen size)
+  - Large 72px footer for visibility on wall-mounted displays
+  - Maiduguri sites display in fixed 5-column grid
+  - Color-coded device status (green=online, blue=recovering, red=offline)
+- **Best For**: Low-memory devices like Raspberry Pi (512MB RAM)
+- **Raspberry Pi Setup**:
+  ```bash
+  # Install minimal browser
+  sudo apt install chromium-browser unclutter openbox xinit
+  
+  # Create autostart script
+  mkdir -p ~/.config/openbox
+  cat > ~/.config/openbox/autostart << 'EOF'
+  unclutter -idle 0.5 -root &
+  chromium-browser --kiosk --noerrdialogs --disable-infobars \
+    --disable-session-crashed-bubble --incognito \
+    http://your-server-ip:5000/kiosk-lite
+  EOF
+  
+  # Auto-login to X on boot
+  sudo raspi-config  # Enable auto-login to desktop
+  ```
 
 ### Documentation
 - **Operational Manual**: `Network_Monitor_Operational_Manual.docx` - Comprehensive user guide
