@@ -174,30 +174,32 @@ export async function registerRoutes(
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #0a0a0a;
       color: #e5e5e5;
-      padding: 8px;
+      padding: 1vw;
+      padding-bottom: 140px;
       min-height: 100vh;
+      box-sizing: border-box;
     }
     .stats {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 1vw;
+      margin-bottom: 1vw;
     }
     .stat-card {
       background: #1a1a1a;
       border: 1px solid #333;
-      border-radius: 6px;
-      padding: 12px;
+      border-radius: 0.5vw;
+      padding: 1vw;
       text-align: center;
     }
     .stat-label {
-      font-size: 10px;
+      font-size: clamp(10px, 1.2vw, 16px);
       text-transform: uppercase;
       color: #888;
-      margin-bottom: 4px;
+      margin-bottom: 0.5vw;
     }
     .stat-value {
-      font-size: 24px;
+      font-size: clamp(20px, 3vw, 48px);
       font-weight: bold;
     }
     .stat-value.green { color: #22c55e; }
@@ -207,34 +209,34 @@ export async function registerRoutes(
     
     .sites-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+      gap: 1vw;
     }
     .site-card {
       background: #1a1a1a;
       border: 1px solid #333;
-      border-radius: 6px;
-      padding: 8px;
+      border-radius: 0.5vw;
+      padding: 0.8vw;
     }
     .site-header {
-      font-size: 12px;
+      font-size: clamp(12px, 1.4vw, 20px);
       font-weight: bold;
       color: #fff;
-      margin-bottom: 8px;
-      padding-bottom: 4px;
+      margin-bottom: 0.6vw;
+      padding-bottom: 0.4vw;
       border-bottom: 1px solid #333;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     .site-status {
-      font-size: 10px;
+      font-size: clamp(10px, 1vw, 14px);
       color: #888;
     }
     .devices-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-      gap: 4px;
+      grid-template-columns: repeat(auto-fill, minmax(min(60px, 100%), 1fr));
+      gap: 0.4vw;
     }
     .devices-grid.cols-5 {
       grid-template-columns: repeat(5, 1fr);
@@ -242,14 +244,14 @@ export async function registerRoutes(
     .device {
       width: 100%;
       aspect-ratio: 1;
-      border-radius: 4px;
+      border-radius: 0.3vw;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 8px;
+      font-size: clamp(7px, 0.8vw, 12px);
       font-weight: 500;
       text-align: center;
-      padding: 2px;
+      padding: 0.2vw;
       word-break: break-all;
       overflow: hidden;
     }
@@ -264,30 +266,36 @@ export async function registerRoutes(
       left: 0;
       right: 0;
       background: #1a1a1a;
-      padding: 4px 8px;
-      font-size: 10px;
-      color: #666;
+      padding: 16px 24px;
+      font-size: 72px;
+      font-weight: bold;
+      color: #fff;
       display: flex;
       justify-content: space-between;
-      border-top: 1px solid #333;
+      align-items: center;
+      border-top: 2px solid #333;
     }
     .legend {
       display: flex;
-      gap: 12px;
+      gap: 48px;
     }
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 16px;
     }
     .legend-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
     }
     .legend-dot.green { background: #22c55e; }
     .legend-dot.blue { background: #3b82f6; }
     .legend-dot.red { background: #ef4444; }
+    .footer-time {
+      font-size: 48px;
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
@@ -347,7 +355,7 @@ export async function registerRoutes(
       <div class="legend-item"><div class="legend-dot blue"></div> Recovering</div>
       <div class="legend-item"><div class="legend-dot red"></div> Offline</div>
     </div>
-    <div>Auto-refresh: 30s | Last updated: ${new Date().toLocaleTimeString()}</div>
+    <div class="footer-time">Last updated: ${new Date().toLocaleTimeString()}</div>
   </div>
 </body>
 </html>`;
