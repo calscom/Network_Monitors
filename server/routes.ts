@@ -249,24 +249,26 @@ export async function registerRoutes(
     }
     .devices-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(45px, 20%), 1fr));
-      gap: 0.3vw;
+      grid-template-columns: repeat(7, 1fr);
+      grid-auto-rows: min-content;
+      gap: 2px;
       flex: 1;
       align-content: start;
+      overflow: hidden;
     }
     .device {
       width: 100%;
-      aspect-ratio: 1;
-      border-radius: 0.2vw;
+      padding: 3px 2px;
+      border-radius: 2px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: clamp(8px, 0.9vw, 12px);
+      font-size: 9px;
       font-weight: 500;
       text-align: center;
-      padding: 0.2vw;
-      word-break: break-all;
+      white-space: nowrap;
       overflow: hidden;
+      text-overflow: ellipsis;
     }
     .device.green { background: #166534; color: #bbf7d0; }
     .device.red { background: #991b1b; color: #fecaca; }
