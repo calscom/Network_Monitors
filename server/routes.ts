@@ -188,13 +188,13 @@ export async function registerRoutes(
       gap: 0.5vw;
       margin-bottom: 0.5vh;
       flex-shrink: 0;
-      height: 6vh;
+      height: 10vh;
     }
     .stat-card {
       background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
       border: 1px solid #444;
       border-radius: 8px;
-      padding: 1vh 1.5vw;
+      padding: 0.5vh 1vw;
       text-align: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       display: flex;
@@ -202,16 +202,15 @@ export async function registerRoutes(
       justify-content: center;
     }
     .stat-label {
-      font-size: 16px;
+      font-size: 14px;
       text-transform: uppercase;
       color: #aaa;
       letter-spacing: 1px;
-      margin-bottom: 0.3vh;
     }
     .stat-value {
       font-size: 45px;
       font-weight: bold;
-      line-height: 1;
+      line-height: 1.1;
     }
     .stat-value.green { color: #22c55e; }
     .stat-value.red { color: #ef4444; }
@@ -222,8 +221,9 @@ export async function registerRoutes(
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       grid-template-rows: repeat(2, 1fr);
-      gap: 0.4vw;
+      gap: 0.3vw;
       flex: 1;
+      min-height: 0;
       overflow: hidden;
     }
     .site-card {
