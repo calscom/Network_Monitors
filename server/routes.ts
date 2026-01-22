@@ -191,23 +191,27 @@ export async function registerRoutes(
       height: 6vh;
     }
     .stat-card {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 0.3vw;
-      padding: 0.3vh 0.5vw;
+      background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 1vh 1.5vw;
       text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
     .stat-label {
-      font-size: clamp(8px, 1vw, 14px);
+      font-size: 16px;
       text-transform: uppercase;
-      color: #888;
+      color: #aaa;
+      letter-spacing: 1px;
+      margin-bottom: 0.3vh;
     }
     .stat-value {
-      font-size: clamp(16px, 2.5vw, 36px);
+      font-size: 45px;
       font-weight: bold;
+      line-height: 1;
     }
     .stat-value.green { color: #22c55e; }
     .stat-value.red { color: #ef4444; }
