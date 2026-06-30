@@ -280,8 +280,8 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
                       padding: '4px 8px'
                     }}
                     labelStyle={{ color: 'hsl(var(--foreground))', fontSize: '10px', marginBottom: '4px' }}
-                    formatter={tooltipFormatter}
-                    labelFormatter={tooltipLabelFormatter}
+                    formatter={tooltipFormatter as any}
+                    labelFormatter={tooltipLabelFormatter as any}
                   />
                   <Line 
                     type="monotone" 

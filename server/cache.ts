@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createSelectSchema } from "drizzle-zod";
-import { devices, interfaces, links, sites, users } from "../shared/schema";
+import { devices, deviceInterfaces, deviceLinks, sites } from "../shared/schema";
+import { users } from "../shared/models/auth";
 
 export const cache = {
   devices: new Map<string, z.infer<typeof selectDeviceSchema>>(),
@@ -11,7 +12,7 @@ export const cache = {
 };
 
 export const selectDeviceSchema = createSelectSchema(devices);
-export const selectInterfaceSchema = createSelectSchema(interfaces);
-export const selectLinkSchema = createSelectSchema(links);
+export const selectInterfaceSchema = createSelectSchema(deviceInterfaces);
+export const selectLinkSchema = createSelectSchema(deviceLinks);
 export const selectSiteSchema = createSelectSchema(sites);
 export const selectUserSchema = createSelectSchema(users);

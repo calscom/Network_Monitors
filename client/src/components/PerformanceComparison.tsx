@@ -365,10 +365,10 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
                           borderRadius: "6px",
                           fontSize: "10px",
                         }}
-                        formatter={(value: number, name: string) => [
-                          metric === "utilization" ? `${value}%` : `${value.toFixed(1)} Mbps`,
+                        formatter={((value: any, name: string) => [
+                          metric === "utilization" ? `${value}%` : `${(value as number).toFixed(1)} Mbps`,
                           name === "current" ? "Current" : "Previous"
-                        ]}
+                        ]) as any}
                       />
                       <Legend 
                         formatter={(value) => value === "current" ? "Current" : "Previous"}

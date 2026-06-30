@@ -1,0 +1,3 @@
+- [Vite 8 rolldown WASM memory](vite8-rolldown-wasm.md) — barrel files (react-icons/si) crash rolldown; use inline SVG + explicit CJS optimizeDeps.include
+- [Drizzle 0.45 execute result](drizzle-execute-result.md) — db.execute() returns array directly, not { rows: [] }
+- [Zod 4 issues API](zod4-issues.md) — ZodError.errors renamed to ZodError.issues in Zod 4

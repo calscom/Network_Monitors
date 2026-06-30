@@ -289,8 +289,8 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
                   fontSize: '12px'
                 }}
                 labelStyle={{ color: 'hsl(var(--foreground))', marginBottom: '4px' }}
-                labelFormatter={tooltipLabelFormatter}
-                formatter={(value: number, name: string) => [`${value.toFixed(2)} Mbps`, name === 'download' ? 'Download' : 'Upload']}
+                labelFormatter={tooltipLabelFormatter as any}
+                formatter={((value: any, name: string) => [`${(value as number).toFixed(2)} Mbps`, name === 'download' ? 'Download' : 'Upload']) as any}
               />
               <Legend 
                 wrapperStyle={{ fontSize: '10px' }}

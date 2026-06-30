@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, Mail, Send, Save, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
-import { SiTelegram } from "react-icons/si";
+
 import { Link } from "wouter";
 
 interface NotificationSettings {
@@ -284,7 +284,7 @@ export default function NotificationSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <SiTelegram className="h-5 w-5 text-[#0088cc]" />
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#0088cc" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.4 13.93l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.748.629z"/></svg>
             Telegram Notifications
           </CardTitle>
           <CardDescription>Send alerts to a Telegram chat or group</CardDescription>

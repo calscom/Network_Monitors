@@ -141,7 +141,7 @@ export function UtilityDialog({ open, onOpenChange }: UtilityDialogProps) {
     output: string[], 
     isRunning: boolean, 
     success: boolean | null,
-    scrollRef: React.RefObject<HTMLDivElement>
+    scrollRef: React.RefObject<HTMLDivElement | null>
   ) => {
     if (output.length === 0 && !isRunning) {
       return (

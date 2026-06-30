@@ -250,7 +250,7 @@ export class DatabaseStorage implements IStorage {
         ORDER BY timestamp ASC
       `);
       
-      return (bucketedData.rows as any[]).map(row => ({
+      return (bucketedData as unknown as any[]).map(row => ({
         id: row.id,
         deviceId: row.device_id,
         site: row.site || '',
@@ -454,7 +454,7 @@ export class DatabaseStorage implements IStorage {
         ORDER BY timestamp ASC
       `);
       
-      return (bucketedData.rows as any[]).map(row => ({
+      return (bucketedData as unknown as any[]).map(row => ({
         id: row.id,
         interfaceId: row.interface_id,
         deviceId: row.device_id,

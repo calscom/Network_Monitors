@@ -114,7 +114,7 @@ export async function registerRoutes(
   });
 
   app.patch("/api/users/:id/role", conditionalAuth, requireRole('admin'), async (req, res) => {
-    const userId = req.params.id;
+    const userId = req.params.id as string;
     const { role } = req.body;
     
     if (!['admin', 'operator', 'viewer'].includes(role)) {
@@ -596,8 +596,8 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+          message: err.issues[0].message,
+          field: err.issues[0].path.join('.'),
         });
       }
       throw err;
@@ -635,7 +635,7 @@ export async function registerRoutes(
       const parseResult = bulkDeleteSchema.safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ 
-          message: parseResult.error.errors[0]?.message || "Invalid request body" 
+          message: parseResult.error.issues[0]?.message || "Invalid request body" 
         });
       }
       
@@ -764,8 +764,8 @@ export async function registerRoutes(
       console.error("Error updating device:", err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+          message: err.issues[0].message,
+          field: err.issues[0].path.join('.'),
         });
       }
       res.status(500).json({ message: err.message || "Internal server error" });
@@ -1182,7 +1182,7 @@ export async function registerRoutes(
       });
 
       // Walk the interface description OID to discover all interfaces
-      session.subtree(OID_IF_DESCR, 20, (varbinds) => {
+      session.subtree(OID_IF_DESCR, 20, (varbinds: any) => {
         for (const varbind of varbinds) {
           if (!snmp.isVarbindError(varbind)) {
             const oid = varbind.oid.toString();
@@ -1199,7 +1199,7 @@ export async function registerRoutes(
             });
           }
         }
-      }, (error) => {
+      }, (error: any) => {
         session.close();
         
         if (error && interfaces.length === 0) {
@@ -1259,7 +1259,7 @@ export async function registerRoutes(
       });
 
       // Walk the interface description OID
-      session.subtree(OID_IF_DESCR, 20, (varbinds) => {
+      session.subtree(OID_IF_DESCR, 20, (varbinds: any) => {
         for (const varbind of varbinds) {
           if (!snmp.isVarbindError(varbind)) {
             const oid = varbind.oid.toString();
@@ -1288,7 +1288,7 @@ export async function registerRoutes(
             });
           }
         }
-      }, (error) => {
+      }, (error: any) => {
         session.close();
         
         if (error && interfaces.length === 0) {
@@ -1792,13 +1792,13 @@ export async function registerRoutes(
       startDate.setDate(startDate.getDate() - days);
       startDate.setHours(0, 0, 0, 0);
       
-      let query = db.select().from(dailyUserStats).where(gte(dailyUserStats.date, startDate));
-      
-      if (site) {
-        query = query.where(and(gte(dailyUserStats.date, startDate), eq(dailyUserStats.site, site))) as any;
-      }
-      
-      const stats = await query.orderBy(dailyUserStats.date);
+      const stats = await (site
+        ? db.select().from(dailyUserStats)
+            .where(and(gte(dailyUserStats.date, startDate), eq(dailyUserStats.site, site)))
+            .orderBy(dailyUserStats.date)
+        : db.select().from(dailyUserStats)
+            .where(gte(dailyUserStats.date, startDate))
+            .orderBy(dailyUserStats.date));
       res.json(stats);
     } catch (err: any) {
       console.error('Error fetching daily stats:', err);
@@ -2133,7 +2133,7 @@ export async function registerRoutes(
       let userCount = 0;
 
       // First try the AAA sessions OID (direct count)
-      session.get([OID_AAA_SESSIONS], (error, varbinds) => {
+      session.get([OID_AAA_SESSIONS], (error: any, varbinds: any) => {
         if (!error && varbinds.length > 0 && !snmp.isVarbindError(varbinds[0])) {
           userCount = parseInt(String(varbinds[0].value), 10) || 0;
           console.log(`[snmp] Hotspot users for ${ip}: ${userCount} (AAA sessions)`);
@@ -2141,9 +2141,9 @@ export async function registerRoutes(
           resolve(userCount);
         } else {
           // Fallback: count entries in MikroTik hotspot table using subtree walk
-          session.subtree(OID_MIKROTIK_HOTSPOT_ACTIVE_USERS, 20, (varbinds) => {
+          session.subtree(OID_MIKROTIK_HOTSPOT_ACTIVE_USERS, 20, (varbinds: any) => {
             userCount += varbinds.length;
-          }, (err) => {
+          }, (err: any) => {
             if (!err) {
               console.log(`[snmp] Hotspot users for ${ip}: ${userCount} (table walk)`);
             }
@@ -2457,7 +2457,7 @@ export async function registerRoutes(
 
       console.log(`[snmp] Polling ${device.name} at ${device.ip} interface ${ifIndex} (interval: ${intervalSeconds}s)...`);
 
-      session.get([OID_IF_IN_OCTETS, OID_IF_OUT_OCTETS], async (error, varbinds) => {
+      session.get([OID_IF_IN_OCTETS, OID_IF_OUT_OCTETS], async (error: any, varbinds: any) => {
         let newStatus = 'red';
         let newUtilization = device.utilization;
         let bandwidthMBps = device.bandwidthMBps;
@@ -2647,7 +2647,7 @@ export async function registerRoutes(
       const OID_IF_IN = `${OID_IF_IN_OCTETS_BASE}.${ifIndex}`;
       const OID_IF_OUT = `${OID_IF_OUT_OCTETS_BASE}.${ifIndex}`;
 
-      session.get([OID_IF_IN, OID_IF_OUT], async (error, varbinds) => {
+      session.get([OID_IF_IN, OID_IF_OUT], async (error: any, varbinds: any) => {
         let ifaceStatus = 'red';
         let ifaceUtilization = 0;
         let ifaceDownload = "0.00";
@@ -2733,7 +2733,7 @@ export async function registerRoutes(
   const checkSnmp = (ip: string, community: string): Promise<boolean> => {
     return new Promise((resolve) => {
       const session = snmp.createSession(ip, community, { timeout: 2000, retries: 1 });
-      session.get([`${OID_IF_IN_OCTETS_BASE}.1`], (error, varbinds) => {
+      session.get([`${OID_IF_IN_OCTETS_BASE}.1`], (error: any, varbinds: any) => {
         session.close();
         if (!error && varbinds.length > 0 && !snmp.isVarbindError(varbinds[0])) {
           resolve(true);
@@ -2992,7 +2992,7 @@ export async function registerRoutes(
           // Update device activeUsers count using partial update (preserves other metrics)
           await storage.updateDevice(device.id, {
             activeUsers: pollResult.count
-          });
+          } as any);
         } catch (err) {
           console.log(`[usermanager] Failed to poll ${device.name}: ${err}`);
         }
