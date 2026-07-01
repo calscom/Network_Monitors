@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Device } from "@shared/schema";
-import { CheckCircle, XCircle, Monitor, Users } from "lucide-react";
+import { CircleCheck, CircleX, Monitor, Users } from "lucide-react";
 
 interface NetworkMapCardSkinProps {
   devices: Device[];
@@ -18,12 +18,12 @@ interface SiteData {
 
 function getStatusIcon(status: string) {
   if (status === "green") {
-    return <CheckCircle className="w-4 h-4 text-green-500" />;
+    return <CircleCheck className="w-4 h-4 text-green-500" />;
   }
   if (status === "blue") {
-    return <CheckCircle className="w-4 h-4 text-blue-500" />;
+    return <CircleCheck className="w-4 h-4 text-blue-500" />;
   }
-  return <XCircle className="w-4 h-4 text-red-500" />;
+  return <CircleX className="w-4 h-4 text-red-500" />;
 }
 
 function formatAvailability(device: Device): string {

@@ -1,7 +1,7 @@
 import { useDevices } from "@/hooks/use-devices";
 import { NetworkMap } from "@/components/NetworkMap";
 import { NetworkMapCardSkin } from "@/components/NetworkMapCardSkin";
-import { Loader2, Activity, AlertCircle, Users, LayoutGrid, LayoutList } from "lucide-react";
+import { Loader2, Activity, CircleAlert, Users, LayoutGrid, LayoutList } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ export default function KioskMap() {
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Critical / Recovering</p>
             <p className="text-2xl font-bold text-red-500">{stats.critical}</p>
           </div>
-          <AlertCircle className="h-8 w-8 text-red-500" />
+          <CircleAlert className="h-8 w-8 text-red-500" />
         </Card>
         
         <Card className="p-3 flex items-center justify-between" data-testid="card-hotspot-users">

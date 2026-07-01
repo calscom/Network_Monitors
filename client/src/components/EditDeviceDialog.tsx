@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Edit2, Loader2, RefreshCw, Network, Layers } from "lucide-react";
+import { Pencil, Loader2, RefreshCw, Network, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSites } from "@/hooks/use-sites";
 
@@ -193,7 +193,7 @@ export function EditDeviceDialog({ device }: EditDeviceDialogProps) {
           className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
           data-testid={`button-edit-device-${device.id}`}
         >
-          <Edit2 className="w-3.5 h-3.5" />
+          <Pencil className="w-3.5 h-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="glass border-white/10 sm:max-w-[550px] max-h-[90vh]">

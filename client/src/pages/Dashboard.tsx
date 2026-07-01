@@ -6,7 +6,7 @@ import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Onboarding } from "@/components/Onboarding";
-import { LayoutDashboard, Activity, AlertCircle, MapPin, Edit2, ArrowUpCircle, ArrowDownCircle, History, Search, X, GripVertical, CheckSquare, Square, Trash2, Users } from "lucide-react";
+import { LayoutDashboard, Activity, CircleAlert, MapPin, Pencil, CircleArrowUp, CircleArrowDown, History, Search, X, GripVertical, CheckSquare, Square, Trash2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -472,7 +472,7 @@ export default function Dashboard() {
             {stats.critical > 0 ? (
               <div className="relative">
                  <div className="absolute w-full h-full rounded-full bg-[hsl(var(--status-red))] animate-pulse-ring opacity-50" />
-                 <AlertCircle className="relative w-6 h-6 text-[hsl(var(--status-red))]" />
+                 <CircleAlert className="relative w-6 h-6 text-[hsl(var(--status-red))]" />
               </div>
             ) : (
               <div className="w-3 h-3 rounded-full bg-secondary" />
@@ -607,7 +607,7 @@ export default function Dashboard() {
                             setIsEditing(true);
                           }}
                         >
-                          <Edit2 className="w-3 h-3" />
+                          <Pencil className="w-3 h-3" />
                         </Button>
                         <span className="text-xs sm:text-sm font-normal text-muted-foreground">
                           ({filteredDevices.length} devices)
@@ -693,7 +693,7 @@ export default function Dashboard() {
                   </div>
                 ) : error ? (
                   <div className="p-6 sm:p-12 text-center rounded-xl bg-destructive/10 border border-destructive/20 text-destructive">
-                    <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4" />
+                    <CircleAlert className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4" />
                     <h3 className="text-base sm:text-lg font-bold">Failed to load devices</h3>
                     <p className="opacity-80 text-sm">Please check your connection and try again.</p>
                   </div>

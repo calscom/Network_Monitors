@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Link2, Plus, Trash2, Wand2, Edit2 } from "lucide-react";
+import { Link2, Plus, Trash2, Wand, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface LinkManagementProps {
@@ -171,7 +171,7 @@ export function LinkManagement({ devices }: LinkManagementProps) {
             disabled={autoDiscoverMutation.isPending}
             data-testid="button-auto-discover-links"
           >
-            <Wand2 className="w-4 h-4 mr-1" />
+            <Wand className="w-4 h-4 mr-1" />
             Auto-Discover
           </Button>
           
@@ -307,7 +307,7 @@ export function LinkManagement({ devices }: LinkManagementProps) {
                     onClick={() => startEdit(link)}
                     data-testid={`button-edit-link-${link.id}`}
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </Button>
                   <Button
                     size="icon"

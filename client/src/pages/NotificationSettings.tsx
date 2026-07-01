@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Mail, Send, Save, AlertTriangle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { Bell, Mail, Send, Save, AlertTriangle, CircleCheckBig, Loader2, ArrowLeft } from "lucide-react";
 
 import { Link } from "wouter";
 

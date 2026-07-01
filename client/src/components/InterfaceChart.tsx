@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Brush, Ref
 import { InterfaceMetricsHistory, DeviceInterface } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { format, endOfDay } from "date-fns";
-import { Activity, Loader2, ChevronDown, ChevronUp, AlertCircle, ZoomIn, ZoomOut, Calendar } from "lucide-react";
+import { Activity, Loader2, ChevronDown, ChevronUp, CircleAlert, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar as CalendarComponent } from "./ui/calendar";
@@ -242,7 +242,7 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
 
           {error ? (
             <div className="h-[60px] flex items-center justify-center gap-2 text-destructive text-[10px]">
-              <AlertCircle className="w-3 h-3" />
+              <CircleAlert className="w-3 h-3" />
               <span>Failed to load history</span>
             </div>
           ) : isLoading ? (

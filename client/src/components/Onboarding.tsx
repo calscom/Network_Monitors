@@ -12,7 +12,7 @@ import {
   ChevronRight, 
   ChevronLeft, 
   X,
-  CheckCircle2
+  CircleCheckBig
 } from "lucide-react";
 
 interface OnboardingStep {
@@ -212,7 +212,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   {isLastStep ? (
                     <>
                       Get Started
-                      <CheckCircle2 className="w-4 h-4 ml-1" />
+                      <CircleCheckBig className="w-4 h-4 ml-1" />
                     </>
                   ) : (
                     <>

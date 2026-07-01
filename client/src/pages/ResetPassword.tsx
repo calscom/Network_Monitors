@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Loader2, Activity, Lock, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Activity, Lock, CircleCheck, CircleX } from "lucide-react";
 
 export default function ResetPassword() {
   const { toast } = useToast();
@@ -96,7 +96,7 @@ export default function ResetPassword() {
         <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
           <Card className="max-w-md w-full">
             <CardHeader className="text-center">
-              <XCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
+              <CircleX className="w-12 h-12 mx-auto text-destructive mb-4" />
               <CardTitle>Invalid Reset Link</CardTitle>
               <CardDescription>
                 No reset token was provided. Please request a new password reset.
@@ -141,7 +141,7 @@ export default function ResetPassword() {
         <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
           <Card className="max-w-md w-full">
             <CardHeader className="text-center">
-              <XCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
+              <CircleX className="w-12 h-12 mx-auto text-destructive mb-4" />
               <CardTitle>Expired or Invalid Link</CardTitle>
               <CardDescription>
                 {tokenStatus?.message || "This password reset link has expired or has already been used."}
@@ -178,7 +178,7 @@ export default function ResetPassword() {
         <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
           <Card className="max-w-md w-full">
             <CardHeader className="text-center">
-              <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
+              <CircleCheck className="w-12 h-12 mx-auto text-green-500 mb-4" />
               <CardTitle>Password Reset Complete</CardTitle>
               <CardDescription>
                 Your password has been reset successfully. Redirecting to sign in...
