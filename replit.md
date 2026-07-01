@@ -119,6 +119,12 @@ It handles everything automatically:
 - Creates and enables a `networkmonitor` systemd service
 - Configures Nginx as a reverse proxy on port 80
 
+### Important: npm Registry on EC2
+
+The `package-lock.json` generated inside Replit contains `resolved` URLs pointing to `package-firewall.replit.local` — an internal npm proxy that is only reachable inside the Replit environment. Running `npm install` or `npm ci` on an EC2 server will fail with `EAI_AGAIN` (DNS resolution failure) for that hostname.
+
+Both `install-ec2.sh` and `update-ec2.sh` already handle this by passing `--registry https://registry.npmjs.org` to force use of the public npm registry. **Do not use `npm install` or `npm ci` directly on the server** — always use the provided scripts.
+
 ### Migrating from an Existing Installation (preserving all data)
 
 If you already have the app running at `/opt/networkmonitor`, follow these steps. Your database (devices, sites, metrics, logs, users) lives in PostgreSQL and is **never touched** — only the application files are replaced.

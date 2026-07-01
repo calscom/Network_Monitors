@@ -79,7 +79,9 @@ id "$SERVICE_USER" &>/dev/null || useradd --system --no-create-home --shell /bin
 cd "$APP_DIR"
 
 info "Installing npm dependencies..."
-npm ci 2>/dev/null || npm install
+# Use the public registry — package-lock.json may contain Replit's internal
+# proxy URLs (package-firewall.replit.local) which are unreachable outside Replit.
+npm install --registry https://registry.npmjs.org
 
 info "Building application..."
 npm run build

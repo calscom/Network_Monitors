@@ -31,7 +31,9 @@ cd "$APP_DIR"
 
 # ── 1. Install dependencies ────────────────────────────────────────────────────
 info "Installing npm dependencies..."
-npm ci 2>/dev/null || npm install
+# Use the public registry — package-lock.json may contain Replit's internal
+# proxy URLs (package-firewall.replit.local) which are unreachable outside Replit.
+npm install --registry https://registry.npmjs.org
 
 # ── 2. Build in place ─────────────────────────────────────────────────────────
 info "Building application..."
