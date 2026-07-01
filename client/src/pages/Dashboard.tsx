@@ -92,11 +92,26 @@ function SortableDeviceCard({ device, canManage }: { device: Device; canManage: 
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { data: devices, isLoading, error } = useDevices();
+  const { data: devices, isLoading, error, dataUpdatedAt } = useDevices();
   const userRole = (user?.role as UserRole) || 'viewer';
   const canManageDevices = userRole === 'admin' || userRole === 'operator';
   const { toast } = useToast();
   const bulkDeleteMutation = useBulkDeleteDevices();
+
+  // Track last-refreshed display (ticks every second so the "X secs ago" stays live)
+  const [, forceRefreshClock] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceRefreshClock(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const secondsAgo = dataUpdatedAt ? Math.floor((Date.now() - dataUpdatedAt) / 1000) : null;
+  const refreshLabel = secondsAgo === null
+    ? null
+    : secondsAgo < 5
+      ? "just now"
+      : secondsAgo < 60
+        ? `${secondsAgo}s ago`
+        : `${Math.floor(secondsAgo / 60)}m ago`;
   
   // Fetch active users count from API
   const { data: activeUsersData } = useQuery<{ count: number }>({
@@ -413,7 +428,15 @@ export default function Dashboard() {
                   <LayoutDashboard className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
                   SceptView Network Monitor
                 </h1>
-                <p className="text-muted-foreground text-sm sm:text-base md:text-lg">Real-time SNMP status & utilization dashboard</p>
+                <p className="text-muted-foreground text-sm sm:text-base md:text-lg flex items-center gap-2 flex-wrap">
+                  Real-time SNMP status &amp; utilization dashboard
+                  {refreshLabel && (
+                    <span className="inline-flex items-center gap-1 text-xs font-mono bg-secondary/50 border border-white/10 rounded px-1.5 py-0.5 text-muted-foreground" data-testid="text-last-refreshed">
+                      <span className={`w-1.5 h-1.5 rounded-full ${secondsAgo !== null && secondsAgo < 10 ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/50'}`} />
+                      updated {refreshLabel}
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
                 <ThemeToggle />
