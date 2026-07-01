@@ -3,22 +3,24 @@
 # SceptView Network Monitor — EC2 Installation Script
 # Tested on: Ubuntu 22.04 LTS / Ubuntu 24.04 LTS
 #
-# Usage:
+# Usage (run from the project root):
 #   chmod +x scripts/install-ec2.sh
 #   sudo ./scripts/install-ec2.sh
+#
+# The app runs directly from the project directory — no files are moved or
+# restructured. The directory you run this from becomes the installation root.
 #
 # What this does:
 #   1. Installs Node.js 22, PostgreSQL, Nginx
 #   2. Creates the database and user
-#   3. Installs app dependencies and builds the app
-#   4. Creates /opt/networkmonitor with the production build
+#   3. Installs npm dependencies and builds the app in place
+#   4. Writes .env in the project root
 #   5. Creates a systemd service (networkmonitor)
 #   6. Configures Nginx as a reverse proxy on port 80
 #   7. Runs the database schema push
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
 
-APP_DIR="/opt/networkmonitor"
 SERVICE_USER="networkmonitor"
 DB_NAME="networkmonitor"
 DB_USER="networkmonitor"
@@ -30,13 +32,13 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 # ── 0. Root check ─────────────────────────────────────────────────────────────
-[[ $EUID -ne 0 ]] && error "Run this script as root: sudo ./scripts/install-ec2.sh"
+[[ $EUID -ne 0 ]] && error "Run as root: sudo ./scripts/install-ec2.sh"
 
-# ── 1. Detect source directory ────────────────────────────────────────────────
+# ── 1. Resolve project root (same directory the script lives in) ───────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_DIR="$(dirname "$SCRIPT_DIR")"
-[[ ! -f "$SOURCE_DIR/package.json" ]] && error "Cannot find package.json in $SOURCE_DIR"
-info "Source directory: $SOURCE_DIR"
+APP_DIR="$(dirname "$SCRIPT_DIR")"
+[[ ! -f "$APP_DIR/package.json" ]] && error "Cannot find package.json in $APP_DIR"
+info "Project root (installation directory): $APP_DIR"
 
 # ── 2. System packages ────────────────────────────────────────────────────────
 info "Updating system packages..."
@@ -68,35 +70,25 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
 sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL ON SCHEMA public TO $DB_USER;" 2>/dev/null || true
 
 DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME"
-info "Database ready: $DATABASE_URL"
+info "Database ready."
 
 # ── 5. Create system user ─────────────────────────────────────────────────────
 id "$SERVICE_USER" &>/dev/null || useradd --system --no-create-home --shell /bin/false "$SERVICE_USER"
 
-# ── 6. Build the application ──────────────────────────────────────────────────
+# ── 6. Install dependencies and build in place ────────────────────────────────
+cd "$APP_DIR"
+
 info "Installing npm dependencies..."
-cd "$SOURCE_DIR"
-npm ci --omit=dev 2>/dev/null || npm install
+npm ci 2>/dev/null || npm install
 
 info "Building application..."
 npm run build
 
-# ── 7. Deploy to /opt/networkmonitor ──────────────────────────────────────────
-info "Deploying to $APP_DIR..."
-mkdir -p "$APP_DIR"
-
-# Copy built output
-cp -r "$SOURCE_DIR/dist" "$APP_DIR/"
-cp "$SOURCE_DIR/package.json" "$APP_DIR/"
-cp "$SOURCE_DIR/package-lock.json" "$APP_DIR/" 2>/dev/null || true
-cp -r "$SOURCE_DIR/node_modules" "$APP_DIR/"
-cp -r "$SOURCE_DIR/shared" "$APP_DIR/" 2>/dev/null || true
-
-# ── 8. Generate secrets and write .env ───────────────────────────────────────
+# ── 7. Write .env ─────────────────────────────────────────────────────────────
 SESSION_SECRET=$(openssl rand -hex 64)
 
 if [[ -f "$APP_DIR/.env" ]]; then
-  warn ".env already exists at $APP_DIR/.env — skipping overwrite. Update manually if needed."
+  warn ".env already exists — skipping overwrite. Edit $APP_DIR/.env manually if needed."
 else
   cat > "$APP_DIR/.env" <<EOF
 NODE_ENV=production
@@ -112,18 +104,17 @@ SESSION_SECRET=$SESSION_SECRET
 # SMTP_FROM_EMAIL=alerts@example.com
 EOF
   chmod 600 "$APP_DIR/.env"
-  info ".env written to $APP_DIR/.env"
+  info ".env written."
 fi
 
+# ── 8. Ownership ──────────────────────────────────────────────────────────────
 chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR"
 
 # ── 9. Push database schema ───────────────────────────────────────────────────
 info "Applying database schema..."
 cd "$APP_DIR"
 export $(grep -v '^#' .env | xargs)
-npx drizzle-kit push --config "$SOURCE_DIR/drizzle.config.ts" --force 2>/dev/null || \
-  DATABASE_URL="$DATABASE_URL" npx --yes drizzle-kit push --force || \
-  warn "Schema push had warnings — check manually if the app fails to start."
+npx drizzle-kit push --force || warn "Schema push had warnings — check manually if the app fails to start."
 
 # ── 10. Systemd service ───────────────────────────────────────────────────────
 info "Creating systemd service..."
@@ -197,16 +188,17 @@ echo -e "${GREEN}═════════════════════
 echo -e "${GREEN}  SceptView Network Monitor installed successfully!${NC}"
 echo -e "${GREEN}══════════════════════════════════════════════════════${NC}"
 echo ""
-echo -e "  App URL  : http://$PUBLIC_IP"
-echo -e "  App dir  : $APP_DIR"
-echo -e "  Env file : $APP_DIR/.env"
-echo -e "  Logs     : journalctl -u networkmonitor -f"
-echo -e "  Status   : systemctl status networkmonitor"
+echo -e "  App URL     : http://$PUBLIC_IP"
+echo -e "  Project dir : $APP_DIR"
+echo -e "  Env file    : $APP_DIR/.env"
+echo -e "  Logs        : journalctl -u networkmonitor -f"
+echo -e "  Status      : systemctl status networkmonitor"
 echo ""
 echo -e "${YELLOW}  Next steps:${NC}"
 echo -e "  1. Open port 80 (and 443) in your EC2 security group."
 echo -e "  2. Visit http://$PUBLIC_IP — the first sign-up becomes admin."
-echo -e "  3. (Optional) Add your SMTP credentials to $APP_DIR/.env for email alerts."
-echo -e "  4. (Optional) Run certbot for HTTPS: sudo apt install certbot python3-certbot-nginx"
-echo -e "                                        sudo certbot --nginx -d yourdomain.com"
+echo -e "  3. (Optional) Add SMTP credentials to $APP_DIR/.env then:"
+echo -e "     sudo systemctl restart networkmonitor"
+echo -e "  4. (Optional) HTTPS: sudo apt install certbot python3-certbot-nginx"
+echo -e "                        sudo certbot --nginx -d yourdomain.com"
 echo ""

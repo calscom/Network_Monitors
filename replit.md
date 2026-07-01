@@ -100,20 +100,21 @@ The application provides multiple kiosk modes optimized for different display sc
 ### Quick Start (Ubuntu 22.04 / 24.04)
 
 ```bash
-# 1. Clone or copy the project to the server
-git clone <your-repo-url> /opt/networkmonitor-src
-cd /opt/networkmonitor-src
+# 1. Clone the project directly into the installation directory
+git clone <your-repo-url> /opt/networkmonitor
+cd /opt/networkmonitor
 
 # 2. Run the installer (as root)
-chmod +x scripts/install-ec2.sh
 sudo ./scripts/install-ec2.sh
 ```
 
-The script handles everything automatically:
+The script runs entirely **in place** — no files are moved or restructured. The directory you clone into becomes the installation root, retaining the full project layout (`client/`, `server/`, `shared/`, `dist/`, `scripts/`, etc.).
+
+It handles everything automatically:
 - Installs Node.js 22, PostgreSQL, Nginx
 - Creates the database and a random password
-- Builds the app (`npm run build`)
-- Writes `/opt/networkmonitor/.env` with generated secrets
+- Installs dependencies and builds the app in place (`npm run build`)
+- Writes `.env` in the project root with generated secrets
 - Pushes the database schema
 - Creates and enables a `networkmonitor` systemd service
 - Configures Nginx as a reverse proxy on port 80
@@ -136,10 +137,12 @@ Open these ports inbound:
 ### Deploying Updates
 
 ```bash
-cd /opt/networkmonitor-src
+cd /opt/networkmonitor
 git pull
 sudo ./scripts/update-ec2.sh
 ```
+
+The update script also runs in place — it rebuilds `dist/` inside the existing project directory, applies any schema changes, and restarts the service.
 
 ### Environment Variables (`.env`)
 | Variable | Required | Description |
