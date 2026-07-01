@@ -2444,7 +2444,8 @@ export async function registerRoutes(
 
   // Helper function to poll a single device (returns a Promise)
   const pollDevice = (device: any, intervalSeconds: number): Promise<void> => {
-    return new Promise((resolve) => {
+    const POLL_TIMEOUT_MS = 10000;
+    const _inner = new Promise<void>((resolve) => {
       const session = snmp.createSession(device.ip, device.community, {
         timeout: 2000,
         retries: 1
@@ -2639,11 +2640,17 @@ export async function registerRoutes(
         }
       });
     });
+    const _deadline = new Promise<void>((resolve) => setTimeout(() => {
+      console.warn(`[snmp] pollDevice hard timeout reached for ${device.name} (${device.ip}), forcing resolution`);
+      resolve();
+    }, POLL_TIMEOUT_MS));
+    return Promise.race([_inner, _deadline]);
   };
 
   // Helper function to poll a secondary interface
   const pollSecondaryInterface = (device: any, iface: any, intervalSeconds: number): Promise<void> => {
-    return new Promise((resolve) => {
+    const POLL_TIMEOUT_MS = 10000;
+    const _inner = new Promise<void>((resolve) => {
       const session = snmp.createSession(device.ip, device.community, {
         timeout: 2000,
         retries: 1
@@ -2729,6 +2736,11 @@ export async function registerRoutes(
         }
       });
     });
+    const _deadline = new Promise<void>((resolve) => setTimeout(() => {
+      console.warn(`[snmp] pollSecondaryInterface hard timeout reached for ${iface.interfaceName} on ${device.name} (${device.ip}), forcing resolution`);
+      resolve();
+    }, POLL_TIMEOUT_MS));
+    return Promise.race([_inner, _deadline]);
   };
 
   // Helper: Check if ping succeeds (returns boolean)
