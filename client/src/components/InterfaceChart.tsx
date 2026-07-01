@@ -50,6 +50,7 @@ export function InterfaceChart({ interfaceData }: InterfaceChartProps) {
     },
     enabled: showChart && !!interfaceData.id,
     refetchInterval: 30000,
+    refetchIntervalInBackground: true,
   });
 
   const chartData = useMemo(() => {

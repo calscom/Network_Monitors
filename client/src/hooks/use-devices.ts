@@ -10,8 +10,8 @@ export function useDevices() {
       if (!res.ok) throw new Error("Failed to fetch devices");
       return api.devices.list.responses[200].parse(await res.json());
     },
-    // Optimized: poll every 5 seconds for better performance with many devices
     refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 }
 

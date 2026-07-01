@@ -52,6 +52,7 @@ export function PerformanceChart({ device }: PerformanceChartProps) {
       return res.json();
     },
     refetchInterval: 30000,
+    refetchIntervalInBackground: true,
   });
 
   const chartData = useMemo(() => {

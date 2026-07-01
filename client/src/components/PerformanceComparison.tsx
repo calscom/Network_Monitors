@@ -66,6 +66,7 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
       return res.json();
     },
     refetchInterval: 10000,
+    refetchIntervalInBackground: true,
   });
 
   const { data: comparisonData, isLoading: comparisonLoading } = useQuery<ComparisonResponse>({
@@ -76,6 +77,7 @@ export function PerformanceComparison({ device }: PerformanceComparisonProps) {
       return res.json();
     },
     refetchInterval: 30000,
+    refetchIntervalInBackground: true,
     enabled: activeTab === "compare",
   });
 

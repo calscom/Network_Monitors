@@ -117,6 +117,7 @@ export default function Dashboard() {
   const { data: activeUsersData } = useQuery<{ count: number }>({
     queryKey: ['/api/user-sessions/count'],
     refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
   
   // Fetch sites from centralized hook
@@ -199,7 +200,8 @@ export default function Dashboard() {
       if (!res.ok) throw new Error("Failed to fetch logs");
       return res.json();
     },
-    refetchInterval: 5000, // Optimized: poll every 5 seconds for better performance
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 
   // Helper function to get log type styling

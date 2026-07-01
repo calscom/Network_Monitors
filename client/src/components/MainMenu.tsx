@@ -104,6 +104,7 @@ export function MainMenu({
   }>({
     queryKey: ["/api/settings/polling"],
     refetchInterval: 30000,
+    refetchIntervalInBackground: true,
   });
 
   const pollingMutation = useMutation({

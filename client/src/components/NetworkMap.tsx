@@ -999,6 +999,7 @@ export function NetworkMap({ devices, sites, onSiteClick, kioskMode = false }: N
   const { data: deviceLinks = [] } = useQuery<DeviceLink[]>({
     queryKey: ['/api/device-links'],
     refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 
   useEffect(() => {

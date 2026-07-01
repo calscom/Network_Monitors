@@ -20,6 +20,7 @@ export function DailyUsersChart() {
   const { data: dailyStats = [], isLoading } = useQuery<DailyStats[]>({
     queryKey: ['/api/user-stats/daily', { days: 14 }],
     refetchInterval: 60000,
+    refetchIntervalInBackground: true,
   });
 
   const chartData = useMemo(() => {

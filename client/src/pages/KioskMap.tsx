@@ -29,6 +29,7 @@ export default function KioskMap() {
   const { data: activeUsersData } = useQuery<{ count: number }>({
     queryKey: ['/api/user-sessions/count'],
     refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 
   const handleSkinChange = (skin: MapSkin) => {
