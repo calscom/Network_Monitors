@@ -42,13 +42,6 @@ npm run build
 # ── 3. Apply schema changes ───────────────────────────────────────────────────
 info "Applying database schema changes..."
 export $(grep -v '^#' .env | xargs)
-
-# Apply known safe SQL constraints directly before drizzle-kit runs.
-# This prevents drizzle-kit from prompting to truncate tables with existing data.
-sudo -u postgres psql -d networkmonitor -c "
-  ALTER TABLE sites ADD CONSTRAINT sites_name_unique UNIQUE (name);
-" 2>/dev/null || true  # silently skip if constraint already exists
-
 npx drizzle-kit push --force || warn "Schema push had warnings — check manually."
 
 # ── 4. Restart service ────────────────────────────────────────────────────────
