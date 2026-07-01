@@ -44,7 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { Log, type UserRole } from "@shared/schema";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useSites } from "@/hooks/use-sites";
@@ -792,7 +792,7 @@ export default function Dashboard() {
                             {log.type.replace(/_/g, ' ')}
                           </span>
                           <span className="text-[9px] sm:text-[10px] text-muted-foreground font-mono shrink-0">
-                            {format(new Date(log.timestamp), "HH:mm:ss")}
+                            {(() => { const d = new Date(log.timestamp); return isValid(d) ? format(d, "HH:mm:ss") : "--:--:--"; })()}
                           </span>
                         </div>
                         <p className="text-muted-foreground leading-snug text-xs sm:text-sm">
@@ -803,7 +803,7 @@ export default function Dashboard() {
                             {log.site}
                           </Badge>
                           <span className="text-[8px] sm:text-[9px] text-muted-foreground/50">
-                            {format(new Date(log.timestamp), "MMM d")}
+                            {(() => { const d = new Date(log.timestamp); return isValid(d) ? format(d, "MMM d") : ""; })()}
                           </span>
                         </div>
                       </div>
