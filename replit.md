@@ -119,6 +119,36 @@ It handles everything automatically:
 - Creates and enables a `networkmonitor` systemd service
 - Configures Nginx as a reverse proxy on port 80
 
+### Migrating from an Existing Installation (preserving all data)
+
+If you already have the app running at `/opt/networkmonitor`, follow these steps. Your database (devices, sites, metrics, logs, users) lives in PostgreSQL and is **never touched** — only the application files are replaced.
+
+```bash
+# 1. Back up your credentials
+sudo cp /opt/networkmonitor/.env /root/networkmonitor-env.bak
+cat /root/networkmonitor-env.bak   # confirm DATABASE_URL and SESSION_SECRET are visible
+
+# 2. Stop the running service
+sudo systemctl stop networkmonitor
+
+# 3. Remove old application files (database is in PostgreSQL — this is safe)
+sudo rm -rf /opt/networkmonitor
+
+# 4. Clone the updated project into the same path
+git clone <your-repo-url> /opt/networkmonitor
+cd /opt/networkmonitor
+
+# 5. Restore your existing credentials (installer will detect and skip overwrite)
+sudo cp /root/networkmonitor-env.bak /opt/networkmonitor/.env
+sudo chmod 600 /opt/networkmonitor/.env
+
+# 6. Run the installer — it will skip DB/user creation and .env generation
+#    since they already exist, then build, push schema changes, and restart
+sudo ./scripts/install-ec2.sh
+```
+
+All historical metrics, device configuration, users, and logs are preserved because they live in PostgreSQL, not in the application directory.
+
 ### After Installation
 - **First visit**: Open `http://<your-ec2-ip>` — the first account created becomes admin.
 - **Email alerts**: Edit `/opt/networkmonitor/.env` and add your SMTP credentials, then `sudo systemctl restart networkmonitor`.
