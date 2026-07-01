@@ -119,6 +119,39 @@ It handles everything automatically:
 - Creates and enables a `networkmonitor` systemd service
 - Configures Nginx as a reverse proxy on port 80
 
+### Accessing the App — Port 80, Not Port 5000
+
+The app process listens on **port 5000** but this port is for internal use only (Nginx → app). **External users must access via port 80** (or 443 with HTTPS).
+
+| Port | Who uses it | Accessible from outside EC2? |
+|------|------------|------------------------------|
+| 5000 | Node.js app process | No — internal only |
+| 80   | Nginx (proxies to 5000) | Yes — open in security group |
+| 443  | Nginx HTTPS | Yes — after certbot |
+
+If users at other offices/sites can't reach the app, ensure:
+1. Port 80 is open in your EC2 **Security Group** (inbound rule: TCP 0.0.0.0/0 port 80)
+2. They're accessing `http://your-ec2-ip` (port 80), **not** `http://your-ec2-ip:5000`
+3. Nginx is running: `sudo systemctl status nginx`
+
+### Diagnosing Sites Not Loading
+
+If the dashboard shows some site tabs but not others, run these checks on the EC2 server:
+
+```bash
+# 1. Check how many sites are in the database
+sudo -u postgres psql -d networkmonitor -c "SELECT id, name FROM sites ORDER BY display_order;"
+
+# 2. Check which site names devices are assigned to
+sudo -u postgres psql -d networkmonitor -c "SELECT DISTINCT site, COUNT(*) FROM devices GROUP BY site ORDER BY site;"
+
+# 3. If sites table is empty or missing entries, the app will recreate defaults on next load.
+#    Manually re-add any missing sites:
+sudo -u postgres psql -d networkmonitor -c "INSERT INTO sites (name, display_order) VALUES ('YourSiteName', 0) ON CONFLICT DO NOTHING;"
+```
+
+If the sites table was accidentally wiped (can happen if `drizzle-kit push` ran with truncation), the devices still retain their `site` text value in the devices table — they just need matching rows re-added to the sites table.
+
 ### Important: npm Registry on EC2
 
 The `package-lock.json` generated inside Replit contains `resolved` URLs pointing to `package-firewall.replit.local` — an internal npm proxy that is only reachable inside the Replit environment. Running `npm install` or `npm ci` on an EC2 server will fail with `EAI_AGAIN` (DNS resolution failure) for that hostname.

@@ -116,6 +116,16 @@ chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR"
 info "Applying database schema..."
 cd "$APP_DIR"
 export $(grep -v '^#' .env | xargs)
+
+# First: apply any known safe SQL migrations that drizzle-kit would otherwise
+# prompt about interactively (e.g. adding UNIQUE constraints to existing tables).
+# Running these directly avoids any risk of drizzle-kit truncating data.
+sudo -u postgres psql -d "$DB_NAME" -c "
+  ALTER TABLE sites ADD CONSTRAINT sites_name_unique UNIQUE (name);
+" 2>/dev/null || true  # silently skip if constraint already exists
+
+# Now push the full schema (tables, indexes, etc.).
+# On a fresh install all tables are empty so --force is safe.
 npx drizzle-kit push --force || warn "Schema push had warnings — check manually if the app fails to start."
 
 # ── 10. Systemd service ───────────────────────────────────────────────────────
