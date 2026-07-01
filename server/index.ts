@@ -11,6 +11,14 @@ import { createServer } from "http";
 const app = express();
 const httpServer = createServer(app);
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[process] Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[process] Uncaught exception:', err);
+});
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

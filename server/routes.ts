@@ -2458,6 +2458,7 @@ export async function registerRoutes(
       console.log(`[snmp] Polling ${device.name} at ${device.ip} interface ${ifIndex} (interval: ${intervalSeconds}s)...`);
 
       session.get([OID_IF_IN_OCTETS, OID_IF_OUT_OCTETS], async (error: any, varbinds: any) => {
+        try {
         let newStatus = 'red';
         let newUtilization = device.utilization;
         let bandwidthMBps = device.bandwidthMBps;
@@ -2631,6 +2632,11 @@ export async function registerRoutes(
         }
         
         resolve();
+        } catch (err) {
+          console.error(`[snmp] Unexpected error processing SNMP response for ${device.name} (${device.ip}):`, err);
+          try { session.close(); } catch (_) {}
+          resolve();
+        }
       });
     });
   };
@@ -2648,6 +2654,7 @@ export async function registerRoutes(
       const OID_IF_OUT = `${OID_IF_OUT_OCTETS_BASE}.${ifIndex}`;
 
       session.get([OID_IF_IN, OID_IF_OUT], async (error: any, varbinds: any) => {
+        try {
         let ifaceStatus = 'red';
         let ifaceUtilization = 0;
         let ifaceDownload = "0.00";
@@ -2715,6 +2722,11 @@ export async function registerRoutes(
 
         session.close();
         resolve();
+        } catch (err) {
+          console.error(`[snmp] Unexpected error processing SNMP response for interface ${iface.interfaceName} on ${device.name} (${device.ip}):`, err);
+          try { session.close(); } catch (_) {}
+          resolve();
+        }
       });
     });
   };
@@ -3037,7 +3049,9 @@ export async function registerRoutes(
   }
   
   // Start continuous staggered polling
-  initializeStaggeredPolling();
+  initializeStaggeredPolling().catch(err =>
+    console.error('[poll] Failed to initialize staggered polling:', err)
+  );
   startLinkUpdates();
   startUserManagerPolling();
 
@@ -3144,7 +3158,9 @@ export async function registerRoutes(
     const isLastDayOfMonth = tomorrow.getDate() === 1;
     
     if (isLastDayOfMonth && hours === 23 && minutes === 59) {
-      runMonthEndAvailabilitySnapshot();
+      runMonthEndAvailabilitySnapshot().catch(err =>
+        console.error('[availability] Unhandled error in month-end snapshot:', err)
+      );
     }
   };
 
