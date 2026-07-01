@@ -95,6 +95,69 @@ The application provides multiple kiosk modes optimized for different display sc
 - **Manual Generation**: Run `npx tsx scripts/generate-manual.ts` to regenerate after feature changes
 - **Important**: Always update the manual when editing features by modifying `scripts/generate-manual.ts` and regenerating
 
+## EC2 / Self-Hosted Installation
+
+### Quick Start (Ubuntu 22.04 / 24.04)
+
+```bash
+# 1. Clone or copy the project to the server
+git clone <your-repo-url> /opt/networkmonitor-src
+cd /opt/networkmonitor-src
+
+# 2. Run the installer (as root)
+chmod +x scripts/install-ec2.sh
+sudo ./scripts/install-ec2.sh
+```
+
+The script handles everything automatically:
+- Installs Node.js 22, PostgreSQL, Nginx
+- Creates the database and a random password
+- Builds the app (`npm run build`)
+- Writes `/opt/networkmonitor/.env` with generated secrets
+- Pushes the database schema
+- Creates and enables a `networkmonitor` systemd service
+- Configures Nginx as a reverse proxy on port 80
+
+### After Installation
+- **First visit**: Open `http://<your-ec2-ip>` — the first account created becomes admin.
+- **Email alerts**: Edit `/opt/networkmonitor/.env` and add your SMTP credentials, then `sudo systemctl restart networkmonitor`.
+- **HTTPS**: `sudo apt install certbot python3-certbot-nginx && sudo certbot --nginx -d yourdomain.com`
+- **Logs**: `journalctl -u networkmonitor -f`
+- **Status**: `systemctl status networkmonitor`
+
+### EC2 Security Group
+Open these ports inbound:
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 22   | TCP      | SSH |
+| 80   | TCP      | HTTP |
+| 443  | TCP      | HTTPS (after certbot) |
+
+### Deploying Updates
+
+```bash
+cd /opt/networkmonitor-src
+git pull
+sudo ./scripts/update-ec2.sh
+```
+
+### Environment Variables (`.env`)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SESSION_SECRET` | Yes | Long random string for session signing |
+| `NODE_ENV` | Yes | Must be `production` |
+| `PORT` | No | Default: `5000` |
+| `SMTP_HOST` | No | SMTP server for email alerts |
+| `SMTP_PORT` | No | Usually `587` |
+| `SMTP_USER` | No | SMTP username |
+| `SMTP_PASS` | No | SMTP password |
+| `SMTP_FROM_EMAIL` | No | Sender address for alert emails |
+
+> **Do not set `REPL_ID`** — its absence is what activates local username/password authentication instead of Replit OAuth.
+
+See `.env.example` for a ready-to-copy template.
+
 ## Database Migrations (Self-Hosted)
 
 When deploying updates to self-hosted environments (AWS/Vultr), you may need to add new columns manually. Run these SQL commands if you encounter "column does not exist" errors:
