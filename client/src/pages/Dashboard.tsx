@@ -270,7 +270,10 @@ export default function Dashboard() {
 
   // Apply search filter first, then site filter for tab view
   const searchFilteredDevices = devices?.filter(matchesSearch) || [];
-  const siteDevices = devices?.filter(d => d.site === activeSite) || [];
+  const siteDevices = useMemo(
+    () => devices?.filter(d => d.site === activeSite) || [],
+    [devices, activeSite]
+  );
   
   // Order devices based on saved order for the active site
   const orderedSiteDevices = useMemo(() => {

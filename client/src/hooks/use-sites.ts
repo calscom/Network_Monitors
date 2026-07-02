@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Site } from "@shared/schema";
@@ -7,6 +8,8 @@ export function useSites() {
     queryKey: ["/api/sites"],
     staleTime: 30000,
   });
+
+  const siteNames = useMemo(() => query.data?.map(s => s.name) || [], [query.data]);
 
   const createSiteMutation = useMutation({
     mutationFn: async ({ name, displayOrder }: { name: string; displayOrder?: number }) => {
@@ -66,7 +69,7 @@ export function useSites() {
 
   return {
     sites: query.data || [],
-    siteNames: query.data?.map(s => s.name) || [],
+    siteNames,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
