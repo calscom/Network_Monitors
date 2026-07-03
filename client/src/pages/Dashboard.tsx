@@ -1,4 +1,5 @@
 import { useDevices, useBulkDeleteDevices } from "@/hooks/use-devices";
+import { usePollingInterval } from "@/hooks/use-polling-interval";
 import { DeviceCard } from "@/components/DeviceCard";
 import { AddDeviceDialog } from "@/components/AddDeviceDialog";
 import { NetworkMap } from "@/components/NetworkMap";
@@ -93,6 +94,7 @@ function SortableDeviceCard({ device, canManage }: { device: Device; canManage: 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: devices, isLoading, error, dataUpdatedAt } = useDevices();
+  const pollingInterval = usePollingInterval();
   const userRole = (user?.role as UserRole) || 'viewer';
   const canManageDevices = userRole === 'admin' || userRole === 'operator';
   const { toast } = useToast();
@@ -116,7 +118,7 @@ export default function Dashboard() {
   // Fetch active users count from API
   const { data: activeUsersData } = useQuery<{ count: number }>({
     queryKey: ['/api/user-sessions/count'],
-    refetchInterval: 5000,
+    refetchInterval: pollingInterval,
     refetchIntervalInBackground: true,
   });
   

@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import type { InsertDevice } from "@shared/schema";
+import { usePollingInterval } from "./use-polling-interval";
 
 export function useDevices() {
+  const pollingInterval = usePollingInterval();
   return useQuery({
     queryKey: [api.devices.list.path],
     queryFn: async () => {
@@ -10,7 +12,7 @@ export function useDevices() {
       if (!res.ok) throw new Error("Failed to fetch devices");
       return api.devices.list.responses[200].parse(await res.json());
     },
-    refetchInterval: 5000,
+    refetchInterval: pollingInterval,
     refetchIntervalInBackground: true,
   });
 }
