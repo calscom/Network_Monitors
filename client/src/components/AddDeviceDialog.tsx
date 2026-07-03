@@ -399,10 +399,11 @@ export function AddDeviceDialog() {
               </div>
             )}
 
-            {form.watch("pollType") === "usermanager_api" && (
+            {form.watch("type") === "mikrotik" && (
               <>
                 <div className="text-xs text-muted-foreground bg-blue-500/10 p-2 rounded-md border border-blue-500/20">
-                  User Manager API: Polls active sessions via MikroTik REST API (requires RouterOS 7.1+).
+                  Optional: MikroTik User Manager REST API credentials (requires RouterOS 7.1+). Runs independently of
+                  Poll Type above — use this to pull active hotspot user counts even while SNMP handles bandwidth.
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
@@ -417,6 +418,7 @@ export function AddDeviceDialog() {
                             {...field} 
                             value={field.value || ""}
                             className="h-9 bg-secondary/50 border-white/10 focus:border-primary/50" 
+                            data-testid="input-api-username-add"
                           />
                         </FormControl>
                         <FormMessage />
@@ -436,6 +438,7 @@ export function AddDeviceDialog() {
                             {...field}
                             value={field.value || ""}
                             className="h-9 bg-secondary/50 border-white/10 focus:border-primary/50" 
+                            data-testid="input-api-password-add"
                           />
                         </FormControl>
                         <FormMessage />
