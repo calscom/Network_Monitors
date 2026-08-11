@@ -80,6 +80,46 @@ const OID_AAA_SESSIONS = "1.3.6.1.4.1.9.9.150.1.1.1.0"; // Cisco AAA sessions (a
 // Global polling configuration
 let currentPollingInterval = 5000; // Default 5 seconds
 let isAvailabilityResetInProgress = false; // Flag to pause polling during monthly reset
+
+// Track consecutive DB write failures per device to detect sustained outages
+const dbWriteFailureCounts: Map<number, number> = new Map();
+const DB_WRITE_RETRY_DELAY_MS = 500;
+const DB_WRITE_FAILURE_WARN_THRESHOLD = 5;
+
+async function retryUpdateDeviceMetrics(
+  deviceId: number,
+  deviceName: string,
+  metrics: Parameters<typeof storage.updateDeviceMetrics>[1]
+): Promise<void> {
+  try {
+    await storage.updateDeviceMetrics(deviceId, metrics);
+    // Reset failure count on success
+    if (dbWriteFailureCounts.has(deviceId)) {
+      dbWriteFailureCounts.delete(deviceId);
+    }
+  } catch (firstErr) {
+    console.warn(`[db] updateDeviceMetrics failed for ${deviceName} (id=${deviceId}), retrying in ${DB_WRITE_RETRY_DELAY_MS}ms:`, firstErr);
+    await new Promise(resolve => setTimeout(resolve, DB_WRITE_RETRY_DELAY_MS));
+    try {
+      await storage.updateDeviceMetrics(deviceId, metrics);
+      if (dbWriteFailureCounts.has(deviceId)) {
+        dbWriteFailureCounts.delete(deviceId);
+      }
+    } catch (retryErr) {
+      const prev = dbWriteFailureCounts.get(deviceId) ?? 0;
+      const count = prev + 1;
+      dbWriteFailureCounts.set(deviceId, count);
+      if (count >= DB_WRITE_FAILURE_WARN_THRESHOLD) {
+        console.warn(
+          `[db] SUSTAINED DB WRITE FAILURE: ${deviceName} (id=${deviceId}) has failed ${count} consecutive metric write(s). ` +
+          `Device status in DB may be stale. Last error: ${retryErr}`
+        );
+      } else {
+        console.error(`[db] updateDeviceMetrics retry also failed for ${deviceName} (id=${deviceId}) [failure #${count}]:`, retryErr);
+      }
+    }
+  }
+}
 const POLLING_OPTIONS = [
   { value: 5000, label: "5 sec" },
   { value: 10000, label: "10 sec" },
@@ -2380,7 +2420,7 @@ export async function registerRoutes(
             }
           }
           
-          await storage.updateDeviceMetrics(device.id, {
+          await retryUpdateDeviceMetrics(device.id, device.name, {
             status: newStatus,
             utilization: 0,
             bandwidthMBps: "0.00",
@@ -2424,7 +2464,7 @@ export async function registerRoutes(
           );
         }
         
-        await storage.updateDeviceMetrics(device.id, {
+        await retryUpdateDeviceMetrics(device.id, device.name, {
           status: newStatus,
           utilization: 0,
           bandwidthMBps: "0.00",
@@ -2591,7 +2631,7 @@ export async function registerRoutes(
           ? freshDevice.activeUsers 
           : activeUsers;
         
-        await storage.updateDeviceMetrics(device.id, {
+        await retryUpdateDeviceMetrics(device.id, device.name, {
           status: newStatus,
           utilization: newUtilization,
           bandwidthMBps,
@@ -2863,7 +2903,7 @@ export async function registerRoutes(
       ? freshDevice.activeUsers 
       : (isPingOnlyMode ? 0 : freshDevice.activeUsers);
     
-    await storage.updateDeviceMetrics(device.id, {
+    await retryUpdateDeviceMetrics(device.id, device.name, {
       status: newStatus,
       utilization: isPingOnlyMode ? 0 : freshDevice.utilization,
       bandwidthMBps: isPingOnlyMode ? "0.00" : freshDevice.bandwidthMBps,
