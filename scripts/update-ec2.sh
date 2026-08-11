@@ -39,9 +39,11 @@ if [[ -f package-lock.json ]]; then
   info "Rewrote Replit proxy URLs in package-lock.json → registry.npmjs.org"
 fi
 # npm 12+ requires explicit approval for packages that run install scripts.
-# Pre-approve the ones this project needs (esbuild downloads its binary,
-# bufferutil builds a native WebSocket accelerator).
-npm install-scripts approve bufferutil esbuild 2>/dev/null || true
+# Pre-approve all packages this project needs:
+#   esbuild  — downloads platform binary (postinstall: node install.js)
+#   bufferutil — native WebSocket accelerator (node-gyp rebuild)
+#   es5-ext  — optional postinstall telemetry check (safe to allow)
+npm install-scripts approve bufferutil esbuild es5-ext 2>/dev/null || true
 npm install --registry https://registry.npmjs.org
 
 # ── 2. Build in place ─────────────────────────────────────────────────────────
