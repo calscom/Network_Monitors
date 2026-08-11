@@ -31,8 +31,13 @@ cd "$APP_DIR"
 
 # ── 1. Install dependencies ────────────────────────────────────────────────────
 info "Installing npm dependencies..."
-# Use the public registry — package-lock.json may contain Replit's internal
-# proxy URLs (package-firewall.replit.local) which are unreachable outside Replit.
+# Replit bakes its internal proxy (package-firewall.replit.local) into
+# package-lock.json resolved URLs. Replace them with the public registry
+# before installing so EC2 can reach the packages.
+if [[ -f package-lock.json ]]; then
+  sed -i 's|https://package-firewall\.replit\.local/npm|https://registry.npmjs.org|g' package-lock.json
+  info "Rewrote Replit proxy URLs in package-lock.json → registry.npmjs.org"
+fi
 npm install --registry https://registry.npmjs.org
 
 # ── 2. Build in place ─────────────────────────────────────────────────────────
