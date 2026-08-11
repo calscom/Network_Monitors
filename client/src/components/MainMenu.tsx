@@ -70,7 +70,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useSites } from "@/hooks/use-sites";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface MainMenuProps {
   devices?: Device[];
@@ -309,10 +309,11 @@ export function MainMenu({
           const results = Papa.parse(content as string, { header: false });
           newSitesList = results.data.flat().filter(s => typeof s === 'string' && s.trim()) as string[];
         } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(content, { type: 'binary' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(content as ArrayBuffer);
+          const worksheet = workbook.worksheets[0];
+          const data: any[][] = [];
+          worksheet.eachRow(row => data.push((row.values as any[]).slice(1)));
           newSitesList = data.flat().filter(s => typeof s === 'string' && s.trim());
         }
 
@@ -336,7 +337,7 @@ export function MainMenu({
     if (file.name.endsWith('.csv')) {
       reader.readAsText(file);
     } else {
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     }
     
     e.target.value = '';
@@ -356,10 +357,19 @@ export function MainMenu({
           const results = Papa.parse(content as string, { header: true, skipEmptyLines: true });
           deviceData = results.data;
         } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(content, { type: 'binary' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          deviceData = XLSX.utils.sheet_to_json(worksheet);
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(content as ArrayBuffer);
+          const worksheet = workbook.worksheets[0];
+          const headers: string[] = [];
+          worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) {
+              (row.values as any[]).slice(1).forEach(h => headers.push(String(h ?? '')));
+            } else {
+              const obj: any = {};
+              (row.values as any[]).slice(1).forEach((v, i) => { obj[headers[i]] = v; });
+              deviceData.push(obj);
+            }
+          });
         }
 
         let successCount = 0;
@@ -415,7 +425,7 @@ export function MainMenu({
     if (file.name.endsWith('.csv')) {
       reader.readAsText(file);
     } else {
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     }
 
     e.target.value = '';

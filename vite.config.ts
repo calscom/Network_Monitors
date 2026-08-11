@@ -46,7 +46,7 @@ export default defineConfig({
       "react-dom/client",
       "react/jsx-runtime",
       "papaparse",
-      "xlsx",
+      "exceljs",
     ],
   },
 });
