@@ -38,6 +38,10 @@ if [[ -f package-lock.json ]]; then
   sed -i 's|https://package-firewall\.replit\.local/npm|https://registry.npmjs.org|g' package-lock.json
   info "Rewrote Replit proxy URLs in package-lock.json → registry.npmjs.org"
 fi
+# npm 12+ requires explicit approval for packages that run install scripts.
+# Pre-approve the ones this project needs (esbuild downloads its binary,
+# bufferutil builds a native WebSocket accelerator).
+npm install-scripts approve bufferutil esbuild 2>/dev/null || true
 npm install --registry https://registry.npmjs.org
 
 # ── 2. Build in place ─────────────────────────────────────────────────────────
