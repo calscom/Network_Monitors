@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "test:polling": "node --test tests/staggered-polling.test.mjs",
+    "test:spreadsheet": "node --test tests/spreadsheet-compatibility.test.mjs",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -123,6 +124,9 @@
     "vite": "^8.3.3"
   },
   "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    },
     "proxy-addr@2": "2.0.8",
     "@tailwindcss/typography": {
       "postcss-selector-parser": "7.1.6"
