@@ -2785,27 +2785,47 @@ export async function registerRoutes(
 
   // Helper: Check if ping succeeds (returns boolean)
   const checkPing = async (ip: string): Promise<boolean> => {
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const { stdout } = await execAsync(`ping -c 1 -W 2 ${ip}`, { timeout: 5000 });
-      return stdout.includes('1 received') || stdout.includes('1 packets received') || stdout.includes('bytes from');
+      const deadline = new Promise<boolean>((resolve) => {
+        deadlineTimer = setTimeout(() => resolve(false), 10000);
+      });
+      const check = execAsync(`ping -c 1 -W 2 ${ip}`, { timeout: 5000 }).then(({ stdout }) =>
+        stdout.includes('1 received') || stdout.includes('1 packets received') || stdout.includes('bytes from')
+      );
+      return await Promise.race([check, deadline]);
     } catch {
       return false;
+    } finally {
+      clearTimeout(deadlineTimer);
     }
   };
 
   // Helper: Check if SNMP succeeds (returns boolean)
-  const checkSnmp = (ip: string, community: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const session = snmp.createSession(ip, community, { timeout: 2000, retries: 1 });
-      session.get([`${OID_IF_IN_OCTETS_BASE}.1`], (error: any, varbinds: any) => {
-        session.close();
-        if (!error && varbinds.length > 0 && !snmp.isVarbindError(varbinds[0])) {
-          resolve(true);
-        } else {
-          resolve(false);
-        }
+  const checkSnmp = async (ip: string, community: string): Promise<boolean> => {
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+    let session: ReturnType<typeof snmp.createSession> | undefined;
+    try {
+      const deadline = new Promise<boolean>((resolve) => {
+        deadlineTimer = setTimeout(() => resolve(false), 10000);
       });
-    });
+      const check = new Promise<boolean>((resolve) => {
+        session = snmp.createSession(ip, community, { timeout: 2000, retries: 1 });
+        session.get([`${OID_IF_IN_OCTETS_BASE}.1`], (error: any, varbinds: any) => {
+          try {
+            resolve(!error && varbinds.length > 0 && !snmp.isVarbindError(varbinds[0]));
+          } catch {
+            resolve(false);
+          }
+        });
+      });
+      return await Promise.race([check, deadline]);
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(deadlineTimer);
+      try { session?.close(); } catch (_) {}
+    }
   };
 
   // Unified polling function that handles all poll types
