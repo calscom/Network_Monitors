@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test:polling": "node --test tests/staggered-polling.test.mjs",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

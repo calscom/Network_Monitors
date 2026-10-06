@@ -3,3 +3,4 @@
 - [Zod 4 issues API](zod4-issues.md) — ZodError.errors renamed to ZodError.issues in Zod 4
 - [Dependency security overrides](dependency-security-overrides.md) — prefer narrowly scoped, tested patches over npm audit's suggested parent-library downgrades.
 - [GitHub connector release publishing](github-connector-release-publishing.md) — split Git Data API publishing into small calls when the durable wrapper rejects an all-in-one request
+- [TypeScript compiler API availability](typescript-compiler-api.md) — the installed TypeScript package lacks the legacy JS parser/transpiler API; use existing esbuild for test transpilation.
