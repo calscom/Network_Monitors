@@ -7,7 +7,7 @@ import { MainMenu } from "@/components/MainMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Onboarding } from "@/components/Onboarding";
-import { LayoutDashboard, Activity, CircleAlert, MapPin, Pencil, CircleArrowUp, CircleArrowDown, History, Search, X, GripVertical, CheckSquare, Square, Trash2, Users } from "lucide-react";
+import { LayoutDashboard, Activity, CircleAlert, MapPin, Pencil, History, Search, X, GripVertical, CheckSquare, Square, Trash2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
