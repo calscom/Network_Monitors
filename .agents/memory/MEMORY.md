@@ -2,5 +2,6 @@
 - [Drizzle 0.45 execute result](drizzle-execute-result.md) — db.execute() returns array directly, not { rows: [] }
 - [Zod 4 issues API](zod4-issues.md) — ZodError.errors renamed to ZodError.issues in Zod 4
 - [Dependency security overrides](dependency-security-overrides.md) — prefer narrowly scoped, tested patches over npm audit's suggested parent-library downgrades.
+- [EC2 runtime selection](ec2-runtime-selection.md) — the existing EC2 service uses root's NVM binary explicitly; changing the shell's Node version is not enough.
 - [GitHub connector release publishing](github-connector-release-publishing.md) — split Git Data API publishing into small calls when the durable wrapper rejects an all-in-one request
 - [TypeScript compiler API availability](typescript-compiler-api.md) — the installed TypeScript package lacks the legacy JS parser/transpiler API; use existing esbuild for test transpilation.
